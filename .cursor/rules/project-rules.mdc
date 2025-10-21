@@ -1,24 +1,42 @@
 ---
-description:
+description: Project rules and context for Databricks ML experimentation platform
 globs:
 alwaysApply: true
 ---
 
 ### Project Overview
+- Purpose: Experimental platform for exploring Databricks functionality and implementing ML solutions for healthcare/pharmaceutical distribution scenarios
+- Target Domain: EBOS-style supply chain, logistics, and healthcare analytics challenges
+- Platform: Databricks free edition - `dbc-f501771e-54b7.cloud.databricks.com`
+- Scope: Prototyping ML models, data engineering pipelines, and MLOps workflows
 
-### Module structures/usage
-- The semantic approach is preferred because:
-  - Less verbose - shorter, cleaner names
-  - Context-aware - the parent module provides context
-  - Follows conventions - many Python libraries use this pattern
-  - Easier to read - from search import generic reads naturally
-- The pattern: parent_module.semantic_name where the semantic name is concise and the parent provides context.
-- don't use __init__ files if you don't have to; they bloat the project
-- generally, we prefer simpler directory/file/package/module structures
-- always use absolute imports for modules
+### Key Modelling Focus Areas
+- Supply Chain Optimization: Demand forecasting, inventory management, logistics routing
+- Healthcare Analytics: Churn prediction, market forecasting, recommender systems
+- Operational Efficiency: Computer vision, anomaly detection, process optimization
+- Regulatory Compliance: Fraud detection, document processing, compliance automation
+- NLP Applications: Call center automation, document processing, product classification
 
-### Misc
-- always use loguru instead of print statements for logging
-- always use the Pathlib Path object for file paths/file manipulation
-- try and hoist common variables into configuration if possible
-- always use sqlmodel and pydantic models for database operations
+### Technical Architecture
+- Development Model: Local development with Databricks Connect for remote execution
+- ML Stack: PySpark MLlib, MLflow, Azure ML integration
+- Data Governance: Unity Catalog with three-level namespace (catalog.schema.table)
+- Pipeline Strategy: PySpark pipelines for segmented, manageable units of work
+- Deployment: DAB (Databricks Asset Bundles) for local and remote deployment
+
+### Code/Infrastructure Guidelines
+- File Organization: Use flat structures where possible for Databricks compatibility
+- Development Workflow: Local development → Databricks Connect → remote execution, generally assume we're running remotely unless otherwise specified
+- Python Version: Ensure alignment between local and remote environments (noted as potential challenge)
+- Performance: Databricks Connect is slower but more convenient than git-based workflows
+
+### Data & ML Patterns
+- Tree-based Methods: XGBoost/LightGBM for tabular operations data
+- Time Series: Prophet, ARIMA, LSTM, Temporal Fusion Transformers for forecasting
+- NLP: Transformers for document processing, call summarization
+
+### Code Standards
+- Logging: Always use loguru instead of print statements
+- Configuration: Hoist common variables into configuration files
+- Imports: Use absolute imports for modules
+- Module Structure: Prefer semantic naming (parent_module.semantic_name) over verbose names

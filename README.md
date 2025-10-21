@@ -1,28 +1,50 @@
-### Unity Catalog
-Unity Catalog includes a three-level namespace for data objects: catalog.schema.table. In this example, you'll run a notebook that creates a table named department in the workspace catalog and default schema (database).
+# Databricks ML Experimentation Platform
 
-- difference data warehouse or a data lake.
-- pyspark specific new features? pipelines?
-- pyspark pipelines > very interesting
-  - but why use pipelines at all? how to segment/cut units of work into a pipeline?
-      - for data? for modelling? for CI/CD equally?
+## Project Overview
 
-### Databricks connect
-- need to match local python version with the remote version > nightmare alignment?
-- generally works great with cursor and databricks free edition > actually connects/configs
-- slow to run though; but still more convenient than git commiting/pulling down changes
+This project serves as an experimental platform for exploring Databricks functionality and implementing ML solutions for healthcare/pharmaceutical distribution scenarios. We're using the Databricks free edition to prototype various machine learning models and data engineering pipelines that could be applicable to EBOS's supply chain, logistics, and healthcare analytics challenges.
 
-### Specifics
-### Modelling/data gen
-- some online tutorials
-- DAB > locally, remotely, deploy
-    - local extensions/remote usage
-- mlflow 3 usage/difference
+**Key Focus Areas:**
+- Supply chain optimization (demand forecasting, inventory management, logistics routing)
+- Healthcare customer analytics (churn prediction, market forecasting, recommender systems)
+- Operational efficiency (computer vision, anomaly detection, process optimization)
+- Regulatory compliance and fraud detection
+- Natural language processing for document processing and customer support
 
-### Platform
-- azure deployment of databricks workspace > terraform?
-    - postgres database on azure > databricks workspace
-    - DBT
+**Technical Stack:**
+- **Platform**: Databricks (free edition) - `dbc-f501771e-54b7.cloud.databricks.com`
+- **Development**: Local development with Databricks Connect for remote execution
+- **ML/AI**: PySpark MLlib, MLflow, Azure ML integration
+- **Data**: Unity Catalog for data governance, flat file organization for Databricks compatibility
 
-### Policy/organisation/governance
-- possible organisation of catalog/schemas/models?
+## Todo List
+
+### 🚀 Immediate Priorities
+- [ ] **Data Generation Pipeline** - Create synthetic healthcare/pharmaceutical datasets for experimentation
+- [ ] **Databricks Connect Setup** - Establish reliable local-to-remote development workflow
+- [ ] **MLflow Integration** - Set up experiment tracking and model versioning
+
+### 📊 Modelling & Data Science
+- [ ] **Demand Forecasting Models** - Implement time-series forecasting (Prophet, XGBoost, LSTM)
+- [ ] **Inventory Optimization** - Build constrained optimization models for stock replenishment
+- [ ] **Churn Prediction** - Develop customer retention models for pharmacy/hospital clients
+- [ ] **Anomaly Detection** - Create systems for detecting temperature excursions and suspicious orders
+- [ ] **Computer Vision Prototypes** - OCR and damage detection for warehouse operations
+
+### 🛠️ Platform & Infrastructure
+- [ ] **DAB (Databricks Asset Bundles)** - Local and remote deployment workflows
+- [ ] **Unity Catalog Organization** - Design catalog/schema structure for data governance
+- [ ] **Azure Integration** - Terraform deployment for production-ready Databricks workspace
+- [ ] **PostgreSQL Integration** - Connect external database to Databricks for data ingestion
+- [ ] **DBT Integration** - Data transformation and modeling workflows
+
+### 🔧 Development & Testing
+- [ ] **PySpark Pipeline Development** - Segment work into manageable pipeline units
+- [ ] **MLflow 3.0 Features** - Explore new capabilities and differences from previous versions
+- [ ] **Databricks Connect Optimization** - Improve performance and reliability of local development
+- [ ] **Python Version Alignment** - Ensure compatibility between local and remote environments
+
+### 📋 Documentation & Governance
+- [ ] **Model Documentation** - Document ML model architectures and business logic
+- [ ] **Data Lineage Tracking** - Implement comprehensive data governance practices
+- [ ] **Deployment Guidelines** - Create standards for model deployment and monitoring
