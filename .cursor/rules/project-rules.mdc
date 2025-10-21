@@ -19,10 +19,9 @@ alwaysApply: true
 
 ### Technical Architecture
 - Development Model: Local development with Databricks Connect for remote execution
-- ML Stack: PySpark MLlib, MLflow, Azure ML integration
+  - use the `databricks-misc` conda env for any local run/dev
 - Data Governance: Unity Catalog with three-level namespace (catalog.schema.table)
-- Pipeline Strategy: PySpark pipelines for segmented, manageable units of work
-- Deployment: DAB (Databricks Asset Bundles) for local and remote deployment
+  - currently using the `workspace.default` catalog/schema
 
 ### Code/Infrastructure Guidelines
 - File Organization: Use flat structures where possible for Databricks compatibility
@@ -36,7 +35,7 @@ alwaysApply: true
 - NLP: Transformers for document processing, call summarization
 
 ### Code Standards
+- if possible, use functions/functional programming instead of classes/object-oriented programming
 - Logging: Always use loguru instead of print statements
 - Configuration: Hoist common variables into configuration files
-- Imports: Use absolute imports for modules
 - Module Structure: Prefer semantic naming (parent_module.semantic_name) over verbose names
