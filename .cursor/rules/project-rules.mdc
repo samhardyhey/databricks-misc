@@ -35,7 +35,8 @@ alwaysApply: true
 - NLP: Transformers for document processing, call summarization
 
 ### Code Standards
+- use KISS principles - keep it simple, stupid, we prefer straight forward/direct implementations that prioritize clarity over complexity
+- use DRY principles - don't repeat yourself, we prefer to reuse code/functions/classes/modules/etc. instead of duplicating code/functions/classes/modules/etc.
 - if possible, use functions/functional programming instead of classes/object-oriented programming
 - Logging: Always use loguru instead of print statements
-- Configuration: Hoist common variables into configuration files
 - Module Structure: Prefer semantic naming (parent_module.semantic_name) over verbose names

@@ -14,3 +14,4 @@ Unity Catalog includes a three-level namespace for data objects: catalog.schema.
 
 ### Local > Remote Dev
 - cut points for local code? > wrap for remote execution
+  - just commit to remote execution all the time?
