@@ -1,0 +1,24 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+### Project Overview
+
+### Module structures/usage
+- The semantic approach is preferred because:
+  - Less verbose - shorter, cleaner names
+  - Context-aware - the parent module provides context
+  - Follows conventions - many Python libraries use this pattern
+  - Easier to read - from search import generic reads naturally
+- The pattern: parent_module.semantic_name where the semantic name is concise and the parent provides context.
+- don't use __init__ files if you don't have to; they bloat the project
+- generally, we prefer simpler directory/file/package/module structures
+- always use absolute imports for modules
+
+### Misc
+- always use loguru instead of print statements for logging
+- always use the Pathlib Path object for file paths/file manipulation
+- try and hoist common variables into configuration if possible
+- always use sqlmodel and pydantic models for database operations
