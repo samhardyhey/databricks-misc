@@ -23,6 +23,23 @@ CATALOG_NAME = "workspace"
 SCHEMA_NAME = "default"
 TABLE_PREFIX = "healthcare_"
 
+# High-throughput data generation strategy
+# Base entities (pharmacies, hospitals) are relatively stable
+# Transactional data (products, orders, inventory, events) changes frequently
+BASE_ENTITY_SIZES = {
+    "pharmacies": 50,    # Stable - only generate occasionally
+    "hospitals": 25,     # Stable - only generate occasionally
+}
+
+# High-frequency transactional data (every 15 minutes)
+# Adjusted to maintain same hourly volumes: 4 runs × 15min = 1 hour
+TRANSACTIONAL_SIZES = {
+    "products": 25,      # 25 × 4 = 100 products/hour
+    "orders": 125,       # 125 × 4 = 500 orders/hour
+    "inventory": 250,    # 250 × 4 = 1,000 inventory updates/hour
+    "events": 50,        # 50 × 4 = 200 events/hour
+}
+
 
 class DatabricksHealthcareDataGenerator:
     """Databricks-specific wrapper for healthcare data generator with Unity Catalog integration."""
@@ -35,12 +52,12 @@ class DatabricksHealthcareDataGenerator:
         logger.info(f"DatabricksHealthcareDataGenerator initialized with seed: {seed}")
 
     def save_to_catalog(
-        self, df, table_name: str, mode: str = "overwrite"
+        self, df, table_name: str, mode: str = "append"
     ) -> None:
         """Save DataFrame to Unity Catalog."""
         full_table_name = f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}{table_name}"
 
-        logger.info(f"Saving {len(df)} records to {full_table_name}")
+        logger.info(f"Saving {len(df)} records to {full_table_name} (mode: {mode})")
 
         # Convert pandas DataFrame to Spark DataFrame
         spark_df = self.spark.createDataFrame(df)
@@ -48,6 +65,7 @@ class DatabricksHealthcareDataGenerator:
         # Add metadata columns
         spark_df = spark_df.withColumn("_ingestion_timestamp", current_timestamp())
         spark_df = spark_df.withColumn("_source", lit("healthcare_data_generator"))
+        spark_df = spark_df.withColumn("_batch_id", lit(f"batch_{int(current_timestamp().cast('long'))}"))
 
         # Write to Unity Catalog
         spark_df.write.mode(mode).saveAsTable(full_table_name)
@@ -94,33 +112,81 @@ def main():
     # Initialize data generator
     generator = DatabricksHealthcareDataGenerator(spark, seed=42)
 
-    # Generate datasets with default sizes
-    datasets = generator.generate_all_datasets(
-        n_pharmacies=DEFAULT_SIZES["pharmacies"],
-        n_hospitals=DEFAULT_SIZES["hospitals"],
-        n_products=DEFAULT_SIZES["products"],
-        n_orders=DEFAULT_SIZES["orders"],
-        n_inventory=DEFAULT_SIZES["inventory"],
-        n_events=DEFAULT_SIZES["events"],
-        save_to_catalog=True,
+    logger.info("🚀 Starting high-frequency healthcare data generation (15-minute cycle)...")
+
+    # Check if base entities exist, if not create them
+    base_entities_created = False
+    try:
+        spark.table(f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}pharmacies").count()
+        logger.info("📋 Base entities already exist, skipping creation")
+    except:
+        logger.info("📋 Creating base entities (pharmacies, hospitals)...")
+        base_entities_created = True
+
+        # Generate base entities (pharmacies, hospitals) - these are relatively stable
+        pharmacies = generator.generator.generate_pharmacies(BASE_ENTITY_SIZES["pharmacies"])
+        hospitals = generator.generator.generate_hospitals(BASE_ENTITY_SIZES["hospitals"])
+
+        # Save base entities (overwrite mode for initial creation)
+        generator.save_to_catalog(pharmacies, "pharmacies", mode="overwrite")
+        generator.save_to_catalog(hospitals, "hospitals", mode="overwrite")
+
+        logger.info(f"✅ Created {len(pharmacies)} pharmacies and {len(hospitals)} hospitals")
+
+    # Always generate high-frequency transactional data
+    logger.info("📊 Generating transactional data (products, orders, inventory, events)...")
+
+    # Load existing base entities for foreign key relationships
+    pharmacies_df = spark.table(f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}pharmacies").toPandas()
+    hospitals_df = spark.table(f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}hospitals").toPandas()
+
+    # Generate transactional data
+    products = generator.generator.generate_products(TRANSACTIONAL_SIZES["products"])
+    orders = generator.generator.generate_orders(
+        TRANSACTIONAL_SIZES["orders"],
+        pharmacies_df,
+        hospitals_df,
+        products
+    )
+    inventory = generator.generator.generate_inventory(
+        TRANSACTIONAL_SIZES["inventory"],
+        pharmacies_df,
+        products
+    )
+    events = generator.generator.generate_supply_chain_events(
+        TRANSACTIONAL_SIZES["events"],
+        orders
     )
 
+    # Save transactional data (append mode for incremental updates)
+    datasets = {
+        "products": products,
+        "orders": orders,
+        "inventory": inventory,
+        "supply_chain_events": events,
+    }
+
+    for table_name, df in datasets.items():
+        generator.save_to_catalog(df, table_name, mode="append")
+
     # Display summary
-    logger.info("=== HEALTHCARE DATA GENERATION COMPLETE ===")
+    logger.info("=== HIGH-FREQUENCY DATA GENERATION COMPLETE (15-min cycle) ===")
     total_records = 0
     for name, df in datasets.items():
         records = len(df)
         total_records += records
-        logger.info(f"{name:20}: {records:6,} records")
+        logger.info(f"{name:20}: {records:6,} records (appended)")
     logger.info(f"{'TOTAL':20}: {total_records:6,} records")
+    logger.info(f"📊 Hourly projection: {total_records * 4:,} records/hour")
 
-    # Verify tables exist in catalog
+    # Verify tables exist in catalog and show total counts
     logger.info("\n=== VERIFYING UNITY CATALOG TABLES ===")
-    for table_name in datasets.keys():
+    all_tables = ["pharmacies", "hospitals"] + list(datasets.keys())
+    for table_name in all_tables:
         full_table_name = f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}{table_name}"
         try:
             count = spark.table(full_table_name).count()
-            logger.info(f"✓ {full_table_name}: {count:,} records")
+            logger.info(f"✓ {full_table_name}: {count:,} total records")
         except Exception as e:
             logger.error(f"✗ {full_table_name}: Error - {e}")
 

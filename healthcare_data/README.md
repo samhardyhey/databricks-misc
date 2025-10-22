@@ -4,13 +4,13 @@ This is a Databricks Asset Bundle for generating synthetic healthcare/pharmaceut
 
 ## Overview
 
-This bundle generates realistic healthcare datasets including:
-- **Pharmacies** (100 records) - Australian pharmacy chains and independents
-- **Hospitals** (50 records) - Various hospital types across Australian states  
-- **Products** (1,000 records) - Pharmaceutical products with realistic pricing
-- **Orders** (5,000 records) - Business transactions with discount logic
-- **Inventory** (10,000 records) - Stock management with reorder levels
-- **Supply Chain Events** (2,000 records) - Logistics tracking with temperature monitoring
+This bundle generates realistic healthcare datasets simulating a high-frequency system:
+- **Pharmacies** (50 records) - Australian pharmacy chains and independents (stable base entities)
+- **Hospitals** (25 records) - Various hospital types across Australian states (stable base entities)
+- **Products** (25/15min = 100/hour) - New pharmaceutical products added regularly
+- **Orders** (125/15min = 500/hour) - High volume of business transactions with discount logic
+- **Inventory** (250/15min = 1,000/hour) - Frequent stock management updates and reorder levels
+- **Supply Chain Events** (50/15min = 200/hour) - Continuous logistics tracking with temperature monitoring
 
 ## Project Layout
 
@@ -74,15 +74,19 @@ This bundle generates realistic healthcare datasets including:
 
 ### Job Configuration
 
-The job is configured to run daily and generates data with these default sizes:
-- Pharmacies: 100
-- Hospitals: 50  
-- Products: 1,000
-- Orders: 5,000
-- Inventory: 10,000
-- Events: 2,000
+The job is configured to run **every 15 minutes** and generates data using a high-frequency strategy:
 
-You can modify these in `resources/healthcare_data.job.yml`.
+**Base Entities (Stable - Created Once):**
+- Pharmacies: 50
+- Hospitals: 25
+
+**Transactional Data (High-Frequency - Appended Every 15 Minutes):**
+- Products: 25/15min (100/hour)
+- Orders: 125/15min (500/hour)
+- Inventory: 250/15min (1,000/hour)
+- Events: 50/15min (200/hour)
+
+You can modify these in `src/generate_catalog_data_static.py`.
 
 ### Generated Tables
 

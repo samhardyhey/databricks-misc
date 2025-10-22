@@ -5,10 +5,10 @@ resources:
       name: healthcare_data_job
 
       trigger:
-        # Run this job every day, exactly one day from the last run; see https://docs.databricks.com/api/workspace/jobs/create#trigger
+        # Run this job every 15 minutes to simulate high-frequency system
         periodic:
-          interval: 1
-          unit: DAYS
+          interval: 15
+          unit: MINUTES
 
       #email_notifications:
       #  on_failure:

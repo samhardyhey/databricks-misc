@@ -2,7 +2,7 @@
 
 # Healthcare Data Bundle Deployment Script
 
-echo "🚀 Deploying Healthcare Data Bundle (Serverless with Runtime Dependencies)..."
+echo "🚀 Deploying Healthcare Data Bundle (High-Frequency 15-min Serverless)..."
 
 # Check if databricks CLI is installed
 if ! command -v databricks &> /dev/null; then
