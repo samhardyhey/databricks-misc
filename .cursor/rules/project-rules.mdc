@@ -36,6 +36,7 @@ alwaysApply: true
 
 ### Code Standards
 - use KISS principles - keep it simple, stupid, we prefer straight forward/direct implementations that prioritize clarity over complexity
+  - do not use `__init__.py` files unless absolutely necessary
 - use DRY principles - don't repeat yourself, we prefer to reuse code/functions/classes/modules/etc. instead of duplicating code/functions/classes/modules/etc.
 - if possible, use functions/functional programming instead of classes/object-oriented programming
 - Logging: Always use loguru instead of print statements

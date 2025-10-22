@@ -9,10 +9,9 @@ Usage: Run this script in a Databricks notebook or as a job.
 
 from typing import Dict, Optional
 
-from loguru import logger
-
 # Import the existing healthcare data generator
-from healthcare_data_generator import HealthcareDataGenerator, DEFAULT_SIZES
+from healthcare_data_generator import HealthcareDataGenerator
+from loguru import logger
 
 # Databricks imports
 from pyspark.sql import SparkSession
@@ -26,16 +25,16 @@ TABLE_PREFIX = "healthcare_"
 # Large-scale data generation for ML experimentation
 # One-time run with substantial dataset sizes
 BASE_ENTITY_SIZES = {
-    "pharmacies": 500,   # Large base of pharmacies
-    "hospitals": 200,    # Large base of hospitals
+    "pharmacies": 500,  # Large base of pharmacies
+    "hospitals": 200,  # Large base of hospitals
 }
 
 # Large-scale transactional data for ML training
 TRANSACTIONAL_SIZES = {
-    "products": 5000,    # Large product catalog
-    "orders": 25000,     # High volume of orders for ML training
+    "products": 5000,  # Large product catalog
+    "orders": 25000,  # High volume of orders for ML training
     "inventory": 50000,  # Extensive inventory data
-    "events": 10000,     # Rich event history
+    "events": 10000,  # Rich event history
 }
 
 
@@ -49,9 +48,7 @@ class DatabricksHealthcareDataGenerator:
 
         logger.info(f"DatabricksHealthcareDataGenerator initialized with seed: {seed}")
 
-    def save_to_catalog(
-        self, df, table_name: str, mode: str = "append"
-    ) -> None:
+    def save_to_catalog(self, df, table_name: str, mode: str = "append") -> None:
         """Save DataFrame to Unity Catalog."""
         full_table_name = f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}{table_name}"
 
@@ -62,6 +59,7 @@ class DatabricksHealthcareDataGenerator:
 
         # Add metadata columns
         import time
+
         batch_id = f"batch_{int(time.time())}"
         spark_df = spark_df.withColumn("_ingestion_timestamp", current_timestamp())
         spark_df = spark_df.withColumn("_source", lit("healthcare_data_generator"))
@@ -112,16 +110,27 @@ def ensure_schema_exists(spark):
     except Exception as e:
         logger.warning(f"⚠️ Could not create schema: {e}")
 
+
 def main():
     """Main function to generate and save healthcare data to Unity Catalog."""
     # Install required dependencies
     import subprocess
     import sys
-    
+
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", 
-                             "faker>=24.0.0", "pandas>=2.2.0", "numpy>=1.24.0,<2.0.0", 
-                             "pyarrow>=4.0.0,<15.0.0", "loguru>=0.7.2"])
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "faker>=24.0.0",
+                "pandas>=2.2.0",
+                "numpy>=1.24.0,<2.0.0",
+                "pyarrow>=4.0.0,<15.0.0",
+                "loguru>=0.7.2",
+            ]
+        )
         logger.info("✅ Dependencies installed successfully")
     except Exception as e:
         logger.warning(f"⚠️ Could not install dependencies: {e}")
@@ -135,35 +144,49 @@ def main():
     # Initialize data generator
     generator = DatabricksHealthcareDataGenerator(spark, seed=42)
 
-    logger.info("🚀 Starting large-scale healthcare data generation for ML experimentation...")
+    logger.info(
+        "🚀 Starting large-scale healthcare data generation for ML experimentation..."
+    )
 
     # Check if base entities exist, if not create them
-    base_entities_created = False
     try:
         spark.table(f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}pharmacies").count()
         logger.info("📋 Base entities already exist, skipping creation")
     except:
         logger.info("📋 Creating base entities (pharmacies, hospitals)...")
-        base_entities_created = True
 
         # Generate base entities (pharmacies, hospitals) - these are relatively stable
-        pharmacies = generator.generator.generate_pharmacies(BASE_ENTITY_SIZES["pharmacies"])
-        hospitals = generator.generator.generate_hospitals(BASE_ENTITY_SIZES["hospitals"])
+        pharmacies = generator.generator.generate_pharmacies(
+            BASE_ENTITY_SIZES["pharmacies"]
+        )
+        hospitals = generator.generator.generate_hospitals(
+            BASE_ENTITY_SIZES["hospitals"]
+        )
 
         # Save base entities (overwrite mode for initial creation)
         generator.save_to_catalog(pharmacies, "pharmacies", mode="overwrite")
         generator.save_to_catalog(hospitals, "hospitals", mode="overwrite")
 
-        logger.info(f"✅ Created {len(pharmacies)} pharmacies and {len(hospitals)} hospitals")
+        logger.info(
+            f"✅ Created {len(pharmacies)} pharmacies and {len(hospitals)} hospitals"
+        )
 
     # Always generate large-scale transactional data
-    logger.info("📊 Generating large-scale transactional data (products, orders, inventory, events)...")
+    logger.info(
+        "📊 Generating large-scale transactional data (products, orders, inventory, events)..."
+    )
 
     # Load existing base entities for foreign key relationships
     try:
-        pharmacies_df = spark.table(f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}pharmacies").toPandas()
-        hospitals_df = spark.table(f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}hospitals").toPandas()
-        logger.info(f"📋 Loaded {len(pharmacies_df)} pharmacies and {len(hospitals_df)} hospitals for foreign keys")
+        pharmacies_df = spark.table(
+            f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}pharmacies"
+        ).toPandas()
+        hospitals_df = spark.table(
+            f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}hospitals"
+        ).toPandas()
+        logger.info(
+            f"📋 Loaded {len(pharmacies_df)} pharmacies and {len(hospitals_df)} hospitals for foreign keys"
+        )
     except Exception as e:
         logger.error(f"❌ Failed to load base entities: {e}")
         # Generate minimal base entities for this run
@@ -174,19 +197,13 @@ def main():
     # Generate transactional data
     products = generator.generator.generate_products(TRANSACTIONAL_SIZES["products"])
     orders = generator.generator.generate_orders(
-        TRANSACTIONAL_SIZES["orders"],
-        pharmacies_df,
-        hospitals_df,
-        products
+        TRANSACTIONAL_SIZES["orders"], pharmacies_df, hospitals_df, products
     )
     inventory = generator.generator.generate_inventory(
-        TRANSACTIONAL_SIZES["inventory"],
-        pharmacies_df,
-        products
+        TRANSACTIONAL_SIZES["inventory"], pharmacies_df, products
     )
     events = generator.generator.generate_supply_chain_events(
-        TRANSACTIONAL_SIZES["events"],
-        orders
+        TRANSACTIONAL_SIZES["events"], orders
     )
 
     # Save transactional data (append mode for incremental updates)

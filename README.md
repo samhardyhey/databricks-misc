@@ -20,8 +20,8 @@ This project serves as an experimental platform for exploring Databricks functio
 ## Todo List
 
 ### 🚀 Immediate Priorities
-- [ ] **Data Generation Pipeline** - Create synthetic healthcare/pharmaceutical datasets for experimentation
-- [ ] **Databricks Connect Setup** - Establish reliable local-to-remote development workflow
+- [x] **Data Generation Pipeline** - Create synthetic healthcare/pharmaceutical datasets for experimentation
+- [x] **Databricks Connect Setup** - Establish reliable local-to-remote development workflow
 - [ ] **MLflow Integration** - Set up experiment tracking and model versioning
 
 ### 📊 Modelling & Data Science
@@ -32,11 +32,12 @@ This project serves as an experimental platform for exploring Databricks functio
 - [ ] **Computer Vision Prototypes** - OCR and damage detection for warehouse operations
 
 ### 🛠️ Platform & Infrastructure
-- [ ] **DAB (Databricks Asset Bundles)** - Local and remote deployment workflows
+- [x] **DAB (Databricks Asset Bundles)** - Local and remote deployment workflows
 - [ ] **Unity Catalog Organization** - Design catalog/schema structure for data governance
 - [ ] **Azure Integration** - Terraform deployment for production-ready Databricks workspace
 - [ ] **PostgreSQL Integration** - Connect external database to Databricks for data ingestion
 - [ ] **DBT Integration** - Data transformation and modeling workflows
+- [ ] **CI/CD Pipelines** - CI/CD pipelines for the Databricks Asset Bundles
 
 ### 🔧 Development & Testing
 - [ ] **PySpark Pipeline Development** - Segment work into manageable pipeline units
