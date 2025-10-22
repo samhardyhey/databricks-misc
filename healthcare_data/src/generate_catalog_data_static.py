@@ -63,9 +63,11 @@ class DatabricksHealthcareDataGenerator:
         spark_df = self.spark.createDataFrame(df)
 
         # Add metadata columns
+        import time
+        batch_id = f"batch_{int(time.time())}"
         spark_df = spark_df.withColumn("_ingestion_timestamp", current_timestamp())
         spark_df = spark_df.withColumn("_source", lit("healthcare_data_generator"))
-        spark_df = spark_df.withColumn("_batch_id", lit(f"batch_{int(current_timestamp().cast('long'))}"))
+        spark_df = spark_df.withColumn("_batch_id", lit(batch_id))
 
         # Write to Unity Catalog
         spark_df.write.mode(mode).saveAsTable(full_table_name)
@@ -104,10 +106,21 @@ class DatabricksHealthcareDataGenerator:
         return datasets
 
 
+def ensure_schema_exists(spark):
+    """Ensure the schema exists in Unity Catalog."""
+    try:
+        spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG_NAME}.{SCHEMA_NAME}")
+        logger.info(f"✅ Schema {CATALOG_NAME}.{SCHEMA_NAME} is ready")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not create schema: {e}")
+
 def main():
     """Main function to generate and save healthcare data to Unity Catalog."""
     # Initialize Spark session
     spark = SparkSession.builder.appName("HealthcareDataGeneration").getOrCreate()
+
+    # Ensure schema exists
+    ensure_schema_exists(spark)
 
     # Initialize data generator
     generator = DatabricksHealthcareDataGenerator(spark, seed=42)
@@ -137,8 +150,16 @@ def main():
     logger.info("📊 Generating transactional data (products, orders, inventory, events)...")
 
     # Load existing base entities for foreign key relationships
-    pharmacies_df = spark.table(f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}pharmacies").toPandas()
-    hospitals_df = spark.table(f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}hospitals").toPandas()
+    try:
+        pharmacies_df = spark.table(f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}pharmacies").toPandas()
+        hospitals_df = spark.table(f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}hospitals").toPandas()
+        logger.info(f"📋 Loaded {len(pharmacies_df)} pharmacies and {len(hospitals_df)} hospitals for foreign keys")
+    except Exception as e:
+        logger.error(f"❌ Failed to load base entities: {e}")
+        # Generate minimal base entities for this run
+        logger.info("🔄 Generating minimal base entities for this run...")
+        pharmacies_df = generator.generator.generate_pharmacies(5)
+        hospitals_df = generator.generator.generate_hospitals(3)
 
     # Generate transactional data
     products = generator.generator.generate_products(TRANSACTIONAL_SIZES["products"])

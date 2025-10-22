@@ -4,11 +4,10 @@ resources:
     healthcare_data_job:
       name: healthcare_data_job
 
-      trigger:
+      schedule:
         # Run this job every 15 minutes to simulate high-frequency system
-        periodic:
-          interval: 15
-          unit: MINUTES
+        quartz_cron_expression: "0 0/15 * * * ?" # Runs every 15 minutes
+        timezone_id: "Australia/Sydney" # Australian timezone
 
       #email_notifications:
       #  on_failure:
