@@ -11,6 +11,12 @@ Unity Catalog includes a three-level namespace for data objects: catalog.schema.
 - need to match local python version with the remote version > nightmare alignment?
 - generally works great with cursor and databricks free edition > actually connects/configs
 - slow to run though; but still more convenient than git commiting/pulling down changes
+- intuits changes/dependencies in the local environment? RE: Faker dependencies
+- coupled with serverless compute, works really well
+
+### Databricks Asset Bundles
+- make alot of sense; more databricks native way to progress what was done at QBE for instance
+-
 
 ### Local > Remote Dev
 - cut points for local code? > wrap for remote execution
