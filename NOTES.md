@@ -16,8 +16,10 @@ Unity Catalog includes a three-level namespace for data objects: catalog.schema.
 
 ### Databricks Asset Bundles
 - make alot of sense; more databricks native way to progress what was done at QBE for instance
--
 
 ### Local > Remote Dev
 - cut points for local code? > wrap for remote execution
   - just commit to remote execution all the time?
+
+### Data generation
+- weird numpy errors? worked when I was running the data generation staticaly via connect, but not via databricks asset bundles?

@@ -20,13 +20,11 @@ This bundle generates realistic healthcare datasets including:
 ├── databricks.yml
 ├── pyproject.toml
 ├── resources/
-│   ├── healthcare_data.job.yml      # Job configuration
-│   └── healthcare_data.pipeline.yml # Pipeline configuration
+│   └── healthcare_data.job.yml      # Job configuration
 └── src/
     ├── generate_catalog_data_static.py  # Main entry point (serverless job)
     ├── healthcare_data_generator.py     # Core data generation
-    ├── test_generator_local.py         # Local testing script
-    └── pipeline.ipynb                  # Data pipeline notebook
+    └── test_generator_local.py         # Local testing script
 ```
 
 ## Features
@@ -36,6 +34,7 @@ This bundle generates realistic healthcare datasets including:
 - **ML-Ready**: Supports all ML use cases from demand forecasting to fraud detection
 - **Reproducible**: Seed-based generation for consistent results
 - **Scalable**: Configurable dataset sizes for different environments
+- **Serverless Compatible**: Uses proper environment specification with client 2 for maximum compatibility
 
 ## Getting Started
 

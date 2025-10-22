@@ -20,19 +20,13 @@ resources:
             python_file: ../src/generate_catalog_data_static.py
           environment_key: default
 
-        - task_key: refresh_pipeline
-          depends_on:
-            - task_key: generate_healthcare_data
-          pipeline_task:
-            pipeline_id: ${resources.pipelines.healthcare_data_pipeline.id}
-
-      # Environment specification for serverless compute
       environments:
         - environment_key: default
           spec:
-            client: "1"
+            client: "2"
             dependencies:
               - faker>=24.0.0
               - pandas>=2.2.0
-              - numpy>=1.26.0
+              - "numpy>=1.24.0,<2.0.0"
+              - "pyarrow>=4.0.0,<15.0.0"
               - loguru>=0.7.2
