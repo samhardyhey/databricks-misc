@@ -19,7 +19,8 @@ Unity Catalog includes a three-level namespace for data objects: catalog.schema.
 
 ### Local > Remote Dev
 - cut points for local code? > wrap for remote execution
-  - just commit to remote execution all the time?
+  - just commit to remote execution all the time?A
+- can still dev code locally and then fling code into the remote? > databricks sync instead of git commits?
 
 ### Data generation
 - weird numpy errors? worked when I was running the data generation staticaly via connect, but not via databricks asset bundles?
