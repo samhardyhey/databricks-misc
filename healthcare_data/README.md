@@ -4,13 +4,13 @@ This is a Databricks Asset Bundle for generating synthetic healthcare/pharmaceut
 
 ## Overview
 
-This bundle generates realistic healthcare datasets simulating a high-frequency system:
-- **Pharmacies** (50 records) - Australian pharmacy chains and independents (stable base entities)
-- **Hospitals** (25 records) - Various hospital types across Australian states (stable base entities)
-- **Products** (25/15min = 100/hour) - New pharmaceutical products added regularly
-- **Orders** (125/15min = 500/hour) - High volume of business transactions with discount logic
-- **Inventory** (250/15min = 1,000/hour) - Frequent stock management updates and reorder levels
-- **Supply Chain Events** (50/15min = 200/hour) - Continuous logistics tracking with temperature monitoring
+This bundle generates realistic healthcare datasets for ML experimentation:
+- **Pharmacies** (500 records) - Australian pharmacy chains and independents (large base entities)
+- **Hospitals** (200 records) - Various hospital types across Australian states (large base entities)
+- **Products** (5,000 records) - Comprehensive pharmaceutical product catalog
+- **Orders** (25,000 records) - High volume of business transactions with discount logic
+- **Inventory** (50,000 records) - Extensive stock management and reorder level data
+- **Supply Chain Events** (10,000 records) - Rich logistics tracking with temperature monitoring
 
 ## Project Layout
 
@@ -74,17 +74,19 @@ This bundle generates realistic healthcare datasets simulating a high-frequency 
 
 ### Job Configuration
 
-The job is configured to run **every 15 minutes** and generates data using a high-frequency strategy:
+The job is configured for **large-scale data generation** for ML experimentation:
 
-**Base Entities (Stable - Created Once):**
-- Pharmacies: 50
-- Hospitals: 25
+**Base Entities (Large Base - Created Once):**
+- Pharmacies: 500
+- Hospitals: 200
 
-**Transactional Data (High-Frequency - Appended Every 15 Minutes):**
-- Products: 25/15min (100/hour)
-- Orders: 125/15min (500/hour)
-- Inventory: 250/15min (1,000/hour)
-- Events: 50/15min (200/hour)
+**Transactional Data (Large-Scale - Generated Once):**
+- Products: 5,000
+- Orders: 25,000  
+- Inventory: 50,000
+- Events: 10,000
+
+**Total Dataset**: ~90,700 records for comprehensive ML training and analysis
 
 You can modify these in `src/generate_catalog_data_static.py`.
 

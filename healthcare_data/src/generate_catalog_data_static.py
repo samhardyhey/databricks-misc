@@ -23,21 +23,19 @@ CATALOG_NAME = "workspace"
 SCHEMA_NAME = "default"
 TABLE_PREFIX = "healthcare_"
 
-# High-throughput data generation strategy
-# Base entities (pharmacies, hospitals) are relatively stable
-# Transactional data (products, orders, inventory, events) changes frequently
+# Large-scale data generation for ML experimentation
+# One-time run with substantial dataset sizes
 BASE_ENTITY_SIZES = {
-    "pharmacies": 50,    # Stable - only generate occasionally
-    "hospitals": 25,     # Stable - only generate occasionally
+    "pharmacies": 500,   # Large base of pharmacies
+    "hospitals": 200,    # Large base of hospitals
 }
 
-# High-frequency transactional data (every 15 minutes)
-# Adjusted to maintain same hourly volumes: 4 runs × 15min = 1 hour
+# Large-scale transactional data for ML training
 TRANSACTIONAL_SIZES = {
-    "products": 25,      # 25 × 4 = 100 products/hour
-    "orders": 125,       # 125 × 4 = 500 orders/hour
-    "inventory": 250,    # 250 × 4 = 1,000 inventory updates/hour
-    "events": 50,        # 50 × 4 = 200 events/hour
+    "products": 5000,    # Large product catalog
+    "orders": 25000,     # High volume of orders for ML training
+    "inventory": 50000,  # Extensive inventory data
+    "events": 10000,     # Rich event history
 }
 
 
@@ -116,6 +114,18 @@ def ensure_schema_exists(spark):
 
 def main():
     """Main function to generate and save healthcare data to Unity Catalog."""
+    # Install required dependencies
+    import subprocess
+    import sys
+    
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", 
+                             "faker>=24.0.0", "pandas>=2.2.0", "numpy>=1.24.0,<2.0.0", 
+                             "pyarrow>=4.0.0,<15.0.0", "loguru>=0.7.2"])
+        logger.info("✅ Dependencies installed successfully")
+    except Exception as e:
+        logger.warning(f"⚠️ Could not install dependencies: {e}")
+
     # Initialize Spark session
     spark = SparkSession.builder.appName("HealthcareDataGeneration").getOrCreate()
 
@@ -125,7 +135,7 @@ def main():
     # Initialize data generator
     generator = DatabricksHealthcareDataGenerator(spark, seed=42)
 
-    logger.info("🚀 Starting high-frequency healthcare data generation (15-minute cycle)...")
+    logger.info("🚀 Starting large-scale healthcare data generation for ML experimentation...")
 
     # Check if base entities exist, if not create them
     base_entities_created = False
@@ -146,8 +156,8 @@ def main():
 
         logger.info(f"✅ Created {len(pharmacies)} pharmacies and {len(hospitals)} hospitals")
 
-    # Always generate high-frequency transactional data
-    logger.info("📊 Generating transactional data (products, orders, inventory, events)...")
+    # Always generate large-scale transactional data
+    logger.info("📊 Generating large-scale transactional data (products, orders, inventory, events)...")
 
     # Load existing base entities for foreign key relationships
     try:
@@ -191,14 +201,14 @@ def main():
         generator.save_to_catalog(df, table_name, mode="append")
 
     # Display summary
-    logger.info("=== HIGH-FREQUENCY DATA GENERATION COMPLETE (15-min cycle) ===")
+    logger.info("=== LARGE-SCALE DATA GENERATION COMPLETE ===")
     total_records = 0
     for name, df in datasets.items():
         records = len(df)
         total_records += records
         logger.info(f"{name:20}: {records:6,} records (appended)")
     logger.info(f"{'TOTAL':20}: {total_records:6,} records")
-    logger.info(f"📊 Hourly projection: {total_records * 4:,} records/hour")
+    logger.info("🎯 Dataset ready for ML experimentation!")
 
     # Verify tables exist in catalog and show total counts
     logger.info("\n=== VERIFYING UNITY CATALOG TABLES ===")
