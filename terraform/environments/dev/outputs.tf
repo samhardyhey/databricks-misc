@@ -17,3 +17,13 @@ output "managed_resource_group_name" {
   description = "Name of the managed resource group"
   value       = azurerm_databricks_workspace.main.managed_resource_group_name
 }
+
+output "azure_ad_group_name" {
+  description = "Name of the Azure AD group for Databricks access"
+  value       = azuread_group.databricks_users.display_name
+}
+
+output "azure_ad_group_id" {
+  description = "ID of the Azure AD group for Databricks access"
+  value       = azuread_group.databricks_users.object_id
+}
