@@ -21,21 +21,9 @@ with events_cleaned as (
         description,
         operator,
         equipment_id,
-        temperature,
         notes,
         
         -- Calculated fields
-        case 
-            when temperature is not null then
-                case 
-                    when temperature < 0 then 'Frozen'
-                    when temperature <= 8 then 'Refrigerated'
-                    when temperature <= 25 then 'Room Temperature'
-                    else 'Hot'
-                end
-            else null
-        end as temperature_category,
-        
         case 
             when status = 'SUCCESS' then 1
             when status = 'WARNING' then 2
@@ -45,11 +33,6 @@ with events_cleaned as (
         end as status_priority,
         
         -- Data quality flags
-        case 
-            when temperature < -50 or temperature > 100 then true
-            else false
-        end as has_extreme_temperature,
-        
         case 
             when event_timestamp > current_timestamp() then true
             else false
@@ -73,22 +56,6 @@ with events_cleaned as (
             else 'Unknown'
         end as status_description,
         
-        -- Temperature monitoring flags
-        case 
-            when temperature is not null and temperature < 0 then true
-            else false
-        end as is_frozen_temperature,
-        
-        case 
-            when temperature is not null and temperature between 2 and 8 then true
-            else false
-        end as is_refrigerated_temperature,
-        
-        case 
-            when temperature is not null and temperature > 25 then true
-            else false
-        end as is_hot_temperature,
-        
         -- Metadata
         _ingestion_timestamp,
         _source,
@@ -104,8 +71,7 @@ select *
 from events_cleaned
 where 
     -- Data quality filters
-    not has_extreme_temperature
-    and not has_future_timestamp
+    not has_future_timestamp
     and event_id is not null
     and order_id is not null
     and event_type is not null

@@ -10,7 +10,7 @@ This DBT project implements a medallion architecture for healthcare/pharmaceutic
 - **Location**: `models/bronze/`
 - **Key Features**: Data lineage, ingestion timestamps, source tracking
 
-### 🥈 Silver Layer  
+### 🥈 Silver Layer
 - **Purpose**: Business logic, data quality, and standardization
 - **Location**: `models/silver/`
 - **Key Features**: Data validation, business rules, standardized naming
@@ -29,21 +29,39 @@ This DBT project implements a medallion architecture for healthcare/pharmaceutic
 
 ### 1. Prerequisites
 ```bash
-# Install DBT
-pip install dbt-databricks
+# Activate the conda environment
+conda activate databricks-misc
 
-# Set your Databricks token
-export DATABRICKS_TOKEN="your_token_here"
+# Install DBT (if not already installed)
+pip install dbt-databricks
 ```
 
 ### 2. Configure Connection
-Update `profiles.yml` with your Databricks warehouse ID:
-```yaml
-http_path: /sql/1.0/warehouses/YOUR_WAREHOUSE_ID
+The project uses environment variables for secure authentication. Set your Databricks token:
+
+```bash
+# Option 1: Set environment variable directly
+export DATABRICKS_TOKEN="your_databricks_token_here"
+
+# Option 2: Create a .env file (recommended)
+cp env.example .env
+# Then edit .env with your actual token
 ```
+
+**Your Databricks configuration:**
+- Host: `https://dbc-f501771e-54b7.cloud.databricks.com`
+- Warehouse: `2a475c6457a76313`
+- Token: Set via `DATABRICKS_TOKEN` environment variable
 
 ### 3. Run the Pipeline
 ```bash
+# Activate environment and navigate to project
+conda activate databricks-misc
+cd healthcare_data_medallion
+
+# Set your Databricks token (if not already set)
+export DATABRICKS_TOKEN="your_databricks_token_here"
+
 # Test connection
 dbt debug
 
@@ -60,10 +78,14 @@ dbt docs serve
 
 ### 4. Run Specific Layers
 ```bash
+# Activate environment first
+conda activate databricks-misc
+cd healthcare_data_medallion
+
 # Bronze layer only
 dbt run --select tag:bronze
 
-# Silver layer only  
+# Silver layer only
 dbt run --select tag:silver
 
 # Gold layer only

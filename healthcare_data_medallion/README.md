@@ -111,21 +111,40 @@ healthcare_*            medallion_dev.bronze.*  medallion_dev.gold.*
 ### Setup
 
 1. **Configure Databricks Connection**:
-   ```bash
-   # Set your Databricks token
-   export DATABRICKS_TOKEN="your_token_here"
+   The project uses environment variables for secure authentication. Set your Databricks token:
    
-   # Update profiles.yml with your warehouse ID
-   # Replace 'your_warehouse_id' with your actual warehouse ID
+   ```bash
+   # Option 1: Set environment variable directly
+   export DATABRICKS_TOKEN="your_databricks_token_here"
+   
+   # Option 2: Create a .env file (recommended)
+   cp env.example .env
+   # Then edit .env with your actual token
    ```
+   
+   **Your Databricks configuration:**
+   - Host: `https://dbc-f501771e-54b7.cloud.databricks.com`
+   - Warehouse: `2a475c6457a76313`
+   - Token: Set via `DATABRICKS_TOKEN` environment variable
 
 2. **Install Dependencies**:
    ```bash
+   # Activate the conda environment
+   conda activate databricks-misc
+   
+   # Install DBT (if not already installed)
    pip install dbt-databricks
    ```
 
 3. **Run the Pipeline**:
    ```bash
+   # Activate environment and navigate to project
+   conda activate databricks-misc
+   cd healthcare_data_medallion
+   
+   # Set your Databricks token (if not already set)
+   export DATABRICKS_TOKEN="your_databricks_token_here"
+   
    # Test connection
    dbt debug
    
@@ -143,6 +162,10 @@ healthcare_*            medallion_dev.bronze.*  medallion_dev.gold.*
 ### Running Specific Layers
 
 ```bash
+# Activate environment first
+conda activate databricks-misc
+cd healthcare_data_medallion
+
 # Run only bronze layer
 dbt run --select tag:bronze
 

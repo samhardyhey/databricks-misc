@@ -36,8 +36,8 @@ with inventory_cleaned as (
         movement_quantity,
 
         -- Calculated fields
-        case
-            when expiry_date is not null then date_diff(expiry_date, current_date(), day)
+        case 
+            when expiry_date is not null then datediff(expiry_date, current_date())
             else null
         end as days_until_expiry,
 
@@ -51,8 +51,8 @@ with inventory_cleaned as (
             else null
         end as stock_to_reorder_ratio,
 
-        case
-            when last_restocked is not null then date_diff(current_date(), last_restocked, day)
+        case 
+            when last_restocked is not null then datediff(current_date(), last_restocked)
             else null
         end as days_since_last_restock,
 

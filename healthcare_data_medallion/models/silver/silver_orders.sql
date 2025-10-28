@@ -39,18 +39,18 @@ with order_cleaned as (
         
         -- Calculated fields
         case 
-            when actual_delivery is not null then date_diff(actual_delivery, order_date, day)
+            when actual_delivery is not null then datediff(actual_delivery, order_date)
             else null
         end as actual_delivery_days,
         
         case 
-            when expected_delivery is not null then date_diff(expected_delivery, order_date, day)
+            when expected_delivery is not null then datediff(expected_delivery, order_date)
             else null
         end as expected_delivery_days,
         
         case 
             when actual_delivery is not null and expected_delivery is not null then 
-                date_diff(actual_delivery, expected_delivery, day)
+                datediff(actual_delivery, expected_delivery)
             else null
         end as delivery_delay_days,
         

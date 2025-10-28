@@ -37,7 +37,7 @@ with hospital_cleaned as (
 
         -- Dates
         accreditation_date,
-        date_diff(current_date(), accreditation_date, year) as years_accredited,
+        datediff(current_date(), accreditation_date) / 365 as years_accredited,
 
         -- Financial metrics
         monthly_budget,

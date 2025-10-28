@@ -27,8 +27,8 @@ with customer_features as (
         max(o.order_date) as last_order_date,
         
         -- Temporal features
-        date_diff(current_date(), min(o.order_date), day) as customer_age_days,
-        date_diff(current_date(), max(o.order_date), day) as days_since_last_order,
+        datediff(current_date(), min(o.order_date)) as customer_age_days,
+        datediff(current_date(), max(o.order_date)) as days_since_last_order,
         count(distinct date_trunc('month', o.order_date)) as active_months,
         
         -- Behavioral features

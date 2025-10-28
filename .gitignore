@@ -44,3 +44,14 @@ Thumbs.db
 .env.local
 *.csv
 test_output/
+logs/
+
+# dbt common ignores
+target/
+dbt_packages/
+snapshots/
+logs/
+manifest.json
+run_results.json
+dbt.log
+dbt_modules/

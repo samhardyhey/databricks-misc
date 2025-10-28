@@ -1,12 +1,13 @@
 # Databricks profile for healthcare data medallion architecture
+# Uses environment variables for secure authentication
 healthcare_data:
   target: dev
   outputs:
     dev:
       type: databricks
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      http_path: /sql/1.0/warehouses/your_warehouse_id # Replace with your warehouse ID
-      token: "{{ env('DATABRICKS_TOKEN') }}"
+      http_path: /sql/1.0/warehouses/2a475c6457a76313
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
       schema: healthcare_medallion_dev
       threads: 4
       client_session_keep_alive: False
@@ -18,8 +19,8 @@ healthcare_data:
     prod:
       type: databricks
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      http_path: /sql/1.0/warehouses/your_warehouse_id # Replace with your warehouse ID
-      token: "{{ env('DATABRICKS_TOKEN') }}"
+      http_path: /sql/1.0/warehouses/2a475c6457a76313
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
       schema: healthcare_medallion_prod
       threads: 8
       client_session_keep_alive: False

@@ -34,7 +34,7 @@ with pharmacy_cleaned as (
         
         -- Dates
         established_date,
-        date_diff(current_date(), established_date, year) as years_in_operation,
+        datediff(current_date(), established_date) / 365 as years_in_operation,
         
         -- Services
         pharmacist_in_charge,

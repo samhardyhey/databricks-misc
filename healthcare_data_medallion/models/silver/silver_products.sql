@@ -50,7 +50,7 @@ with product_cleaned as (
         -- Dates
         created_date,
         last_updated,
-        date_diff(current_date(), created_date, day) as days_since_created,
+        datediff(current_date(), created_date) as days_since_created,
         
         -- Data quality flags
         case 

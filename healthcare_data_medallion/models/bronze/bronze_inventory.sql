@@ -37,4 +37,4 @@ select
     current_timestamp() as bronze_processed_at,
     'bronze_inventory' as bronze_model_name
 
-from {{ source('healthcare_raw', 'inventory') }}
+from {{ source('healthcare_raw', 'healthcare_inventory') }}
