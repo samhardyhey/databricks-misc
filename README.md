@@ -29,7 +29,6 @@ This project serves as an experimental platform for exploring Databricks functio
 - [ ] **Inventory Optimization** - Build constrained optimization models for stock replenishment
 - [ ] **Churn Prediction** - Develop customer retention models for pharmacy/hospital clients
 - [ ] **Anomaly Detection** - Create systems for detecting temperature excursions and suspicious orders
-- [ ] **Computer Vision Prototypes** - OCR and damage detection for warehouse operations
 
 ### 🛠️ Platform & Infrastructure
 - [x] **DAB (Databricks Asset Bundles)** - Local and remote deployment workflows
