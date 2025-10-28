@@ -1,259 +1,180 @@
-# Healthcare Data Medallion Architecture
+# healthcare_dbt_medallion
 
-This DBT project implements a medallion architecture for healthcare/pharmaceutical distribution data, transforming raw data from the `healthcare_data` asset bundle into analytics-ready datasets.
+The 'healthcare_dbt_medallion' project implements a **Medallion Architecture** for healthcare data processing using dbt and Databricks Asset Bundles. This project transforms raw healthcare data through three layers:
 
-## Architecture Overview
+- **Bronze Layer**: Raw data ingestion from Unity Catalog
+- **Silver Layer**: Cleaned, validated data with business logic applied
+- **Gold Layer**: Analytics-ready datasets optimized for specific use cases
 
-The medallion architecture consists of three layers:
+The project follows the standard dbt project structure with an additional `resources` directory to define Databricks resources such as jobs that run dbt models.
 
-### 🥉 Bronze Layer (Raw Data Ingestion)
-- **Purpose**: Store raw data as-is with minimal transformations
-- **Location**: `models/bronze/`
-- **Tables**: Direct copies of source tables with metadata
-- **Key Features**: Data lineage, ingestion timestamps, source tracking
+* Learn more about dbt and its standard project structure here: https://docs.getdbt.com/docs/build/projects.
+* Learn more about Databricks Asset Bundles here: https://docs.databricks.com/en/dev-tools/bundles/index.html
+* Learn more about Medallion Architecture here: https://www.databricks.com/glossary/medallion-architecture
 
-### 🥈 Silver Layer (Business Logic & Data Quality)
-- **Purpose**: Clean, validate, and apply business rules
-- **Location**: `models/silver/`
-- **Key Transformations**:
-  - Data quality checks and validation
-  - Standardized naming conventions
-  - Business logic application
-  - Data type standardization
-  - Deduplication and data cleaning
+The remainder of this file includes instructions for local development (using dbt)
+and deployment to production (using Databricks Asset Bundles).
 
-### 🥇 Gold Layer (Analytics-Ready Datasets)
-- **Purpose**: Business-ready datasets optimized for specific use cases
-- **Location**: `models/gold/`
-- **Key Datasets**:
-  - **Customer Analytics**: Pharmacy/hospital performance metrics
-  - **Product Analytics**: Product performance and categorization
-  - **Supply Chain Analytics**: Order fulfillment and logistics metrics
-  - **Financial Analytics**: Revenue, discounts, and profitability
-  - **ML-Ready Datasets**: Feature-engineered data for machine learning
+## Medallion Architecture Overview
 
-## Project Structure
+This project implements a three-layer medallion architecture:
 
-```
-healthcare_data_medallion/
-├── dbt_project.yml              # DBT project configuration
-├── profiles.yml                 # Databricks connection profiles
-├── models/
-│   ├── sources.yml             # Source table definitions
-│   ├── bronze/                 # Bronze layer models
-│   │   ├── bronze_pharmacies.sql
-│   │   ├── bronze_hospitals.sql
-│   │   ├── bronze_products.sql
-│   │   ├── bronze_orders.sql
-│   │   ├── bronze_inventory.sql
-│   │   └── bronze_supply_chain_events.sql
-│   ├── silver/                 # Silver layer models
-│   │   ├── silver_pharmacies.sql
-│   │   ├── silver_hospitals.sql
-│   │   ├── silver_products.sql
-│   │   ├── silver_orders.sql
-│   │   ├── silver_inventory.sql
-│   │   └── silver_supply_chain_events.sql
-│   └── gold/                   # Gold layer models
-│       ├── gold_pharmacy_performance.sql
-│       ├── gold_product_performance.sql
-│       ├── gold_supply_chain_performance.sql
-│       ├── gold_financial_analytics.sql
-│       └── gold_ml_ready_dataset.sql
-├── macros/                     # DBT macros
-│   └── data_quality_macros.sql
-├── tests/                      # Data quality tests
-│   └── generic_tests.sql
-├── seeds/                      # Reference data
-├── snapshots/                  # Slowly changing dimensions
-└── analyses/                   # Ad-hoc analyses
-```
+### Bronze Layer (`src/models/bronze/`)
+- **Purpose**: Raw data ingestion from Unity Catalog
+- **Tables**: `bronze_pharmacies`, `bronze_hospitals`, `bronze_products`, `bronze_orders`, `bronze_inventory`, `bronze_supply_chain_events`
+- **Materialization**: Tables
+- **Schema**: `bronze`
 
-## Data Flow
+### Silver Layer (`src/models/silver/`)
+- **Purpose**: Data cleaning, validation, and business logic application
+- **Tables**: `silver_pharmacies`, `silver_hospitals`, `silver_products`, `silver_orders`, `silver_inventory`, `silver_supply_chain_events`
+- **Materialization**: Tables
+- **Schema**: `silver`
+- **Features**: Data quality checks, business rules, calculated fields
 
-```
-healthcare_data bundle → Unity Catalog → DBT Medallion Architecture
-     ↓                        ↓                    ↓
-Raw Data Generation    Raw Tables (Bronze)   Analytics Tables (Gold)
-     ↓                        ↓                    ↓
-workspace.default.      workspace.healthcare_   workspace.healthcare_
-healthcare_*            medallion_dev.bronze.*  medallion_dev.gold.*
-```
+### Gold Layer (`src/models/gold/`)
+- **Purpose**: Analytics-ready datasets for specific use cases
+- **Tables**: 
+  - `gold_pharmacy_performance` - Pharmacy KPIs and metrics
+  - `gold_product_performance` - Product analytics and trends
+  - `gold_financial_analytics` - Financial reporting and analysis
+  - `gold_ml_ready_dataset` - ML-ready features and targets
+  - `gold_supply_chain_performance` - Supply chain analytics
+- **Materialization**: Tables
+- **Schema**: `gold`
 
-## Key Features
+## Development setup
 
-### Data Quality & Validation
-- Comprehensive data quality checks at each layer
-- Business rule validation and enforcement
-- Data lineage tracking throughout the pipeline
-- Automated testing and monitoring
+1. Install the Databricks CLI from https://docs.databricks.com/dev-tools/cli/databricks-cli.html
 
-### Business Intelligence
-- **Customer Analytics**: Pharmacy and hospital performance metrics
-- **Product Analytics**: Product performance, demand patterns, profitability
-- **Supply Chain Analytics**: Order fulfillment, delivery performance, logistics
-- **Financial Analytics**: Revenue analysis, discount optimization, profitability
+2. Authenticate to your Databricks workspace, if you have not done so already:
+    ```
+    $ databricks configure
+    ```
 
-### Machine Learning Ready
-- Feature-engineered datasets optimized for ML use cases
-- Customer churn prediction features
-- Product demand forecasting features
-- Inventory optimization features
-- Anomaly detection features
+3. Install dbt
 
-## Getting Started
+   To install dbt, you need a recent version of Python. For the instructions below,
+   we assume `python3` refers to the Python version you want to use. On some systems,
+   you may need to refer to a different Python version, e.g. `python` or `/usr/bin/python`.
 
-### Prerequisites
-- Databricks workspace access
-- DBT CLI installed
-- Python environment with required dependencies
+   Run these instructions from the `healthcare_dbt_medallion` directory. We recommend making
+   use of a Python virtual environment and installing dbt as follows:
 
-### Setup
-
-1. **Configure Databricks Connection**:
-   The project uses environment variables for secure authentication. Set your Databricks token:
-   
-   ```bash
-   # Option 1: Set environment variable directly
-   export DATABRICKS_TOKEN="your_databricks_token_here"
-   
-   # Option 2: Create a .env file (recommended)
-   cp env.example .env
-   # Then edit .env with your actual token
    ```
-   
-   **Your Databricks configuration:**
-   - Host: `https://dbc-f501771e-54b7.cloud.databricks.com`
-   - Warehouse: `2a475c6457a76313`
-   - Token: Set via `DATABRICKS_TOKEN` environment variable
-
-2. **Install Dependencies**:
-   ```bash
-   # Activate the conda environment
-   conda activate databricks-misc
-   
-   # Install DBT (if not already installed)
-   pip install dbt-databricks
+   $ python3 -m venv .venv
+   $ . .venv/bin/activate
+   $ pip install -r requirements-dev.txt
    ```
 
-3. **Run the Pipeline**:
-   ```bash
-   # Activate environment and navigate to project
-   conda activate databricks-misc
-   cd healthcare_data_medallion
-   
-   # Set your Databricks token (if not already set)
-   export DATABRICKS_TOKEN="your_databricks_token_here"
-   
-   # Test connection
-   dbt debug
-   
-   # Run all models
-   dbt run
-   
-   # Run tests
-   dbt test
-   
-   # Generate documentation
-   dbt docs generate
-   dbt docs serve
+4. Initialize your dbt profile
+
+   Use `dbt init` to initialize your profile.
+
+   ```
+   $ dbt init
    ```
 
-### Running Specific Layers
+   Note that dbt authentication uses personal access tokens by default
+   (see https://docs.databricks.com/dev-tools/auth/pat.html).
+   You can use OAuth as an alternative, but this currently requires manual configuration.
+   See https://github.com/databricks/dbt-databricks/blob/main/docs/oauth.md
+   for general instructions, or https://community.databricks.com/t5/technical-blog/using-dbt-core-with-oauth-on-azure-databricks/ba-p/46605
+   for advice on setting up OAuth for Azure Databricks.
+
+   To setup up additional profiles, such as a 'prod' profile,
+   see https://docs.getdbt.com/docs/core/connect-data-platform/connection-profiles.
+
+5. Activate dbt so it can be used from the terminal
+
+   ```
+   $ . .venv/bin/activate
+    ```
+
+## Local development with dbt
+
+Use `dbt` to [run this project locally using a SQL warehouse](https://docs.databricks.com/partners/prep/dbt.html):
 
 ```bash
-# Activate environment first
-conda activate databricks-misc
-cd healthcare_data_medallion
+# Run the entire medallion pipeline
+$ dbt seed
+$ dbt run
+$ dbt test
 
-# Run only bronze layer
-dbt run --select tag:bronze
+# Run specific layers
+$ dbt run --select tag:bronze
+$ dbt run --select tag:silver  
+$ dbt run --select tag:gold
 
-# Run only silver layer
-dbt run --select tag:silver
-
-# Run only gold layer
-dbt run --select tag:gold
-
-# Run specific model
-dbt run --select gold_pharmacy_performance
+# Run specific models
+$ dbt run --model silver_orders
+$ dbt run --model gold_pharmacy_performance
 ```
 
-## Configuration
+(Did you get an error that the dbt command could not be found? You may need
+to try the last step from the development setup above to re-activate
+your Python virtual environment!)
 
-### Variables
-The project uses several configurable variables in `dbt_project.yml`:
+Use `dbt test` to run tests generated from yml files such as `src/models/sources.yml`
+and any SQL tests from `src/tests/`
 
-- **Source Configuration**: Catalog, schema, and table prefixes
-- **Data Quality Thresholds**: Min/max values for validation
-- **Business Rules**: Discount thresholds, reorder alerts, expiry warnings
+```bash
+$ dbt test
+```
 
-### Environment-Specific Settings
-- **Dev Environment**: `healthcare_medallion_dev` schema
-- **Prod Environment**: `healthcare_medallion_prod` schema
+## Production setup
 
-## Data Quality & Testing
+Your production dbt profiles are defined in dbt_profiles/profiles.yml.
+These profiles define the default catalog, schema, and any other
+target-specific settings. Read more about dbt profiles on Databricks at
+https://docs.databricks.com/en/workflows/jobs/how-to/use-dbt-in-workflows.html#advanced-run-dbt-with-a-custom-profile.
 
-### Automated Tests
-- **Unique Constraints**: Primary key validation
-- **Referential Integrity**: Foreign key validation
-- **Data Range Validation**: Min/max value checks
-- **Business Rule Validation**: Custom business logic tests
+The target workspaces for staging and prod are defined in databricks.yml.
+You can manually deploy based on these configurations (see below).
+Or you can use CI/CD to automate deployment. See
+https://docs.databricks.com/dev-tools/bundles/ci-cd.html for documentation
+on CI/CD setup.
 
-### Data Quality Metrics
-- **Completeness**: Percentage of non-null values
-- **Accuracy**: Data validation against business rules
-- **Consistency**: Cross-table validation
-- **Timeliness**: Data freshness monitoring
+## Manually deploying to Databricks with Databricks Asset Bundles
 
-## Use Cases
+Databricks Asset Bundles can be used to deploy to Databricks and to execute
+dbt commands as a job using Databricks Workflows. See
+https://docs.databricks.com/dev-tools/bundles/index.html to learn more.
 
-### Business Intelligence
-- **Executive Dashboards**: High-level KPIs and performance metrics
-- **Operational Reports**: Detailed operational analytics
-- **Financial Analysis**: Revenue, profitability, and discount analysis
-- **Supply Chain Monitoring**: Order fulfillment and delivery performance
+Use the Databricks CLI to deploy a development copy of this project to a workspace:
 
-### Machine Learning
-- **Demand Forecasting**: Product demand prediction models
-- **Customer Churn Prediction**: Customer retention analysis
-- **Inventory Optimization**: Stock level optimization
-- **Anomaly Detection**: Unusual patterns and fraud detection
-- **Recommender Systems**: Product recommendation engines
+```
+$ databricks bundle deploy --target dev
+```
 
-### Regulatory Compliance
-- **Audit Trails**: Complete data lineage and change tracking
-- **Compliance Reporting**: Regulatory requirement reporting
-- **Data Governance**: Data quality and consistency monitoring
+(Note that "dev" is the default target, so the `--target` parameter
+is optional here.)
 
-## Monitoring & Maintenance
+This deploys everything that's defined for this project.
+For example, the default template would deploy a job called
+`[dev yourname] healthcare_dbt_medallion_job` to your workspace.
+You can find that job by opening your workpace and clicking on **Workflows**.
 
-### Data Lineage
-- Complete tracking from source to gold layer
-- Metadata preservation throughout the pipeline
-- Change tracking and audit trails
+The job will run the complete medallion pipeline:
+1. `dbt deps` - Install dependencies
+2. `dbt seed` - Load seed data
+3. `dbt run` - Execute all models (bronze → silver → gold)
+4. `dbt test` - Run data quality tests
 
-### Performance Optimization
-- Incremental model updates where appropriate
-- Partitioning strategies for large tables
-- Query optimization and indexing
+You can also deploy to your production target directly from the command-line.
+The warehouse, catalog, and schema for that target are configured in databricks.yml.
+When deploying to this target, note that the default job at resources/healthcare_dbt_medallion.job.yml
+has a schedule set that runs every day. The schedule is paused when deploying in development mode
+(see https://docs.databricks.com/dev-tools/bundles/deployment-modes.html).
 
-### Error Handling
-- Comprehensive error logging and monitoring
-- Data quality alerts and notifications
-- Automated retry mechanisms
+To deploy a production copy, type:
 
-## Contributing
+```
+$ databricks bundle deploy --target prod
+```
 
-1. Follow the established naming conventions
-2. Add appropriate tests for new models
-3. Update documentation for new features
-4. Ensure data quality standards are maintained
+## IDE support
 
-## Support
-
-For questions or issues:
-1. Check the DBT documentation
-2. Review the data quality tests
-3. Examine the model lineage in DBT docs
-4. Contact the data engineering team
+Optionally, install developer tools such as the Databricks extension for Visual Studio Code from
+https://docs.databricks.com/dev-tools/vscode-ext.html. Third-party extensions
+related to dbt may further enhance your dbt development experience!

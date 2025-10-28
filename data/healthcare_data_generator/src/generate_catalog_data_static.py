@@ -19,8 +19,13 @@ from pyspark.sql.functions import current_timestamp, lit
 
 # Unity Catalog configuration
 CATALOG_NAME = "workspace"
-SCHEMA_NAME = "default"
+SCHEMA_NAME = "default"  # Will be overridden by bundle environment
 TABLE_PREFIX = "healthcare_"
+
+# Get schema name from bundle environment variables
+import os
+BUNDLE_TARGET = os.getenv("BUNDLE_TARGET", "dev")
+SCHEMA_NAME = f"healthcare_{BUNDLE_TARGET}_raw"
 
 # Large-scale data generation for ML experimentation
 # One-time run with substantial dataset sizes
@@ -47,6 +52,8 @@ class DatabricksHealthcareDataGenerator:
         self.generator = HealthcareDataGenerator(seed=seed)
 
         logger.info(f"DatabricksHealthcareDataGenerator initialized with seed: {seed}")
+        logger.info(f"Target environment: {BUNDLE_TARGET}")
+        logger.info(f"Target schema: {CATALOG_NAME}.{SCHEMA_NAME}")
 
     def save_to_catalog(self, df, table_name: str, mode: str = "append") -> None:
         """Save DataFrame to Unity Catalog."""
@@ -145,8 +152,10 @@ def main():
     generator = DatabricksHealthcareDataGenerator(spark, seed=42)
 
     logger.info(
-        "🚀 Starting large-scale healthcare data generation for ML experimentation..."
+        f"🚀 Starting large-scale healthcare data generation for ML experimentation..."
     )
+    logger.info(f"🎯 Target environment: {BUNDLE_TARGET}")
+    logger.info(f"📁 Target schema: {CATALOG_NAME}.{SCHEMA_NAME}")
 
     # Check if base entities exist, if not create them
     try:

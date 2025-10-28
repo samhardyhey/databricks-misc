@@ -20,7 +20,7 @@ This bundle generates realistic healthcare datasets for ML experimentation:
 ├── databricks.yml
 ├── pyproject.toml
 ├── resources/
-│   └── healthcare_data.job.yml      # Job configuration
+│   └── healthcare_data_generator.job.yml      # Job configuration
 └── src/
     ├── generate_catalog_data_static.py  # Main entry point (serverless job)
     ├── healthcare_data_generator.py     # Core data generation
@@ -82,7 +82,7 @@ The job is configured for **large-scale data generation** for ML experimentation
 
 **Transactional Data (Large-Scale - Generated Once):**
 - Products: 5,000
-- Orders: 25,000  
+- Orders: 25,000
 - Inventory: 50,000
 - Events: 10,000
 

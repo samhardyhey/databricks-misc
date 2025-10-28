@@ -1,7 +1,7 @@
 # This is a Databricks asset bundle definition for healthcare_data.
 # See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
 bundle:
-  name: healthcare_data
+  name: healthcare_data_generator
   uuid: ebbc066e-3105-4f82-b446-4d5b1a31d23a
 
 include:

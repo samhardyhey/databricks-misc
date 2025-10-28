@@ -1,5 +1,5 @@
 [project]
-name = "healthcare_data"
+name = "healthcare_data_generator"
 version = "0.0.1"
 authors = [{ name = "samhardyhey@gmail.com" }]
 requires-python = ">= 3.11"

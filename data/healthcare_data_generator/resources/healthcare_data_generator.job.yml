@@ -1,8 +1,8 @@
 # The main job for healthcare_data.
 resources:
   jobs:
-    healthcare_data_job:
-      name: healthcare_data_job
+    healthcare_data_generator_job:
+      name: healthcare_data_generator_job
 
       schedule:
         # Run this job every 15 minutes to simulate high-frequency system
