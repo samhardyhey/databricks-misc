@@ -1,0 +1,72 @@
+name: "healthcare_data_medallion"
+version: "1.0.0"
+config-version: 2
+
+# This setting configures which "profile" dbt uses for this project.
+profile: "healthcare_data"
+
+# These configurations specify where dbt should look for different types of files.
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+# Configuring models
+models:
+  healthcare_data_medallion:
+    # Bronze layer - raw data ingestion
+    bronze:
+      +materialized: table
+      +schema: bronze
+      +tags: ["bronze", "raw_data"]
+
+    # Silver layer - business logic and data quality
+    silver:
+      +materialized: table
+      +schema: silver
+      +tags: ["silver", "business_logic"]
+
+    # Gold layer - analytics-ready datasets
+    gold:
+      +materialized: table
+      +schema: gold
+      +tags: ["gold", "analytics"]
+
+# Seeds configuration
+seeds:
+  healthcare_data_medallion:
+    +schema: seeds
+    +tags: ["seeds"]
+
+# Snapshots configuration
+snapshots:
+  healthcare_data_medallion:
+    +target_schema: snapshots
+    +tags: ["snapshots"]
+
+# Variables for configuration
+vars:
+  # Source catalog and schema
+  source_catalog: "workspace"
+  source_schema: "default"
+  source_table_prefix: "healthcare_"
+
+  # Target catalog and schema
+  target_catalog: "workspace"
+  target_schema_prefix: "healthcare_medallion"
+
+  # Data quality thresholds
+  data_quality:
+    min_order_amount: 1.0
+    max_order_amount: 100000.0
+    min_inventory_stock: 0
+    max_inventory_stock: 10000
+
+  # Business rules
+  business_rules:
+    high_volume_discount_threshold: 50
+    medium_volume_discount_threshold: 20
+    reorder_alert_threshold: 0.1 # 10% of max stock
+    expiry_warning_days: 30

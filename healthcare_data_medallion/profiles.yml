@@ -1,0 +1,29 @@
+# Databricks profile for healthcare data medallion architecture
+healthcare_data:
+  target: dev
+  outputs:
+    dev:
+      type: databricks
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      http_path: /sql/1.0/warehouses/your_warehouse_id # Replace with your warehouse ID
+      token: "{{ env('DATABRICKS_TOKEN') }}"
+      schema: healthcare_medallion_dev
+      threads: 4
+      client_session_keep_alive: False
+      connect_timeout: 10
+      read_timeout: 300
+      retry_all: True
+      catalog: workspace
+
+    prod:
+      type: databricks
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      http_path: /sql/1.0/warehouses/your_warehouse_id # Replace with your warehouse ID
+      token: "{{ env('DATABRICKS_TOKEN') }}"
+      schema: healthcare_medallion_prod
+      threads: 8
+      client_session_keep_alive: False
+      connect_timeout: 10
+      read_timeout: 300
+      retry_all: True
+      catalog: workspace
