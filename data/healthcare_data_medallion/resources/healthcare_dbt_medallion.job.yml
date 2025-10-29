@@ -1,35 +1,61 @@
 resources:
   jobs:
-    healthcare_dbt_medallion_job:
-      name: healthcare_dbt_medallion_job
-      description: "Healthcare Data Medallion Architecture - Bronze, Silver, Gold layers"
+    # Complete Medallion Job - All layers in one job with task dependencies
+    healthcare_data_medallion_job:
+      name: healthcare_data_medallion_job
+      description: "Healthcare Data Medallion - Complete Pipeline (Bronze → Silver → Gold)"
 
       trigger:
-        # Run this job every day, exactly one day from the last run; see https://docs.databricks.com/api/workspace/jobs/create#trigger
         periodic:
           interval: 1
           unit: DAYS
 
-      #email_notifications:
-      #  on_failure:
-      #    - your_email@example.com
-
       tasks:
-        - task_key: dbt
+        # Bronze Layer Task
+        - task_key: dbt_bronze
           dbt_task:
             project_directory: ../
-            # The default schema, catalog, etc. are defined in ../dbt_profiles/profiles.yml
             profiles_directory: dbt_profiles/
             commands:
-              # The dbt commands to run (see also the dev/prod profiles in dbt_profiles/profiles.yml)
               - "dbt deps --target=${bundle.target}"
-              - "dbt seed --target=${bundle.target}"
-              - "dbt run --target=${bundle.target}"
-              - "dbt test --target=${bundle.target}"
+              - "dbt run --select tag:bronze --target=${bundle.target}"
+              - "dbt test --select tag:bronze --target=${bundle.target}"
 
-          libraries:
-            - pypi:
-                package: dbt-databricks>=1.8.0,<2.0.0
+          environment_key: default
 
-          # Use serverless compute (no new_cluster configuration)
-          # This will use Databricks Serverless Compute for better cost efficiency
+        # Silver Layer Task - depends on Bronze
+        - task_key: dbt_silver
+          dbt_task:
+            project_directory: ../
+            profiles_directory: dbt_profiles/
+            commands:
+              - "dbt deps --target=${bundle.target}"
+              - "dbt run --select tag:silver --target=${bundle.target}"
+              - "dbt test --select tag:silver --target=${bundle.target}"
+
+          environment_key: default
+
+          depends_on:
+            - task_key: dbt_bronze
+
+        # Gold Layer Task - depends on Silver
+        - task_key: dbt_gold
+          dbt_task:
+            project_directory: ../
+            profiles_directory: dbt_profiles/
+            commands:
+              - "dbt deps --target=${bundle.target}"
+              - "dbt run --select tag:gold --target=${bundle.target}"
+              - "dbt test --select tag:gold --target=${bundle.target}"
+
+          environment_key: default
+
+          depends_on:
+            - task_key: dbt_silver
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "2"
+            dependencies:
+              - dbt-databricks>=1.8.0,<2.0.0

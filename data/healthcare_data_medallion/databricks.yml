@@ -2,7 +2,7 @@
 # to production using Databricks Asset Bundles.
 # See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
 bundle:
-  name: healthcare_dbt_medallion
+  name: healthcare_data_medallion
   uuid: e89aa3be-8264-4e6a-9d9d-4ea072233ff9
 
 include:

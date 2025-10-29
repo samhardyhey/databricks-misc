@@ -1,9 +1,9 @@
-name: "healthcare_dbt_medallion"
+name: "healthcare_data_medallion"
 version: "1.0.0"
 config-version: 2
 
 # This setting configures which "profile" dbt uses for this project.
-profile: "healthcare_dbt_medallion"
+profile: "databricks"
 
 # These configurations specify where dbt should look for different types of files.
 # For Databricks asset bundles, we put everything in src, as you may have
@@ -24,7 +24,7 @@ clean-targets: # directories to be removed by `dbt clean`
 
 # Medallion Architecture Configuration
 models:
-  healthcare_dbt_medallion:
+  healthcare_data_medallion:
     # Bronze layer - raw data ingestion
     bronze:
       +materialized: table
@@ -45,13 +45,13 @@ models:
 
 # Seeds configuration
 seeds:
-  healthcare_dbt_medallion:
+  healthcare_data_medallion:
     +schema: seeds
     +tags: ["seeds"]
 
 # Snapshots configuration
 snapshots:
-  healthcare_dbt_medallion:
+  healthcare_data_medallion:
     +target_schema: snapshots
     +tags: ["snapshots"]
 
