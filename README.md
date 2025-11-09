@@ -35,7 +35,7 @@ This project serves as an experimental platform for exploring Databricks functio
 - [ ] **Unity Catalog Organization** - Design catalog/schema structure for data governance
 - [ ] **Azure Integration** - Terraform deployment for production-ready Databricks workspace
 - [ ] **PostgreSQL Integration** - Connect external database to Databricks for data ingestion
-- [ ] **DBT Integration** - Data transformation and modeling workflows
+- [x] **DBT Integration** - Data transformation and modeling workflows
 - [ ] **CI/CD Pipelines** - CI/CD pipelines for the Databricks Asset Bundles
 
 ### 🔧 Development & Testing
@@ -43,8 +43,3 @@ This project serves as an experimental platform for exploring Databricks functio
 - [ ] **MLflow 3.0 Features** - Explore new capabilities and differences from previous versions
 - [ ] **Databricks Connect Optimization** - Improve performance and reliability of local development
 - [ ] **Python Version Alignment** - Ensure compatibility between local and remote environments
-
-### 📋 Documentation & Governance
-- [ ] **Model Documentation** - Document ML model architectures and business logic
-- [ ] **Data Lineage Tracking** - Implement comprehensive data governance practices
-- [ ] **Deployment Guidelines** - Create standards for model deployment and monitoring
