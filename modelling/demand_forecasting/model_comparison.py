@@ -6,7 +6,7 @@ Provides comprehensive evaluation metrics and visualizations.
 """
 
 import warnings
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import matplotlib.pyplot as plt
 import mlflow

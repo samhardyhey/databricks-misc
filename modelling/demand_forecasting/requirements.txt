@@ -1,24 +1,13 @@
-# Demand Forecasting Requirements
-
-# Core ML libraries
 xgboost>=1.7.0
 scikit-learn>=1.3.0
-pandas>=2.0.0
-numpy>=1.24.0
-
-# Time series forecasting
+pandas==1.5.3
+numpy==1.23.5
 prophet>=1.1.0
 statsmodels>=0.14.0
-
-# MLflow for experiment tracking
 mlflow>=2.5.0
-
-# Visualization
 matplotlib>=3.7.0
 seaborn>=0.12.0
-
-# Logging
 loguru>=0.7.0
-
-# PySpark for Databricks integration
 pyspark>=3.4.0
+py4j==0.10.9.7
+typing_extensions==4.10.0
