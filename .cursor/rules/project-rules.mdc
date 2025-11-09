@@ -41,3 +41,6 @@ alwaysApply: true
 - if possible, use functions/functional programming instead of classes/object-oriented programming
 - Logging: Always use loguru instead of print statements
 - Module Structure: Prefer semantic naming (parent_module.semantic_name) over verbose names
+
+### Misc
+- Do not create unnecessary markdown/README files; we typically just one one root level README and then perhaps one in a major module ONLY if the complexity warrants it
