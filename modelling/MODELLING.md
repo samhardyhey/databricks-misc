@@ -71,6 +71,12 @@
 - **Document Processing**
     - OCR + NLP for invoices, shipping documents, prescriptions.
     - Already standard in pharma distribution (reduces manual data entry).
+- **Document Intelligence / Field Extraction from PDFs**
+	- What: Automated OCR and structured field extraction from PDF documents (invoices, purchase orders, prescriptions, shipping manifests) using spark-nlp and spark-ocr.
+	- Why: High-volume document processing requires scalable, distributed OCR and NLP pipelines; manual data entry is error-prone and expensive; structured extraction enables downstream automation (AP, compliance checks, inventory updates).
+	- Modelling note: use spark-ocr for PDF → text conversion and image preprocessing; spark-nlp for named entity recognition (NER) and field extraction (dates, amounts, SKUs, supplier info); combine with rule-based post-processing for validation; leverage Spark's distributed processing for batch document pipelines; consider fine-tuning NER models on domain-specific documents (pharma invoices, prescriptions).
+    - Technical stack: spark-nlp for transformer-based NER and field extraction, spark-ocr for scalable OCR operations on PDF/image inputs.
+    - Use cases: automated invoice processing, prescription digitization, shipping document parsing, purchase order extraction.
 - **Medical Product Classification**
     - Mapping supplier SKUs → EBOS internal catalogues, often via multi-label classification.
 ## 6. **Animal Health / Pet Care**

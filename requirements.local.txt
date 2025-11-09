@@ -4,6 +4,7 @@ faker==24.0.0
 pandas==2.2.0
 numpy==1.26.0
 loguru==0.7.2
+reportlab>=4.0.0
 
 # # Demand Forecasting Dependencies
 # xgboost>=1.7.0
