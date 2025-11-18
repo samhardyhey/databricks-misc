@@ -1,5 +1,6 @@
 # PySpark for connecting to Docker-based Spark cluster
-pyspark>=3.5.0
+# Must match the Spark version in docker-compose.yml (3.5.6)
+pyspark==3.5.6
 
 # Data processing libraries
 pandas>=2.0.0

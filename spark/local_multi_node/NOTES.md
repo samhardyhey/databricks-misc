@@ -1,0 +1,13 @@
+- aligning spark/python versions > pain in the arse
+
+- where actual code is run
+    - Benefits of running outside containers:
+        - Easier development (edit files directly, use your IDE)
+        - No need to copy files into containers
+        - Use your local Python environment
+        - Direct access to local files
+    - Benefits of running inside containers:
+        - More consistent environment (all containers use same version)
+        - Easier to manage dependencies
+        - Can use containerized development tools (e.g., Jupyter)
+        - Better for CI/CD pipelines (no need to install Python on CI agents)

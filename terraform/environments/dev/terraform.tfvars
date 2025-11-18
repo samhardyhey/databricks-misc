@@ -1,6 +1,6 @@
 environment = "dev"
 location = "Australia Southeast"
-databricks_sku = "standard"
+databricks_sku = "premium"
 
 tags = {
   Environment = "dev"

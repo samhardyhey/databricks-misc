@@ -20,6 +20,7 @@ This project serves as an experimental platform for exploring Databricks functio
 ## Todo List
 
 ### 🚀 Immediate Priorities
+- [ ] **Unity Catalog Setup** - Set up Unity Catalog for data governance and organization
 - [x] **Data Generation Pipeline** - Create synthetic healthcare/pharmaceutical datasets for experimentation
 - [x] **Databricks Connect Setup** - Establish reliable local-to-remote development workflow
 - [ ] **MLflow Integration** - Set up experiment tracking and model versioning

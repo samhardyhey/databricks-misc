@@ -170,6 +170,6 @@ docker-compose down
 docker-compose down -v
 
 # Remove images (optional)
-docker rmi bitnami/spark:3.5
+docker rmi bitnamilegacy/spark:3.5
 ```
 

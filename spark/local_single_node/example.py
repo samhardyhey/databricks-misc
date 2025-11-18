@@ -10,9 +10,11 @@ from loguru import logger
 
 # Create Spark session in local mode
 # local[*] uses all CPU cores, or specify local[4] for 4 cores
+# Disable Spark Connect to use traditional local mode
 spark = SparkSession.builder \
     .appName("LocalSparkExample") \
     .master("local[*]") \
+    .config("spark.sql.connect.enabled", "false") \
     .config("spark.sql.adaptive.enabled", "true") \
     .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
     .getOrCreate()

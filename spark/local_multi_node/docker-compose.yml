@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   spark-master:
-    image: bitnami/spark:3.5
+    image: bitnamilegacy/spark:3.5
     container_name: spark-master
     hostname: spark-master
     environment:
@@ -12,6 +12,7 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
+      - HOME=/opt/bitnami/spark
     ports:
       - "8080:8080" # Spark Master UI
       - "7077:7077" # Spark Master port
@@ -20,11 +21,12 @@ services:
       - ./data:/opt/bitnami/spark/data
       - ./notebooks:/opt/bitnami/spark/notebooks
       - ./scripts:/opt/bitnami/spark/scripts
+      - ./app:/opt/bitnami/spark/app
     networks:
       - spark-network
 
   spark-worker-1:
-    image: bitnami/spark:3.5
+    image: bitnamilegacy/spark:3.5
     container_name: spark-worker-1
     hostname: spark-worker-1
     environment:
@@ -37,6 +39,7 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
+      - PYSPARK_PYTHON=python3
     depends_on:
       - spark-master
     volumes:
@@ -47,7 +50,7 @@ services:
       - spark-network
 
   spark-worker-2:
-    image: bitnami/spark:3.5
+    image: bitnamilegacy/spark:3.5
     container_name: spark-worker-2
     hostname: spark-worker-2
     environment:
@@ -60,6 +63,7 @@ services:
       - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
       - SPARK_SSL_ENABLED=no
       - SPARK_USER=spark
+      - PYSPARK_PYTHON=python3
     depends_on:
       - spark-master
     volumes:
