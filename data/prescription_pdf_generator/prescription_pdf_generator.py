@@ -6,22 +6,17 @@ information including patient details, hospital/clinic info, doctor information,
 medication details, dosage, frequency, and other prescription fields.
 """
 
-import argparse
 import random
-import shutil
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
 
 from faker import Faker
-from loguru import logger
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-
 
 # Common Australian medications
 COMMON_MEDICATIONS = [
@@ -47,7 +42,16 @@ COMMON_MEDICATIONS = [
     "Pantoprazole 40mg",
 ]
 
-DOSAGE_FORMS = ["Tablet", "Capsule", "Injection", "Cream", "Ointment", "Syrup", "Inhaler", "Drops"]
+DOSAGE_FORMS = [
+    "Tablet",
+    "Capsule",
+    "Injection",
+    "Cream",
+    "Ointment",
+    "Syrup",
+    "Inhaler",
+    "Drops",
+]
 
 FREQUENCIES = [
     "Once daily",
@@ -91,7 +95,9 @@ def generate_prescription_data(fake: Faker) -> Dict:
     # Generate patient details
     patient_data = {
         "name": fake.name(),
-        "date_of_birth": fake.date_of_birth(minimum_age=18, maximum_age=90).strftime("%d/%m/%Y"),
+        "date_of_birth": fake.date_of_birth(minimum_age=18, maximum_age=90).strftime(
+            "%d/%m/%Y"
+        ),
         "address": fake.address().replace("\n", ", "),
         "medicare_number": f"{random.randint(2,9)}{random.randint(100000000, 999999999)}",
         "phone": fake.phone_number(),
@@ -107,12 +113,14 @@ def generate_prescription_data(fake: Faker) -> Dict:
 
     # Generate hospital/clinic details
     facility_data = {
-        "name": random.choice([
-            fake.company() + " Hospital",
-            fake.company() + " Medical Centre",
-            fake.company() + " Clinic",
-            fake.company() + " Health",
-        ]),
+        "name": random.choice(
+            [
+                fake.company() + " Hospital",
+                fake.company() + " Medical Centre",
+                fake.company() + " Clinic",
+                fake.company() + " Health",
+            ]
+        ),
         "address": fake.address().replace("\n", ", "),
         "phone": fake.phone_number(),
         "abn": f"{random.randint(10, 99)} {random.randint(100, 999)} {random.randint(100, 999)} {random.randint(100, 999)}",
@@ -300,92 +308,3 @@ def create_prescription_pdf(output_path: Path, prescription_data: Dict) -> None:
 
     # Build PDF
     doc.build(story)
-
-
-def generate_prescription_pdfs(
-    output_dir: Path, num_pdfs: int, seed: int = None
-) -> List[Path]:
-    """Generate N prescription PDF files."""
-    if seed is not None:
-        random.seed(seed)
-        Faker.seed(seed)
-
-    fake = Faker("en_AU")  # Australian locale for realistic data
-
-    # Delete output directory if it exists, then create fresh
-    if output_dir.exists():
-        logger.info(f"Removing existing output directory: {output_dir}")
-        shutil.rmtree(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    generated_files = []
-
-    logger.info(f"Generating {num_pdfs} prescription PDF files...")
-
-    for i in range(1, num_pdfs + 1):
-        # Generate prescription data
-        prescription_data = generate_prescription_data(fake)
-
-        # Create filename
-        filename = f"prescription_{prescription_data['prescription_number']}_{i:04d}.pdf"
-        output_path = output_dir / filename
-
-        # Create PDF
-        try:
-            create_prescription_pdf(output_path, prescription_data)
-            generated_files.append(output_path)
-            logger.debug(f"Generated: {filename}")
-        except Exception as e:
-            logger.error(f"Failed to generate {filename}: {e}")
-
-    logger.info(f"Successfully generated {len(generated_files)} PDF files in {output_dir}")
-    return generated_files
-
-
-def main():
-    """Main entry point for the script."""
-    parser = argparse.ArgumentParser(
-        description="Generate mock prescription PDF files for document intelligence testing"
-    )
-    parser.add_argument(
-        "-n",
-        "--num-pdfs",
-        type=int,
-        default=10,
-        help="Number of PDF files to generate (default: 10)",
-    )
-    parser.add_argument(
-        "-o",
-        "--output-dir",
-        type=str,
-        default="prescription_pdfs",
-        help="Output directory for PDF files (default: prescription_pdfs)",
-    )
-    parser.add_argument(
-        "-s",
-        "--seed",
-        type=int,
-        default=None,
-        help="Random seed for reproducible generation (optional)",
-    )
-
-    args = parser.parse_args()
-
-    output_dir = Path(args.output_dir)
-
-    logger.info(f"Starting prescription PDF generation...")
-    logger.info(f"Output directory: {output_dir.absolute()}")
-    logger.info(f"Number of PDFs: {args.num_pdfs}")
-
-    generated_files = generate_prescription_pdfs(
-        output_dir=output_dir,
-        num_pdfs=args.num_pdfs,
-        seed=args.seed,
-    )
-
-    logger.success(f"Completed! Generated {len(generated_files)} PDF files.")
-
-
-if __name__ == "__main__":
-    main()
-
