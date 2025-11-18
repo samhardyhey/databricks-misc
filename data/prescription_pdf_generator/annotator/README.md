@@ -6,7 +6,7 @@ Streamlit application for annotating prescription PDF documents with their corre
 
 - **Side-by-side layout**: PDF viewer on the left, annotation form on the right
 - **Form-based annotation**: Individual input fields for each JSON field
-- **Navigation**: 
+- **Navigation**:
   - Previous/Next buttons
   - Search by filename
   - List view with document thumbnails
@@ -21,6 +21,16 @@ Streamlit application for annotating prescription PDF documents with their corre
 pip install -r requirements.txt
 ```
 
+## Configuration
+
+Edit `config.py` to set your directory paths:
+```python
+BASE_DIR = Path("prescription_pdfs")
+DOCUMENTS_DIR = BASE_DIR / "documents"
+LABELS_DIR = BASE_DIR / "labels"
+ANNOTATED_DIR = BASE_DIR / "annotated"
+```
+
 ## Usage
 
 1. Start the Streamlit app:
@@ -28,28 +38,23 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-2. In the sidebar, configure the directories:
-   - **Documents Directory**: Path to directory containing PDF files (e.g., `prescription_pdfs/documents`)
-   - **Labels Directory**: Path to directory containing JSON label files (e.g., `prescription_pdfs/labels`)
-   - **Annotated Directory**: Path where annotated JSON files will be saved (e.g., `prescription_pdfs/annotated`)
+2. Click "Load Documents" in the sidebar to load all matching PDF/JSON pairs
 
-3. Click "Load Documents" to load all matching PDF/JSON pairs
-
-4. Navigate through documents using:
+3. Navigate through documents using:
    - Previous/Next buttons
    - Search box to find specific files
    - Document list in the sidebar
 
-5. Edit the annotation fields in the form on the right
+4. Edit the annotation fields in the form on the right (form fields are arranged in two columns for better space utilization)
 
-6. Click "💾 Save Annotations" to save changes to the annotated directory
+5. Click "💾 Save Annotations" to save changes to the annotated directory
 
-7. Use the status buttons to mark documents as:
+6. Use the status buttons to mark documents as:
    - ✅ Reviewed
    - ⚠️ Needs Attention
    - ⚪ Pending
 
-8. Export all annotated files using the "📦 Export Annotated Dataset" section
+7. Export all annotated files using the "📦 Export Annotated Dataset" section
 
 ## Directory Structure
 

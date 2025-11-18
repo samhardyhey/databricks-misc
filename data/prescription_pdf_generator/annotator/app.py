@@ -14,6 +14,8 @@ from typing import Dict, List, Optional, Tuple
 import streamlit as st
 from loguru import logger
 
+from config import DOCUMENTS_DIR, LABELS_DIR, ANNOTATED_DIR
+
 # Page configuration
 st.set_page_config(
     page_title="Prescription PDF Annotator",
@@ -30,7 +32,7 @@ if "review_status" not in st.session_state:
     st.session_state.review_status = {}
 
 if "annotated_dir" not in st.session_state:
-    st.session_state.annotated_dir = None
+    st.session_state.annotated_dir = ANNOTATED_DIR
 
 
 def load_documents(documents_dir: Path, labels_dir: Path) -> List[Tuple[Path, Path]]:
@@ -105,40 +107,21 @@ def set_review_status(file_stem: str, status: str) -> None:
 def main():
     st.title("📋 Prescription PDF Annotator")
 
-    # Sidebar for directory selection and navigation
+    # Sidebar for navigation
     with st.sidebar:
         st.header("Configuration")
-
-        documents_dir = st.text_input(
-            "Documents Directory",
-            value="prescription_pdfs/documents",
-            help="Path to directory containing PDF files",
-        )
-        labels_dir = st.text_input(
-            "Labels Directory",
-            value="prescription_pdfs/labels",
-            help="Path to directory containing JSON label files",
-        )
-        annotated_dir = st.text_input(
-            "Annotated Directory",
-            value="prescription_pdfs/annotated",
-            help="Path where annotated JSON files will be saved",
-        )
-
-        st.session_state.annotated_dir = Path(annotated_dir)
+        st.info(f"📁 Documents: `{DOCUMENTS_DIR}`\n📁 Labels: `{LABELS_DIR}`\n📁 Annotated: `{ANNOTATED_DIR}`")
+        st.caption("Edit `config.py` to change directories")
 
         if st.button("Load Documents"):
-            docs_path = Path(documents_dir)
-            labels_path = Path(labels_dir)
-
-            if not docs_path.exists():
-                st.error(f"Documents directory not found: {docs_path}")
+            if not DOCUMENTS_DIR.exists():
+                st.error(f"Documents directory not found: {DOCUMENTS_DIR}")
                 return
-            if not labels_path.exists():
-                st.error(f"Labels directory not found: {labels_path}")
+            if not LABELS_DIR.exists():
+                st.error(f"Labels directory not found: {LABELS_DIR}")
                 return
 
-            pairs = load_documents(docs_path, labels_path)
+            pairs = load_documents(DOCUMENTS_DIR, LABELS_DIR)
             if pairs:
                 st.session_state.document_pairs = pairs
                 st.session_state.current_index = 0
@@ -234,9 +217,7 @@ def main():
         return
 
     # Check if annotated version exists
-    annotated_json_path = (
-        st.session_state.annotated_dir / "labels" / f"{file_stem}.json"
-    )
+    annotated_json_path = ANNOTATED_DIR / "labels" / f"{file_stem}.json"
     if annotated_json_path.exists():
         json_data = load_json(annotated_json_path)
         st.info("📝 Loading annotated version")
@@ -288,140 +269,155 @@ def main():
 
         # Form fields
         with st.form("annotation_form"):
-            # Prescription header
+            # Prescription header - two columns
             st.subheader("Prescription Information")
-            prescription_number = st.text_input(
-                "Prescription Number",
-                value=str(json_data.get("prescription_number", "")),
-                key="prescription_number",
-            )
-            prescription_date = st.text_input(
-                "Prescription Date",
-                value=str(json_data.get("prescription_date", "")),
-                key="prescription_date",
-            )
+            pres_col1, pres_col2 = st.columns(2)
+            with pres_col1:
+                prescription_number = st.text_input(
+                    "Prescription Number",
+                    value=str(json_data.get("prescription_number", "")),
+                    key="prescription_number",
+                )
+            with pres_col2:
+                prescription_date = st.text_input(
+                    "Prescription Date",
+                    value=str(json_data.get("prescription_date", "")),
+                    key="prescription_date",
+                )
             expiry_date = st.text_input(
                 "Expiry Date",
                 value=str(json_data.get("expiry_date", "")),
                 key="expiry_date",
             )
 
-            # Patient information
+            # Patient information - two columns
             st.subheader("Patient Information")
-            patient_name = st.text_input(
-                "Name",
-                value=str(json_data.get("patient", {}).get("name", "")),
-                key="patient_name",
-            )
-            patient_dob = st.text_input(
-                "Date of Birth",
-                value=str(json_data.get("patient", {}).get("date_of_birth", "")),
-                key="patient_dob",
-            )
-            patient_address = st.text_input(
-                "Address",
-                value=str(json_data.get("patient", {}).get("address", "")),
-                key="patient_address",
-            )
-            patient_medicare = st.text_input(
-                "Medicare Number",
-                value=str(json_data.get("patient", {}).get("medicare_number", "")),
-                key="patient_medicare",
-            )
-            patient_phone = st.text_input(
-                "Phone",
-                value=str(json_data.get("patient", {}).get("phone", "")),
-                key="patient_phone",
-            )
+            pat_col1, pat_col2 = st.columns(2)
+            with pat_col1:
+                patient_name = st.text_input(
+                    "Name",
+                    value=str(json_data.get("patient", {}).get("name", "")),
+                    key="patient_name",
+                )
+                patient_dob = st.text_input(
+                    "Date of Birth",
+                    value=str(json_data.get("patient", {}).get("date_of_birth", "")),
+                    key="patient_dob",
+                )
+                patient_medicare = st.text_input(
+                    "Medicare Number",
+                    value=str(json_data.get("patient", {}).get("medicare_number", "")),
+                    key="patient_medicare",
+                )
+            with pat_col2:
+                patient_address = st.text_input(
+                    "Address",
+                    value=str(json_data.get("patient", {}).get("address", "")),
+                    key="patient_address",
+                )
+                patient_phone = st.text_input(
+                    "Phone",
+                    value=str(json_data.get("patient", {}).get("phone", "")),
+                    key="patient_phone",
+                )
 
-            # Doctor information
+            # Doctor information - two columns
             st.subheader("Doctor Information")
-            doctor_name = st.text_input(
-                "Name",
-                value=str(json_data.get("doctor", {}).get("name", "")),
-                key="doctor_name",
-            )
-            doctor_provider = st.text_input(
-                "Provider Number",
-                value=str(json_data.get("doctor", {}).get("provider_number", "")),
-                key="doctor_provider",
-            )
-            doctor_ahpra = st.text_input(
-                "AHPRA Number",
-                value=str(json_data.get("doctor", {}).get("ahpra_number", "")),
-                key="doctor_ahpra",
-            )
-            doctor_signature_date = st.text_input(
-                "Signature Date",
-                value=str(json_data.get("doctor", {}).get("signature_date", "")),
-                key="doctor_signature_date",
-            )
+            doc_col1, doc_col2 = st.columns(2)
+            with doc_col1:
+                doctor_name = st.text_input(
+                    "Name",
+                    value=str(json_data.get("doctor", {}).get("name", "")),
+                    key="doctor_name",
+                )
+                doctor_provider = st.text_input(
+                    "Provider Number",
+                    value=str(json_data.get("doctor", {}).get("provider_number", "")),
+                    key="doctor_provider",
+                )
+            with doc_col2:
+                doctor_ahpra = st.text_input(
+                    "AHPRA Number",
+                    value=str(json_data.get("doctor", {}).get("ahpra_number", "")),
+                    key="doctor_ahpra",
+                )
+                doctor_signature_date = st.text_input(
+                    "Signature Date",
+                    value=str(json_data.get("doctor", {}).get("signature_date", "")),
+                    key="doctor_signature_date",
+                )
 
-            # Facility information
+            # Facility information - two columns
             st.subheader("Facility Information")
-            facility_name = st.text_input(
-                "Name",
-                value=str(json_data.get("facility", {}).get("name", "")),
-                key="facility_name",
-            )
-            facility_address = st.text_input(
-                "Address",
-                value=str(json_data.get("facility", {}).get("address", "")),
-                key="facility_address",
-            )
-            facility_phone = st.text_input(
-                "Phone",
-                value=str(json_data.get("facility", {}).get("phone", "")),
-                key="facility_phone",
-            )
-            facility_abn = st.text_input(
-                "ABN",
-                value=str(json_data.get("facility", {}).get("abn", "")),
-                key="facility_abn",
-            )
+            fac_col1, fac_col2 = st.columns(2)
+            with fac_col1:
+                facility_name = st.text_input(
+                    "Name",
+                    value=str(json_data.get("facility", {}).get("name", "")),
+                    key="facility_name",
+                )
+                facility_address = st.text_input(
+                    "Address",
+                    value=str(json_data.get("facility", {}).get("address", "")),
+                    key="facility_address",
+                )
+            with fac_col2:
+                facility_phone = st.text_input(
+                    "Phone",
+                    value=str(json_data.get("facility", {}).get("phone", "")),
+                    key="facility_phone",
+                )
+                facility_abn = st.text_input(
+                    "ABN",
+                    value=str(json_data.get("facility", {}).get("abn", "")),
+                    key="facility_abn",
+                )
 
-            # Medication information
+            # Medication information - two columns
             st.subheader("Medication Information")
-            medication_name = st.text_input(
-                "Name",
-                value=str(json_data.get("medication", {}).get("name", "")),
-                key="medication_name",
-            )
-            medication_dosage_form = st.text_input(
-                "Dosage Form",
-                value=str(json_data.get("medication", {}).get("dosage_form", "")),
-                key="medication_dosage_form",
-            )
-            medication_strength = st.text_input(
-                "Strength",
-                value=str(json_data.get("medication", {}).get("strength", "")),
-                key="medication_strength",
-            )
-            medication_quantity = st.text_input(
-                "Quantity",
-                value=str(json_data.get("medication", {}).get("quantity", "")),
-                key="medication_quantity",
-            )
-            medication_frequency = st.text_input(
-                "Frequency",
-                value=str(json_data.get("medication", {}).get("frequency", "")),
-                key="medication_frequency",
-            )
-            medication_duration = st.text_input(
-                "Duration",
-                value=str(json_data.get("medication", {}).get("duration", "")),
-                key="medication_duration",
-            )
-            medication_instructions = st.text_input(
-                "Instructions",
-                value=str(json_data.get("medication", {}).get("instructions", "")),
-                key="medication_instructions",
-            )
-            medication_repeats = st.text_input(
-                "Repeats",
-                value=str(json_data.get("medication", {}).get("repeats", "")),
-                key="medication_repeats",
-            )
+            med_col1, med_col2 = st.columns(2)
+            with med_col1:
+                medication_name = st.text_input(
+                    "Name",
+                    value=str(json_data.get("medication", {}).get("name", "")),
+                    key="medication_name",
+                )
+                medication_dosage_form = st.text_input(
+                    "Dosage Form",
+                    value=str(json_data.get("medication", {}).get("dosage_form", "")),
+                    key="medication_dosage_form",
+                )
+                medication_strength = st.text_input(
+                    "Strength",
+                    value=str(json_data.get("medication", {}).get("strength", "")),
+                    key="medication_strength",
+                )
+                medication_quantity = st.text_input(
+                    "Quantity",
+                    value=str(json_data.get("medication", {}).get("quantity", "")),
+                    key="medication_quantity",
+                )
+            with med_col2:
+                medication_frequency = st.text_input(
+                    "Frequency",
+                    value=str(json_data.get("medication", {}).get("frequency", "")),
+                    key="medication_frequency",
+                )
+                medication_duration = st.text_input(
+                    "Duration",
+                    value=str(json_data.get("medication", {}).get("duration", "")),
+                    key="medication_duration",
+                )
+                medication_instructions = st.text_input(
+                    "Instructions",
+                    value=str(json_data.get("medication", {}).get("instructions", "")),
+                    key="medication_instructions",
+                )
+                medication_repeats = st.text_input(
+                    "Repeats",
+                    value=str(json_data.get("medication", {}).get("repeats", "")),
+                    key="medication_repeats",
+                )
 
             # Save button
             if st.form_submit_button("💾 Save Annotations", use_container_width=True):
@@ -470,10 +466,10 @@ def main():
     st.divider()
     with st.expander("📦 Export Annotated Dataset"):
         if st.button("Export All Annotated Files"):
-            if not st.session_state.annotated_dir.exists():
+            if not ANNOTATED_DIR.exists():
                 st.warning("No annotated directory found")
             else:
-                annotated_labels_dir = st.session_state.annotated_dir / "labels"
+                annotated_labels_dir = ANNOTATED_DIR / "labels"
                 if annotated_labels_dir.exists():
                     json_files = list(annotated_labels_dir.glob("*.json"))
                     if json_files:
