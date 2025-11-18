@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This project serves as an experimental platform for exploring Databricks functionality and implementing ML solutions for healthcare/pharmaceutical distribution scenarios. We're using the Databricks free edition to prototype various machine learning models and data engineering pipelines that could be applicable to EBOS's supply chain, logistics, and healthcare analytics challenges.
+This project serves as an experimental platform for exploring Databricks functionality and implementing ML solutions for healthcare/pharmaceutical distribution scenarios. We're using the Databricks free edition to prototype various machine learning models and data engineering pipelines that could be applicable to supply chain, logistics, and healthcare analytics challenges.
 
 **Key Focus Areas:**
 - Supply chain optimization (demand forecasting, inventory management, logistics routing)

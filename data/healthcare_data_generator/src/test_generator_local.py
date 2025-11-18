@@ -2,7 +2,7 @@
 Test script for the healthcare data generator.
 
 This script demonstrates both simple single-table and complex multi-table
-dataset generation with proper relationships for EBOS-style pharmaceutical distribution.
+dataset generation with proper relationships for pharmaceutical distribution scenarios.
 """
 
 from pathlib import Path

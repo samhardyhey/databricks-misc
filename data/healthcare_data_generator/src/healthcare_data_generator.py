@@ -1,5 +1,5 @@
 """
-Healthcare Data Generator for EBOS-style pharmaceutical distribution scenarios.
+Healthcare Data Generator for pharmaceutical distribution scenarios.
 
 This module generates synthetic datasets for healthcare/pharmaceutical distribution
 including pharmacies, hospitals, products, orders, and supply chain data.

@@ -18,7 +18,7 @@
 	- Why: Last-mile costs and timeliness matter for hospital/clinic deliveries and temperature-sensitive items.
 	- Modelling note: vehicle routing + stochastic demand; use ML to predict ETA/traffic and hybrid metaheuristic solvers for scheduling.
     - Vehicle routing problems solved with metaheuristics + ML heuristics (e.g. demand clustering, stochastic travel times).
-    - EBOS already does large-scale distribution (warehouses → pharmacies → hospitals → vets), so this is very likely.
+    - Large-scale distribution (warehouses → pharmacies → hospitals → vets) is a common use case.
 ## 2. **Healthcare Customer / Market Analytics**
 - **Sales & Market Forecasting**
 	- What: Predict overall category or SKU uptake by region/segment.
@@ -34,7 +34,7 @@
     - Seen at Zuellig Pharma — “customer loyalty prediction” ML models.
 - **Recommender Systems**
 	- What: Suggest products or bundles for pharmacy/retail customers.
-	- Why: Improves basket size, cross-sell of EBOS consumer brands.
+	- Why: Improves basket size, cross-sell of consumer brands.
 	- Modelling note: collaborative filtering or ranking models that combine product attributes and business rules (expiry, regulation).
     - Cross-sell/upsell engines for B2B ecommerce portals (e.g. TerryWhite Chemmart, pet products).
 ## 3. **Operational Efficiency**
@@ -62,12 +62,12 @@
 	- Why: Pharmacies and hospitals produce lots of semi-structured documents; automating reduces manual work and improves auditability.
 	- Modelling note: use OCR → extractor pipelines; LLMs/RAG useful for summarisation and extraction but need PII controls and logging.
 	    - NLP to automatically check supplier or pharmacy documentation against compliance rules.
-    - EBOS JD mentions audit automation
+    - Job descriptions often mention audit automation
         — so ML/NLP likely applied here.
 ## 5. **Natural Language / Clinical Text**
 - **NLP for Call Centres / Support**
     - Call summarisation (similar to your Azure OpenAI call-wrap work
-    - EBOS runs B2B customer support for pharmacies/hospitals → fits well.
+    - B2B customer support for pharmacies/hospitals is a common use case.
 - **Document Processing**
     - OCR + NLP for invoices, shipping documents, prescriptions.
     - Already standard in pharma distribution (reduces manual data entry).
@@ -78,7 +78,7 @@
     - Technical stack: spark-nlp for transformer-based NER and field extraction, spark-ocr for scalable OCR operations on PDF/image inputs.
     - Use cases: automated invoice processing, prescription digitization, shipping document parsing, purchase order extraction.
 - **Medical Product Classification**
-    - Mapping supplier SKUs → EBOS internal catalogues, often via multi-label classification.
+    - Mapping supplier SKUs → internal catalogues, often via multi-label classification.
 ## 6. **Animal Health / Pet Care**
 - **Demand & Trend Modelling for Pet Food / Care Products**
     - Predicting seasonal pet product sales, optimizing marketing.
@@ -86,7 +86,7 @@
     - Recommender engines (collaborative filtering, deep learning ranking).
     - Analogous to Mars Petcare’s ML-based pet food personalization.
 ## 7. **Likely Tech/ML Patterns**
-Given EBOS’s JD + stack (Azure, Databricks
+Given typical job requirements and stack (Azure, Databricks
 Senior Machine Learning Enginee…
 - Heavy use of **Spark MLlib / MLflow** for pipeline management.
 - Azure ML + Databricks for orchestration.
@@ -94,4 +94,4 @@ Senior Machine Learning Enginee…
 - Early experimentation with **agentic AI** (JD mentions this) → e.g. AI agents managing supply chain alerts end-to-end.
 
 ✅ **Bottom Line**
-EBOS’s most probable ML models = **demand forecasting, replenishment optimisation, fraud/compliance detection, NLP for customer/ops data, and recommenders for B2B retail**. This is highly consistent with peers in health logistics, and matches the “platform-first, greenfield MLOps” flavour in the JD.
+Most probable ML models = **demand forecasting, replenishment optimisation, fraud/compliance detection, NLP for customer/ops data, and recommenders for B2B retail**. This is highly consistent with peers in health logistics, and matches the "platform-first, greenfield MLOps" flavour in typical job descriptions.
