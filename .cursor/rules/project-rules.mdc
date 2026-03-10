@@ -8,7 +8,11 @@ alwaysApply: true
 - Purpose: Experimental platform for exploring Databricks functionality and implementing ML solutions for healthcare/pharmaceutical distribution scenarios
 - Target Domain: EBOS-style supply chain, logistics, and healthcare analytics challenges
 - Platform: Databricks free edition - `dbc-f501771e-54b7.cloud.databricks.com`
-- Scope: Prototyping ML models, data engineering pipelines, and MLOps workflows
+- Scope: General-purpose data generation and domain modelling plus specific use-cases (lunch-and-learn, recommender, demand forecasting, document intelligence, etc.) that consume shared data
+
+### Repo Structure
+- **data/** — Shared relative to all use-cases. Contains generators (healthcare, prescription PDFs) and medallion pipeline. Use-cases read from here; they may add inline transformations but do not own raw/silver/gold.
+- **use_cases/** — One subdirectory per use-case. Each can have its own DAB bundle (jobs, endpoints, interactive compute). DAB resources live under the use-case or data component they belong to (see bundle_structure.md).
 
 ### Key Modelling Focus Areas
 - Supply Chain Optimization: Demand forecasting, inventory management, logistics routing

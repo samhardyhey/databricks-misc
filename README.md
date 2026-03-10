@@ -2,7 +2,12 @@
 
 ## Project Overview
 
-This project serves as an experimental platform for exploring Databricks functionality and implementing ML solutions for healthcare/pharmaceutical distribution scenarios. We're using the Databricks free edition to prototype various machine learning models and data engineering pipelines that could be applicable to supply chain, logistics, and healthcare analytics challenges.
+This project is an experimental platform for exploring Databricks functionality and implementing ML solutions for healthcare/pharmaceutical distribution scenarios. It combines **general-purpose data generation and domain modelling practice** with **specific use-cases** that consume shared data.
+
+**Scope:**
+- **Shared data foundation**: Synthetic healthcare data (generators + medallion) in `data/` — common to all use-cases. Use-cases may add inline transformations (e.g. derived columns for a given model) but do not duplicate raw/silver/gold pipelines.
+- **Use-cases**: Each lives under `use_cases/<name>/` with its own DAB bundle (jobs, endpoints, interactive compute as needed). Examples: lunch-and-learn demos, recommender (train → MLflow → endpoints → app), demand forecasting, document intelligence.
+- **Bundles**: Databricks Asset Bundle resources (jobs, endpoints, etc.) live under the use-case or data component they belong to — e.g. medallion jobs under `data/healthcare_data_medallion`, demand_forecasting jobs under `use_cases/demand_forecasting`. See `bundle_structure.md` for the pattern.
 
 **Key Focus Areas:**
 - Supply chain optimization (demand forecasting, inventory management, logistics routing)
@@ -16,6 +21,17 @@ This project serves as an experimental platform for exploring Databricks functio
 - **Development**: Local development with Databricks Connect for remote execution
 - **ML/AI**: PySpark MLlib, MLflow, Azure ML integration
 - **Data**: Unity Catalog for data governance, flat file organization for Databricks compatibility
+
+## Repo Structure
+
+- **`data/`** — Shared data generators and medallion. Consumed by all use-cases.
+  - `healthcare_data_generator` — DAB bundle; writes raw tables to Unity Catalog.
+  - `healthcare_data_medallion` — DAB bundle; dbt bronze/silver/gold.
+  - `prescription_pdf_generator` — General-purpose prescription PDF generation (no medallion). Document-intelligence annotation app lives under `use_cases/document_intelligence/annotator`.
+- **`use_cases/`** — One directory per use-case; each can contain notebooks, apps, and its own DAB bundle (jobs/endpoints/interactive).
+  - `lunch_and_learn` — Demos: lineage, dashboards, Genie, prediction-serving apps, synthetic data app.
+  - `recommender` — Train models, MLflow, deploy endpoints, small Databricks app.
+  - `demand_forecasting`, `document_intelligence`, etc.
 
 ## Todo List
 

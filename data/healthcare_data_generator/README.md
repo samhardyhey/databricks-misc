@@ -104,11 +104,16 @@ Each table includes metadata columns (`_ingestion_timestamp`, `_source`) for dat
 
 ## ML Use Cases
 
-This data supports all the ML scenarios outlined in the project:
-- **Demand Forecasting**: Time-series data with seasonal patterns
-- **Inventory Optimization**: Stock levels, reorder points, expiry tracking
-- **Churn Prediction**: Customer behavior and order patterns
-- **Recommender Systems**: Product-customer interaction data
-- **Anomaly Detection**: Temperature monitoring and unusual patterns
-- **Fraud Detection**: Order patterns and regulatory compliance
-- **NLP Applications**: Special instructions and document processing
+This data supports the ML scenarios outlined in the project (`use_cases/` and `use_cases/MODELLING.md`). Use-cases may add inline transformations (e.g. derived columns or labels) on top of medallion outputs; the generator aims to provide the base needed for most of them.
+
+| Use case | Primary tables | Notes |
+|----------|----------------|-------|
+| **Demand forecasting** | orders, products, pharmacies/hospitals | Order date, quantity, product_id, customer_id; use-case can aggregate to SKU × site × time. |
+| **Inventory / replenishment** | inventory, products, orders, supply_chain_events | Reorder levels, expiry, stock; gold layer adds derived features. |
+| **Churn / retention** | orders, pharmacies, hospitals | Customer_id, order history, order_date; gold_ml_ready_dataset has customer_value_score, days_since_last_order. |
+| **Recommender** | orders, products, pharmacies/hospitals | (customer_id, product_id, quantity, order_date) = implicit interactions; product attributes in products. Use-case can derive ratings/scores from quantity/recency. |
+| **Anomaly detection** | supply_chain_events, orders | Temperature, timestamps, order patterns; use-case can add thresholds/labels. |
+| **Fraud / compliance** | orders, products | Order patterns, controlled substances (is_controlled_substance), payment_terms; use-case can add rule/ML labels. |
+| **NLP (e.g. instructions)** | orders.special_instructions | Free text per order; use-case can add classification/extraction targets. |
+
+**Not covered by this generator (use-case or other data):** Logistics/routing (no routes/vehicles/travel times), warehouse CV (no images), call centre NLP (no transcripts). Document intelligence uses `data/prescription_pdf_generator` and its own pipelines.
