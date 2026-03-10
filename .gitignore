@@ -56,3 +56,4 @@ run_results.json
 dbt.log
 dbt_modules/
 prescription_pdfs/
+.pytest_cache/
