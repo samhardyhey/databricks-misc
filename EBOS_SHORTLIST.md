@@ -51,19 +51,34 @@
 
 ### Databricks Architecture
 
+**Data Pipeline** (dbt medallion):
+```
+data/healthcare_data_medallion/
+├── bronze/
+│   ├── bronze_interactions.sql        # NEW: Raw interaction events
+│   └── bronze_substitutions.sql       # NEW: Raw substitution events
+│
+├── silver/
+│   ├── silver_interactions.sql        # NEW: Cleansed interactions with joins
+│   └── silver_substitutions.sql       # NEW: Validated substitution events
+│
+└── gold/
+    ├── gold_reco_features.sql         # NEW: Aggregated features for training
+    │   └── Purchase history, co-occurrence matrices, time-decay weights
+    ├── gold_reco_training_set.sql     # NEW: ML-ready dataset (positive/negative examples)
+    └── gold_reco_candidates.sql       # Batch-scored recommendations (top-50 per customer)
+```
+
 **Training Workflow** (scheduled weekly):
 ```
 jobs/recommendation_engine_training/
-├── 1_feature_engineering.py          # DLT pipeline
-│   └── bronze_interactions → silver_interactions → gold_reco_features
-│   └── Aggregate purchase history, co-occurrence matrices, product embeddings
-│
-├── 2_model_training.py                # Model training job
+├── 1_model_training.py                # Model training job
+│   └── Load gold_reco_training_set from Unity Catalog
 │   └── Train item-similarity, ALS, LightGBM models
 │   └── Log to MLflow with metrics (precision@5, recall@10, NDCG)
 │   └── Register winning model to Unity Catalog (workspace.default.reco_models)
 │
-└── 3_batch_scoring.py                 # Candidate generation
+└── 2_batch_scoring.py                 # Candidate generation
     └── Score top-50 recommendations per customer
     └── Write to gold_reco_candidates (partitioned by customer_id)
     └── Cache for 7 days, refresh weekly
@@ -81,24 +96,56 @@ jobs/recommendation_engine_training/
 2. Log recommendation shown → `silver_recommendation_events`
 3. Log acceptance/rejection → feedback loop for retraining
 
+**Databricks App** (Streamlit):
+- **Purpose**: Interactive recommendation testing, monitoring, and live demonstration
+- **Features**:
+  - **Live Predictions**: Real-time model inference via serving endpoint
+    - Enter customer ID + optional cart context → invoke model → display recommendations
+    - Shows model scores, reasoning, margin impact in real-time
+  - **Batch Recommendations**: Query pre-computed `gold_reco_candidates` table
+    - Fast lookup for existing cached recommendations
+    - Compare batch vs real-time predictions
+  - **Model Comparison**: A/B test different model versions (baseline vs challenger)
+  - **Performance Dashboard**: Live metrics (precision@K, acceptance rates, margin lift)
+  - **Product Similarity Explorer**: Search products → see similar items with feature comparison
+- **Tech Stack**: Streamlit + Databricks SQL connector + Model Serving API
+- **Deployment**: Databricks App via DAB bundle
+- **Users**: ML team, product managers, business stakeholders
+
 **File Structure**:
 ```
 databricks-misc/
 ├── data/
-│   └── healthcare_data_generator/
-│       └── src/
-│           ├── generate_recommendation_data.py  # NEW: substitutions, interactions
-│           └── ...
+│   ├── healthcare_data_generator/
+│   │   └── src/
+│   │       ├── generate_recommendation_data.py  # NEW: substitutions, interactions
+│   │       └── ...
+│   │
+│   └── healthcare_data_medallion/              # EXTEND existing dbt project
+│       └── src/models/
+│           ├── bronze/
+│           │   ├── bronze_interactions.sql      # NEW
+│           │   └── bronze_substitutions.sql    # NEW
+│           ├── silver/
+│           │   ├── silver_interactions.sql      # NEW
+│           │   └── silver_substitutions.sql    # NEW
+│           └── gold/
+│               ├── gold_reco_features.sql       # NEW
+│               ├── gold_reco_training_set.sql  # NEW
+│               └── gold_reco_candidates.sql    # NEW
 │
 └── modelling/
     └── recommendation_engine/                   # NEW MODULE
         ├── README.md
-        ├── requirements.txt                     # implicit, lightgbm, scikit-learn
+        ├── requirements.txt                     # implicit, lightgbm, scikit-learn, streamlit
         ├── item_similarity.py                   # Phase 1
         ├── collaborative_filtering.py           # Phase 2 (ALS)
         ├── hybrid_ranker.py                     # Phase 3 (LightGBM)
         ├── feature_engineering.py
-        └── evaluation.py
+        ├── evaluation.py
+        └── app/                                 # NEW: Databricks App
+            ├── recommendation_dashboard.py      # Streamlit app
+            └── requirements.txt                 # streamlit, databricks-sql-connector
 ```
 
 ---
@@ -170,14 +217,44 @@ jobs/inventory_optimization/
 - Optional: real-time API for "should I reorder now?" queries
 - Alerts: send notifications when inventory falls below reorder point
 
+**Data Pipeline** (dbt medallion):
+```
+data/healthcare_data_medallion/
+├── bronze/
+│   ├── bronze_expiry_batches.sql      # NEW: Raw expiry data
+│   └── bronze_writeoffs.sql           # NEW: Raw writeoff events
+│
+├── silver/
+│   ├── silver_inventory_enhanced.sql  # NEW: Inventory with expiry/batch data
+│   └── silver_writeoffs.sql           # NEW: Validated writeoff events
+│
+└── gold/
+    ├── gold_demand_forecast.sql       # NEW: Forecasted demand (P50/P75/P90)
+    ├── gold_writeoff_risk_scores.sql  # NEW: Expiry risk predictions
+    └── gold_replenishment_recommendations.sql  # NEW: Reorder recommendations
+```
+
 **File Structure**:
 ```
 databricks-misc/
 ├── data/
-│   └── healthcare_data_generator/
-│       └── src/
-│           ├── generate_inventory_data.py      # NEW: expiry, writeoffs, POs
-│           └── ...
+│   ├── healthcare_data_generator/
+│   │   └── src/
+│   │       ├── generate_inventory_data.py      # NEW: expiry, writeoffs, POs
+│   │       └── ...
+│   │
+│   └── healthcare_data_medallion/              # EXTEND existing dbt project
+│       └── src/models/
+│           ├── bronze/
+│           │   ├── bronze_expiry_batches.sql    # NEW
+│           │   └── bronze_writeoffs.sql        # NEW
+│           ├── silver/
+│           │   ├── silver_inventory_enhanced.sql # NEW
+│           │   └── silver_writeoffs.sql        # NEW
+│           └── gold/
+│               ├── gold_demand_forecast.sql    # NEW
+│               ├── gold_writeoff_risk_scores.sql # NEW
+│               └── gold_replenishment_recommendations.sql # NEW
 │
 └── modelling/
     ├── demand_forecasting/                     # EXISTS - reuse
@@ -261,23 +338,73 @@ jobs/customer_service_agent/
 - Log all conversations to `silver_agent_conversations`
 - Human-in-the-loop: escalate to agent if confidence < 0.7
 
+**Databricks App** (Streamlit):
+- **Purpose**: Agent administration, knowledge management, and performance monitoring
+- **Features**:
+  - **Knowledge Base Manager**: Upload/edit/delete FAQ documents, rebuild vector index
+  - **Agent Testing Interface**: Enter test queries → see intent classification + RAG retrieval + generated response
+  - **Conversation Monitor**: View recent agent interactions with quality scores
+  - **Human Review Queue**: Review low-confidence responses before sending to customers
+  - **Performance Dashboard**: Resolution rates, escalation rates, customer satisfaction metrics
+  - **Intent Debugger**: Test intent classifier with confidence scores
+- **Tech Stack**: Streamlit + Vector Search API + Databricks SQL connector
+- **Deployment**: Databricks App via DAB bundle
+- **Users**: Customer service managers, QA team, ML team
+
+**Data Pipeline** (dbt medallion - separate project):
+```
+data/customer_service_medallion/                # NEW dbt project
+├── bronze/
+│   ├── bronze_cases.sql                        # NEW: Raw customer service cases
+│   ├── bronze_messages.sql                     # NEW: Raw case messages
+│   └── bronze_knowledge_docs.sql               # NEW: Raw knowledge documents
+│
+├── silver/
+│   ├── silver_cases.sql                        # NEW: Validated cases
+│   ├── silver_messages.sql                     # NEW: Cleansed messages with sentiment
+│   └── silver_knowledge_docs.sql               # NEW: Processed documents for indexing
+│
+└── gold/
+    ├── gold_agent_conversations.sql            # NEW: Anonymized conversation logs
+    ├── gold_agent_performance.sql              # NEW: Performance metrics
+    └── gold_knowledge_index.sql                # NEW: Document chunks for vector search
+```
+
 **File Structure**:
 ```
 databricks-misc/
 ├── data/
-│   └── customer_service_generator/            # NEW DATA BUNDLE
-│       ├── databricks.yml
-│       └── src/
-│           └── generate_cs_data.py            # Cases, messages, knowledge docs
+│   ├── customer_service_generator/            # NEW DATA BUNDLE
+│   │   ├── databricks.yml
+│   │   └── src/
+│   │       └── generate_cs_data.py            # Cases, messages, knowledge docs
+│   │
+│   └── customer_service_medallion/            # NEW dbt project
+│       └── src/models/
+│           ├── bronze/
+│           │   ├── bronze_cases.sql
+│           │   ├── bronze_messages.sql
+│           │   └── bronze_knowledge_docs.sql
+│           ├── silver/
+│           │   ├── silver_cases.sql
+│           │   ├── silver_messages.sql
+│           │   └── silver_knowledge_docs.sql
+│           └── gold/
+│               ├── gold_agent_conversations.sql
+│               ├── gold_agent_performance.sql
+│               └── gold_knowledge_index.sql
 │
 └── modelling/
     └── customer_service_agent/                # NEW MODULE
         ├── README.md
-        ├── requirements.txt                   # sentence-transformers, openai, fastapi
+        ├── requirements.txt                   # sentence-transformers, openai, fastapi, streamlit
         ├── intent_classifier.py
         ├── rag_pipeline.py
         ├── agent_orchestrator.py              # Main logic
-        └── evaluation.py
+        ├── evaluation.py
+        └── app/                               # NEW: Databricks App
+            ├── agent_admin_dashboard.py       # Streamlit app
+            └── requirements.txt               # streamlit, databricks-sql-connector
 ```
 
 ---
@@ -360,13 +487,64 @@ jobs/document_intelligence_training/
 - Finance team dashboard shows exceptions queue
 - Approved documents trigger downstream integration (ERP posting)
 
+**Databricks App** (Streamlit):
+- **Purpose**: Human-in-the-loop document review and exception handling
+- **Features**:
+  - **Exception Queue**: Documents flagged for manual review with confidence scores
+  - **Side-by-Side Viewer**: Original PDF displayed alongside extracted fields
+  - **Field Correction Interface**: Edit extracted values, mark as correct/incorrect
+  - **Bulk Approval**: Approve multiple high-confidence documents at once
+  - **Extraction Analytics**: Success rates by document type, common error patterns
+  - **Feedback Loop**: Corrections feed back into model retraining dataset
+- **Tech Stack**: Streamlit with PDF viewer component + Databricks SQL connector
+- **Deployment**: Databricks App via DAB bundle
+- **Users**: Finance team, AP clerks, document processing team
+
+**Annotation Tool** (Existing Asset):
+- **Reuse**: Existing prescription PDF annotation app at `/data/prescription_pdf_generator/annotator/`
+- **Purpose**: Create labeled training data for NER model fine-tuning
+- **Adaptation**: Extend for invoice/PO annotation (similar field extraction patterns)
+- **Integration**: Labeled data feeds into `gold_doc_labels` table for model training
+
+**Data Pipeline** (dbt medallion - separate project):
+```
+data/document_intelligence_medallion/          # NEW dbt project
+├── bronze/
+│   └── bronze_documents.sql                   # NEW: Raw documents from Auto Loader
+│
+├── silver/
+│   ├── silver_doc_pages.sql                   # NEW: OCR text extraction results
+│   └── silver_doc_fields_extracted.sql        # NEW: NER extracted fields
+│
+└── gold/
+    ├── gold_doc_labels.sql                    # NEW: Ground truth annotations
+    ├── gold_doc_exceptions_queue.sql          # NEW: Low-confidence extractions
+    └── gold_doc_posting_ready.sql             # NEW: Approved documents for ERP
+```
+
 **File Structure**:
 ```
 databricks-misc/
 ├── data/
-│   └── document_intelligence_generator/ # NEW: invoice/PO PDF generator
-│       └── src/
-│           └── generate_documents.py
+│   ├── document_intelligence_generator/ # NEW: invoice/PO PDF generator
+│   │   └── src/
+│   │       └── generate_documents.py
+│   │
+│   ├── prescription_pdf_generator/      # EXISTS - reuse annotation app
+│   │   └── annotator/
+│   │       └── app.py                   # Adapt for invoice/PO annotation
+│   │
+│   └── document_intelligence_medallion/ # NEW dbt project
+│       └── src/models/
+│           ├── bronze/
+│           │   └── bronze_documents.sql
+│           ├── silver/
+│           │   ├── silver_doc_pages.sql
+│           │   └── silver_doc_fields_extracted.sql
+│           └── gold/
+│               ├── gold_doc_labels.sql
+│               ├── gold_doc_exceptions_queue.sql
+│               └── gold_doc_posting_ready.sql
 │
 └── modelling/
     └── document_intelligence/           # EXISTS - extend
@@ -376,7 +554,10 @@ databricks-misc/
         ├── ocr_pipeline.py              # NEW
         ├── ner_field_extraction.py      # NEW
         ├── train_ner.py                 # NEW
-        └── evaluation.py                # NEW
+        ├── evaluation.py                # NEW
+        └── app/                         # NEW: Databricks App
+            ├── doc_review_dashboard.py  # Streamlit app for exception review
+            └── requirements.txt         # streamlit, databricks-sql-connector
 ```
 
 ---
@@ -472,14 +653,52 @@ jobs/franchise_analytics/
 - Dashboards (Databricks SQL) for each sub-project
 - Weekly automated reports (email/Slack integration)
 
+**Data Pipeline** (dbt medallion):
+```
+data/healthcare_data_medallion/                # EXTEND existing dbt project
+├── bronze/
+│   ├── bronze_warehouse_costs.sql             # NEW: DC/SKU costs
+│   ├── bronze_competitor_products.sql         # NEW: Scraped competitor data
+│   └── bronze_store_sales.sql                 # NEW: Store/franchise sales
+│
+├── silver/
+│   ├── silver_warehouse_costs.sql             # NEW: Validated cost data
+│   ├── silver_competitor_products.sql         # NEW: Cleansed competitor data
+│   └── silver_store_sales.sql                 # NEW: Validated store sales
+│
+└── gold/
+    ├── gold_range_recommendations.sql         # NEW: SKU ranging recommendations
+    ├── gold_competitor_price_history.sql      # NEW: Competitor pricing trends
+    ├── gold_store_clusters.sql                # NEW: Store similarity clusters
+    ├── gold_promo_impact.sql                  # NEW: Promotion effectiveness
+    └── gold_store_product_recs.sql            # NEW: Store-level recommendations
+```
+
 **File Structure**:
 ```
 databricks-misc/
 ├── data/
-│   └── healthcare_data_generator/
-│       └── src/
-│           ├── generate_ranging_data.py        # NEW
-│           └── generate_franchise_data.py      # NEW
+│   ├── healthcare_data_generator/
+│   │   └── src/
+│   │       ├── generate_ranging_data.py        # NEW
+│   │       └── generate_franchise_data.py      # NEW
+│   │
+│   └── healthcare_data_medallion/              # EXTEND existing dbt project
+│       └── src/models/
+│           ├── bronze/
+│           │   ├── bronze_warehouse_costs.sql  # NEW
+│           │   ├── bronze_competitor_products.sql # NEW
+│           │   └── bronze_store_sales.sql     # NEW
+│           ├── silver/
+│           │   ├── silver_warehouse_costs.sql  # NEW
+│           │   ├── silver_competitor_products.sql # NEW
+│           │   └── silver_store_sales.sql     # NEW
+│           └── gold/
+│               ├── gold_range_recommendations.sql # NEW
+│               ├── gold_competitor_price_history.sql # NEW
+│               ├── gold_store_clusters.sql    # NEW
+│               ├── gold_promo_impact.sql      # NEW
+│               └── gold_store_product_recs.sql # NEW
 │
 └── modelling/
     ├── ranging_consolidation/                  # NEW MODULE
@@ -503,21 +722,6 @@ databricks-misc/
 
 ---
 
-## Implementation Priority & Roadmap
-
-**Immediate (Q1)**:
-1. ✅ #1 Recommendation Engine (4-6 weeks) - highest ROI, clear requirements
-2. ✅ #2 Inventory Optimization (2-3 weeks) - leverage existing forecasting, add optimization layer
-
-**Next (Q2)**:
-3. #4 Document Intelligence (3-4 weeks) - leverage existing Spark NLP setup
-4. #3 Customer Service Agents (3-4 weeks) - GenAI experimentation, lower risk
-
-**Strategic (Q3+)**:
-5. #5 AI Powered Insights & Analytics - bundle of sub-projects, priority TBD based on stakeholder feedback
-
----
-
 ## Development Patterns
 
 **For all projects**:
@@ -532,6 +736,12 @@ databricks-misc/
 - Create separate generators for domain-specific data (customer service, documents)
 - Use Faker library patterns for synthetic data
 - Maintain referential integrity with existing tables
+
+**Data Transformation**:
+- **dbt medallion architecture** for all projects (bronze → silver → gold)
+- Extend existing `healthcare_data_medallion` for projects #1, #2, #5
+- Create separate dbt projects for projects #3, #4 (orthogonal domains)
+- Consistent patterns: data quality checks, incremental models, macro reuse
 
 **Modelling**:
 - Start with simple baselines (sklearn, heuristics)
