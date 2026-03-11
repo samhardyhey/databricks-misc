@@ -9,9 +9,7 @@ from faker import Faker
 from loguru import logger
 
 from data.prescription_pdf_generator.prescription_pdf_generator import (
-    create_prescription_pdf,
-    generate_prescription_data,
-)
+    create_prescription_pdf, generate_prescription_data)
 
 
 def generate_prescription_pdfs(

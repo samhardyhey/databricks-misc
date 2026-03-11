@@ -12,7 +12,6 @@ from typing import Dict, Optional
 # Import the existing healthcare data generator
 from healthcare_data_generator import HealthcareDataGenerator
 from loguru import logger
-
 # Databricks imports
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import current_timestamp, lit

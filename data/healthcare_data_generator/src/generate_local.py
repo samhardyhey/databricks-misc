@@ -9,9 +9,7 @@ from pathlib import Path
 from loguru import logger
 
 from data.healthcare_data_generator.src.healthcare_data_generator import (
-    DEFAULT_SIZES,
-    HealthcareDataGenerator,
-)
+    DEFAULT_SIZES, HealthcareDataGenerator)
 
 
 def main() -> None:

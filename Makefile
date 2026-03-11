@@ -109,16 +109,11 @@ data-local-generate-pdfs:
 
 data-local-dbt-run:
 	@test -d $(MEDALLION_DIR) || (echo "Medallion dir missing: $(MEDALLION_DIR)" && exit 1)
-	@test -x $(DBT_BIN) || (echo "dbt not found. Run: make install-dbt" && exit 1)
+	@test -x $(DBT_BIN) || (echo "dbt not found. Run: make install" && exit 1)
 	cd $(MEDALLION_DIR) && DBT_PROFILES_DIR=$(MEDALLION_DIR)/dbt_profiles DBT_DUCKDB_PATH=$(REPO_ROOT)/data/local/medallion.duckdb $(DBT_BIN) run --profile duckdb
 	@echo "dbt run (duckdb) done."
 
 document_intelligence-generate-pdfs: data-local-generate-pdfs
-
-install-dbt:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
-	cd $(REPO_ROOT) && $(PY) -m pip install "dbt-duckdb>=1.9.0"
-	@echo "dbt-duckdb installed. You can run: make data-local-dbt-run (after setting up DuckDB profile + raw data)."
 
 # --- Marvelous MLOps (sub-usecase: own venv and requirements.txt) ---
 marvelous_mlops-venv:

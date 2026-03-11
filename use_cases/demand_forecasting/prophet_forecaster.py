@@ -14,11 +14,9 @@ import numpy as np
 import pandas as pd
 from loguru import logger
 from prophet import Prophet
-from sklearn.metrics import (
-    mean_absolute_error,
-    mean_absolute_percentage_error,
-    mean_squared_error,
-)
+from sklearn.metrics import (mean_absolute_error,
+                             mean_absolute_percentage_error,
+                             mean_squared_error)
 
 warnings.filterwarnings("ignore")
 
