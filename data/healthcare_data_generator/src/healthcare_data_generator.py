@@ -306,9 +306,7 @@ class HealthcareDataGenerator:
                 "wholesale_price": base_price * 0.7,
                 "retail_price": base_price * 1.3,
                 "is_prescription": is_prescription,
-                "is_controlled_substance": self.fake.boolean(
-                    chance_of_getting_true=5
-                ),
+                "is_controlled_substance": self.fake.boolean(chance_of_getting_true=5),
                 "requires_cold_chain": self.fake.boolean(chance_of_getting_true=15),
                 "storage_type": self.fake.storage_type(),
                 "expiry_months": self.fake.random_int(min=12, max=60),
@@ -332,7 +330,9 @@ class HealthcareDataGenerator:
                 row["therapeutic_category"] = category
                 row["brand"] = manufacturer
                 row["generic_equivalent_id"] = (
-                    self.fake.random_element([f"GEN_{self.fake.random_int(min=1, max=500)}"])
+                    self.fake.random_element(
+                        [f"GEN_{self.fake.random_int(min=1, max=500)}"]
+                    )
                     if self.fake.boolean(chance_of_getting_true=40)
                     else None
                 )
@@ -603,9 +603,7 @@ class HealthcareDataGenerator:
         )
         product_ids = list(product_df["product_id"].values)
         for _ in range(n_extra):
-            action = self.fake.random_element(
-                ["viewed", "searched", "added_to_cart"]
-            )
+            action = self.fake.random_element(["viewed", "searched", "added_to_cart"])
             data.append(
                 {
                     "interaction_id": f"INT_{uuid.uuid4().hex[:12].upper()}",
@@ -641,9 +639,7 @@ class HealthcareDataGenerator:
             substituted = self.fake.random_element(
                 [p for p in product_ids if p != requested]
             )
-            margin_delta = round(
-                (self.fake.random_int(min=-10, max=15) / 100.0), 2
-            )
+            margin_delta = round((self.fake.random_int(min=-10, max=15) / 100.0), 2)
             data.append(
                 {
                     "substitution_id": f"SUB_{self.fake.random_int(min=100000, max=999999)}",
@@ -651,7 +647,11 @@ class HealthcareDataGenerator:
                     "requested_product_id": requested,
                     "substituted_product_id": substituted,
                     "reason": self.fake.random_element(
-                        ["out_of_stock", "generic_substitution", "therapeutic_alternative"]
+                        [
+                            "out_of_stock",
+                            "generic_substitution",
+                            "therapeutic_alternative",
+                        ]
                     ),
                     "customer_accepted": self.fake.boolean(chance_of_getting_true=85),
                     "margin_delta": margin_delta,
@@ -671,9 +671,7 @@ class HealthcareDataGenerator:
         logger.info("Generating inventory_availability...")
         inv = inventory_df.copy()
         inv["warehouse_id"] = inv["pharmacy_id"]
-        snapshot_date = self.fake.date_between(
-            start_date="-30d", end_date="today"
-        )
+        snapshot_date = self.fake.date_between(start_date="-30d", end_date="today")
         agg = inv.groupby(["product_id", "warehouse_id"], as_index=False).agg(
             quantity_available=("current_stock", "sum")
         )
@@ -683,9 +681,11 @@ class HealthcareDataGenerator:
         )
         agg["supplier_id"] = (
             agg["product_id"].map(
-                lambda p: prod.loc[p, "supplier_id"]
-                if "supplier_id" in prod.columns and p in prod.index
-                else None
+                lambda p: (
+                    prod.loc[p, "supplier_id"]
+                    if "supplier_id" in prod.columns and p in prod.index
+                    else None
+                )
             )
             if "supplier_id" in product_df.columns
             else None
@@ -742,9 +742,7 @@ class HealthcareDataGenerator:
         data = []
         for _ in range(n_events):
             product_id = self.fake.random_element(product_df["product_id"].values)
-            warehouse_id = self.fake.random_element(
-                warehouse_df["warehouse_id"].values
-            )
+            warehouse_id = self.fake.random_element(warehouse_df["warehouse_id"].values)
             cost = float(
                 product_df[product_df["product_id"] == product_id][
                     "wholesale_price"
@@ -780,12 +778,8 @@ class HealthcareDataGenerator:
         logger.info(f"Generating {n_orders} purchase_orders...")
         data = []
         for _ in range(n_orders):
-            supplier_id = self.fake.random_element(
-                supplier_df["supplier_id"].values
-            )
-            product_id = self.fake.random_element(
-                product_df["product_id"].values
-            )
+            supplier_id = self.fake.random_element(supplier_df["supplier_id"].values)
+            product_id = self.fake.random_element(product_df["product_id"].values)
             unit_cost = float(
                 product_df[product_df["product_id"] == product_id][
                     "wholesale_price"
@@ -839,13 +833,13 @@ class HealthcareDataGenerator:
                             "fill_rate": round(
                                 self.fake.random.random() * 0.2 + 0.8, 2
                             ),
-                            "avg_lead_time_days": self.fake.random_int(
-                                min=3, max=14
-                            ),
+                            "avg_lead_time_days": self.fake.random_int(min=3, max=14),
                             "lead_time_std": round(
                                 self.fake.random.random() * 3 + 0.5, 2
                             ),
-                            "month": (date.today() - timedelta(days=30 * (n_months - m))).replace(day=1),
+                            "month": (
+                                date.today() - timedelta(days=30 * (n_months - m))
+                            ).replace(day=1),
                         }
                     )
         df = pd.DataFrame(data)
@@ -866,12 +860,8 @@ class HealthcareDataGenerator:
                     {
                         "warehouse_id": wh["warehouse_id"],
                         "product_id": prod["product_id"],
-                        "storage_cost": round(
-                            self.fake.random.random() * 50 + 5, 2
-                        ),
-                        "handling_cost": round(
-                            self.fake.random.random() * 20 + 2, 2
-                        ),
+                        "storage_cost": round(self.fake.random.random() * 50 + 5, 2),
+                        "handling_cost": round(self.fake.random.random() * 20 + 2, 2),
                         "period": self.fake.date_between(
                             start_date="-3m", end_date="today"
                         ).replace(day=1),
@@ -924,8 +914,7 @@ class HealthcareDataGenerator:
                         "competitor_id": row["competitor_id"],
                         "product_name": row["product_name"],
                         "price": round(
-                            base_price
-                            * (1 + (self.fake.random.random() - 0.5) * 0.1),
+                            base_price * (1 + (self.fake.random.random() - 0.5) * 0.1),
                             2,
                         ),
                         "date": dt,
@@ -945,9 +934,7 @@ class HealthcareDataGenerator:
         logger.info("Generating store_sales...")
         data = []
         for _, ph in pharmacy_df.iterrows():
-            for _, prod in product_df.sample(
-                n=min(30, len(product_df))
-            ).iterrows():
+            for _, prod in product_df.sample(n=min(30, len(product_df))).iterrows():
                 for _ in range(max(1, min(10, n_days))):
                     dt = self.fake.date_between(
                         start_date=f"-{n_days}d", end_date="today"
@@ -967,9 +954,7 @@ class HealthcareDataGenerator:
         logger.info(f"Generated {len(df)} store_sales rows")
         return df
 
-    def generate_store_attributes(
-        self, pharmacy_df: pd.DataFrame
-    ) -> pd.DataFrame:
+    def generate_store_attributes(self, pharmacy_df: pd.DataFrame) -> pd.DataFrame:
         """Generate store_attributes (store_id = pharmacy_id)."""
         logger.info("Generating store_attributes...")
         df = pharmacy_df[["pharmacy_id", "address", "state"]].copy()
@@ -980,14 +965,19 @@ class HealthcareDataGenerator:
                 "state": "region",
             }
         )
-        df["size_sqm"] = [
-            self.fake.random_int(min=50, max=300) for _ in range(len(df))
-        ]
+        df["size_sqm"] = [self.fake.random_int(min=50, max=300) for _ in range(len(df))]
         df["store_type"] = "pharmacy"
         df["cluster_id"] = df["region"].map(
-            lambda r: {"NSW": "C1", "VIC": "C1", "QLD": "C2", "WA": "C2", "SA": "C3", "TAS": "C3", "ACT": "C1", "NT": "C2"}.get(
-                r, "C1"
-            )
+            lambda r: {
+                "NSW": "C1",
+                "VIC": "C1",
+                "QLD": "C2",
+                "WA": "C2",
+                "SA": "C3",
+                "TAS": "C3",
+                "ACT": "C1",
+                "NT": "C2",
+            }.get(r, "C1")
         )
         logger.info(f"Generated {len(df)} store_attributes")
         return df
@@ -1004,9 +994,7 @@ class HealthcareDataGenerator:
         store_ids = list(pharmacy_df["pharmacy_id"].values)
         product_ids = list(product_df["product_id"].values)
         for i in range(n):
-            start = self.fake.date_between(
-                start_date="-6m", end_date="today"
-            )
+            start = self.fake.date_between(start_date="-6m", end_date="today")
             end = start + timedelta(days=self.fake.random_int(min=7, max=60))
             data.append(
                 {
@@ -1058,7 +1046,11 @@ class HealthcareDataGenerator:
 
         # Recommendation Engine
         product_interactions = self.generate_product_interactions(
-            orders, products, pharmacies, hospitals, n_extra=n_product_interactions_extra
+            orders,
+            products,
+            pharmacies,
+            hospitals,
+            n_extra=n_product_interactions_extra,
         )
         substitution_events = self.generate_substitution_events(
             orders, products, ratio=substitution_ratio
@@ -1089,9 +1081,7 @@ class HealthcareDataGenerator:
             pharmacies, products, n_days=store_sales_days
         )
         store_attributes = self.generate_store_attributes(pharmacies)
-        promotions = self.generate_promotions(
-            n_promotions, pharmacies, products
-        )
+        promotions = self.generate_promotions(n_promotions, pharmacies, products)
 
         datasets = {
             "pharmacies": pharmacies,

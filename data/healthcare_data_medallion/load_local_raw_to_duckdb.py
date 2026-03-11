@@ -2,6 +2,7 @@
 Load data/local/*.csv into DuckDB as schema healthcare_dev_raw (tables healthcare_*).
 Run from repo root so paths resolve. Used by make data-local-dbt-run so dbt has raw sources.
 """
+
 import argparse
 import os
 from pathlib import Path
@@ -57,7 +58,9 @@ def main() -> None:
 
     repo_root = Path(os.environ.get("REPO_ROOT", ".")).resolve()
     if not (repo_root / "data" / "local").is_dir():
-        repo_root = Path(__file__).resolve().parent.parent.parent  # medallion -> data -> repo
+        repo_root = (
+            Path(__file__).resolve().parent.parent.parent
+        )  # medallion -> data -> repo
     csv_dir = Path(args.csv_dir) if args.csv_dir else (repo_root / "data" / "local")
     csv_dir = csv_dir.resolve()
 
@@ -67,12 +70,11 @@ def main() -> None:
     duckdb_path = str(Path(duckdb_path).resolve())
 
     if not csv_dir.is_dir():
-        raise SystemExit(f"CSV dir not found: {csv_dir}. Run: make data-local-generate-quick")
+        raise SystemExit(
+            f"CSV dir not found: {csv_dir}. Run: make data-local-generate-quick"
+        )
 
-    present = {
-        name for name in CSV_TO_SOURCE
-        if (csv_dir / f"{name}.csv").exists()
-    }
+    present = {name for name in CSV_TO_SOURCE if (csv_dir / f"{name}.csv").exists()}
     if not present:
         raise SystemExit(
             f"No healthcare CSVs found in {csv_dir}. Run: make data-local-generate-quick"
@@ -81,7 +83,7 @@ def main() -> None:
     if missing:
         logger.warning(f"Optional CSVs not found (will skip): {sorted(missing)}")
 
-    csv_dir_str = str(csv_dir)
+    str(csv_dir)
     conn = duckdb.connect(duckdb_path)
     conn.execute(f"CREATE SCHEMA IF NOT EXISTS {RAW_SCHEMA}")
 
@@ -96,7 +98,9 @@ def main() -> None:
             FROM read_csv_auto(?)""",
             [str(path)],
         )
-        n = conn.execute(f"SELECT COUNT(*) FROM {RAW_SCHEMA}.{table_name}").fetchone()[0]
+        n = conn.execute(f"SELECT COUNT(*) FROM {RAW_SCHEMA}.{table_name}").fetchone()[
+            0
+        ]
         logger.info(f"Loaded {RAW_SCHEMA}.{table_name} <- {path.name} ({n} rows)")
 
     conn.close()

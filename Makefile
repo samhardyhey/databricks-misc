@@ -24,7 +24,7 @@ DOC_INTEL_PDF_OUTPUT := use_cases/document_intelligence/prescription_pdfs
 MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
 MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
-.PHONY: help cleanup format document_intelligence-generate-pdfs
+.PHONY: help cleanup clean-local-data format document_intelligence-generate-pdfs
 .PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run
 .PHONY: marvelous_mlops-venv marvelous_mlops-fetch-medium marvelous_mlops-fetch-substack marvelous_mlops-fetch-youtube
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
@@ -36,6 +36,7 @@ help:
 	@echo "  make uv-dev               - Install dev deps (autoflake, isort, black)"
 	@echo "  make uv-activate          - Print activate command for .venv"
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
+	@echo "  make clean-local-data     - Remove data/local/, test_output/, prescription_pdfs, medallion target/logs (start again)"
 	@echo "  make format [FMT_ARGS=.]  - Run autoflake, isort, black"
 	@echo ""
 	@echo "  Local (data generation / medallion):"
@@ -79,7 +80,21 @@ cleanup:
 	find $(REPO_ROOT) -type f -name "*.pyc" -delete 2>/dev/null || true
 	find $(REPO_ROOT) -type f -name "*.pyo" -delete 2>/dev/null || true
 	rm -rf $(REPO_ROOT)/.pytest_cache $(REPO_ROOT)/.coverage $(REPO_ROOT)/.mypy_cache 2>/dev/null || true
+	rm -rf $(REPO_ROOT)/data/healthcare_data_medallion/.databricks \
+		$(REPO_ROOT)/data/healthcare_data_medallion/logs \
+		$(REPO_ROOT)/data/healthcare_data_medallion/target 2>/dev/null || true
+	find $(REPO_ROOT) -type d -name ".databricks" -exec rm -rf {} + 2>/dev/null || true
+	find $(REPO_ROOT) -type d -name "target" -exec rm -rf {} + 2>/dev/null || true
+	find $(REPO_ROOT) -type d -name "dbt_packages" -exec rm -rf {} + 2>/dev/null || true
+	find $(REPO_ROOT) -type d -name ".ipynb_checkpoints" -exec rm -rf {} + 2>/dev/null || true
+	find $(REPO_ROOT) -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 	@echo "Cleanup done."
+
+# --- Clean local data (generated CSVs, DuckDB, PDFs, dbt artifacts); start again ---
+clean-local-data:
+	rm -rf $(DATA_LOCAL_DIR) $(REPO_ROOT)/test_output $(REPO_ROOT)/$(DOC_INTEL_PDF_OUTPUT) 2>/dev/null || true
+	rm -rf $(MEDALLION_DIR)/.databricks $(MEDALLION_DIR)/logs $(MEDALLION_DIR)/target $(MEDALLION_DIR)/dbt_packages 2>/dev/null || true
+	@echo "Local data removed. Run make data-local-generate-quick (or data-local-generate) then data-local-duckdb-load and data-local-dbt-run to start again."
 
 # --- Format (autoflake -> isort -> black); requires make uv-dev ---
 FMT_ARGS ?= data use_cases

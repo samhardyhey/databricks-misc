@@ -9,7 +9,9 @@ from pathlib import Path
 from loguru import logger
 
 from data.healthcare_data_generator.src.healthcare_data_generator import (
-    DEFAULT_SIZES, HealthcareDataGenerator)
+    DEFAULT_SIZES,
+    HealthcareDataGenerator,
+)
 
 
 def main() -> None:
@@ -60,7 +62,10 @@ def main() -> None:
         if args.quick
         else {
             **DEFAULT_SIZES,
-            "product_interactions_extra": DEFAULT_SIZES.get("product_interactions", 15000) - 1000,
+            "product_interactions_extra": DEFAULT_SIZES.get(
+                "product_interactions", 15000
+            )
+            - 1000,
             "substitution_ratio": DEFAULT_SIZES.get("substitution_events_ratio", 0.1),
             "purchase_orders": DEFAULT_SIZES.get("purchase_orders", 3000),
             "writeoff_events": DEFAULT_SIZES.get("writeoff_events", 500),
