@@ -5,21 +5,15 @@ alwaysApply: true
 ---
 
 ### Project Overview
-- Purpose: Experimental platform for exploring Databricks functionality and implementing ML solutions for healthcare/pharmaceutical distribution scenarios
-- Target Domain: EBOS-style supply chain, logistics, and healthcare analytics challenges
+- Purpose: Implements the **EBOS AI/ML Technical Implementation Shortlist** (see root EBOS_SHORTLIST.md and README.md). Prioritised use-cases for healthcare/pharmaceutical distribution on Databricks + Unity Catalog.
+- Target Domain: EBOS-style supply chain, logistics, healthcare analytics (recommendation engine, inventory optimisation, document intelligence, customer service agents, insights & analytics).
 - Platform: Databricks free edition - `dbc-f501771e-54b7.cloud.databricks.com`
-- Scope: General-purpose data generation and domain modelling plus specific use-cases (lunch-and-learn, recommender, demand forecasting, document intelligence, etc.) that consume shared data
+- Scope: Shared data foundation (extend healthcare_data_generator/medallion for reuse) plus use-cases under use_cases/<name>/; each use-case has its own DAB bundle where needed.
 
 ### Repo Structure
-- **data/** — Shared relative to all use-cases. Contains generators (healthcare, prescription PDFs) and medallion pipeline. Use-cases read from here; they may add inline transformations but do not own raw/silver/gold.
-- **use_cases/** — One subdirectory per use-case. Each can have its own DAB bundle (jobs, endpoints, interactive compute). DAB resources live under the use-case or data component they belong to (see bundle_structure.md).
-
-### Key Modelling Focus Areas
-- Supply Chain Optimization: Demand forecasting, inventory management, logistics routing
-- Healthcare Analytics: Churn prediction, market forecasting, recommender systems
-- Operational Efficiency: Computer vision, anomaly detection, process optimization
-- Regulatory Compliance: Fraud detection, document processing, compliance automation
-- NLP Applications: Call center automation, document processing, product classification
+- **data/** — Shared data foundation. Generators (healthcare, prescription PDFs) and medallion. Extended incrementally for use-cases; one medallion, n use-cases on top.
+- **use_cases/** — One subdirectory per EBOS use-case (recommendation_engine, demand_forecasting, inventory_optimization, document_intelligence, customer_service_agent, ranging_consolidation, market_intelligence, franchise_analytics). DAB bundles (jobs, endpoints) live under the use-case or data component (bundle_structure.md).
+- **docs/** — OLD_MODELLING.md (pre-EBOS option space), lunch_and_learn.md (session plan; to be aligned with EBOS).
 
 ### Technical Architecture
 - Development Model: Local development with Databricks Connect for remote execution

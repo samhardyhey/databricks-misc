@@ -1,8 +1,10 @@
 # EBOS AI/ML Technical Implementation Shortlist
 
-**Priority Order**: Based on ELT "Business Value vs Complexity" prioritisation  
-**Infrastructure**: Databricks + Unity Catalog (`workspace.default` schema)  
-**Existing Assets**: 
+**Priority Order**: Based on ELT "Business Value vs Complexity" prioritisation
+**Infrastructure**: Databricks + Unity Catalog (`workspace.default` schema)
+**Repo layout**: Use-cases live under `use_cases/<name>/`; DAB bundles (jobs, endpoints, interactive) live under each use-case or data component. New data tables (generator/medallion extensions) are planned and will be implemented incrementally.
+
+**Existing Assets**:
 - Healthcare data generator with medallion architecture (bronze/silver/gold)
 - Demand forecasting models (XGBoost, ETS, Prophet) with MLflow tracking
 - Spark NLP setup for document intelligence
@@ -11,8 +13,8 @@
 
 ## 1️⃣ Recommendation Engine for Ordering ✅ **TOP PRIORITY**
 
-**Business Value**: ~$4.9m p.a. | Enterprise-wide (Healthcare, MedTech, Animal Care)  
-**Use Case**: Recommend similar products and auto-substitutions to reduce sales leakage and increase margins  
+**Business Value**: ~$4.9m p.a. | Enterprise-wide (Healthcare, MedTech, Animal Care)
+**Use Case**: Recommend similar products and auto-substitutions to reduce sales leakage and increase margins
 **Current Status**: ⚠️ Not implemented
 
 ### Data Requirements
@@ -69,19 +71,22 @@ data/healthcare_data_medallion/
     └── gold_reco_candidates.sql       # Batch-scored recommendations (top-50 per customer)
 ```
 
-**Training Workflow** (scheduled weekly):
+**Training Workflow** (scheduled weekly; bundle under use-case):
 ```
-jobs/recommendation_engine_training/
-├── 1_model_training.py                # Model training job
-│   └── Load gold_reco_training_set from Unity Catalog
-│   └── Train item-similarity, ALS, LightGBM models
-│   └── Log to MLflow with metrics (precision@5, recall@10, NDCG)
-│   └── Register winning model to Unity Catalog (workspace.default.reco_models)
-│
-└── 2_batch_scoring.py                 # Candidate generation
-    └── Score top-50 recommendations per customer
-    └── Write to gold_reco_candidates (partitioned by customer_id)
-    └── Cache for 7 days, refresh weekly
+use_cases/recommendation_engine/
+├── jobs/
+│   ├── 1_model_training.py           # Model training job
+│   │   └── Load gold_reco_training_set from Unity Catalog
+│   │   └── Train item-similarity, ALS, LightGBM models
+│   │   └── Log to MLflow with metrics (precision@5, recall@10, NDCG)
+│   │   └── Register winning model to Unity Catalog (workspace.default.reco_models)
+│   │
+│   └── 2_batch_scoring.py            # Candidate generation
+│       └── Score top-50 recommendations per customer
+│       └── Write to gold_reco_candidates (partitioned by customer_id)
+│       └── Cache for 7 days, refresh weekly
+├── resources/                        # DAB job/endpoint definitions
+└── databricks.yml
 ```
 
 **Serving Endpoint** (real-time API):
@@ -134,15 +139,20 @@ databricks-misc/
 │               ├── gold_reco_training_set.sql  # NEW
 │               └── gold_reco_candidates.sql    # NEW
 │
-└── modelling/
+└── use_cases/
     └── recommendation_engine/                   # NEW MODULE
         ├── README.md
+        ├── databricks.yml                       # DAB bundle for this use-case
+        ├── resources/                           # job/endpoint definitions
         ├── requirements.txt                     # implicit, lightgbm, scikit-learn, streamlit
         ├── item_similarity.py                   # Phase 1
         ├── collaborative_filtering.py           # Phase 2 (ALS)
         ├── hybrid_ranker.py                     # Phase 3 (LightGBM)
         ├── feature_engineering.py
         ├── evaluation.py
+        ├── jobs/
+        │   ├── 1_model_training.py
+        │   └── 2_batch_scoring.py
         └── app/                                 # NEW: Databricks App
             ├── recommendation_dashboard.py      # Streamlit app
             └── requirements.txt                 # streamlit, databricks-sql-connector
@@ -152,8 +162,8 @@ databricks-misc/
 
 ## 2️⃣ Inventory Optimisation
 
-**Business Value**: Direct EBIT + working capital benefits | High value across MedTech, TWC, Healthcare  
-**Use Case**: Right product at right place/time/price to drive sales growth and reduce write-offs  
+**Business Value**: Direct EBIT + working capital benefits | High value across MedTech, TWC, Healthcare
+**Use Case**: Right product at right place/time/price to drive sales growth and reduce write-offs
 **Current Status**: ✅ **Partial** - Demand forecasting exists, optimization layer missing
 
 ### Data Requirements
@@ -171,7 +181,7 @@ databricks-misc/
 ### Modelling Approach
 
 **Component 1: Demand Forecasting** ✅ **EXISTS** - Reuse existing models
-- XGBoost, ETS, Prophet models already implemented in `/modelling/demand_forecasting/`
+- XGBoost, ETS, Prophet models already implemented in `use_cases/demand_forecasting/`
 - Train at product × warehouse granularity
 - Generate probabilistic forecasts (P50, P75, P90) for safety stock calculations
 
@@ -194,22 +204,25 @@ databricks-misc/
 
 ### Databricks Architecture
 
-**Training Workflow** (scheduled weekly):
+**Training Workflow** (scheduled weekly; bundle under use-case):
 ```
-jobs/inventory_optimization/
-├── 1_demand_forecasting.py            # REUSE existing models
-│   └── Run XGBoost/ETS/Prophet models per product × warehouse
-│   └── Output: gold_demand_forecast (date, product_id, warehouse_id, forecast_p50, forecast_p75, forecast_p90)
-│
-├── 2_writeoff_risk_model.py           # NEW: Classification model
-│   └── Train RandomForest on historical expiry/writeoff data
-│   └── Features: days_to_expiry, inventory_level, forecast_demand, turnover_rate
-│   └── Output: gold_writeoff_risk_scores
-│
-└── 3_replenishment_optimization.py    # NEW: Safety stock or LP solver
-    └── Calculate reorder points and optimal order quantities
-    └── Apply capacity and MOQ constraints
-    └── Output: gold_replenishment_recommendations (product_id, warehouse_id, reorder_qty, priority)
+use_cases/inventory_optimization/
+├── jobs/
+│   ├── 1_demand_forecasting.py        # REUSE existing models
+│   │   └── Run XGBoost/ETS/Prophet models per product × warehouse
+│   │   └── Output: gold_demand_forecast (date, product_id, warehouse_id, forecast_p50, forecast_p75, forecast_p90)
+│   │
+│   ├── 2_writeoff_risk_model.py      # NEW: Classification model
+│   │   └── Train RandomForest on historical expiry/writeoff data
+│   │   └── Features: days_to_expiry, inventory_level, forecast_demand, turnover_rate
+│   │   └── Output: gold_writeoff_risk_scores
+│   │
+│   └── 3_replenishment_optimization.py # NEW: Safety stock or LP solver
+│       └── Calculate reorder points and optimal order quantities
+│       └── Apply capacity and MOQ constraints
+│       └── Output: gold_replenishment_recommendations (product_id, warehouse_id, reorder_qty, priority)
+├── resources/
+└── databricks.yml
 ```
 
 **Serving/Application**:
@@ -256,22 +269,28 @@ databricks-misc/
 │               ├── gold_writeoff_risk_scores.sql # NEW
 │               └── gold_replenishment_recommendations.sql # NEW
 │
-└── modelling/
+└── use_cases/
     ├── demand_forecasting/                     # EXISTS - reuse
-    └── inventory_optimization/                 # NEW MODULE
+    └── inventory_optimization/                # NEW MODULE
         ├── README.md
+        ├── databricks.yml
+        ├── resources/
         ├── requirements.txt                    # scipy, pulp (optional)
-        ├── writeoff_risk_classifier.py         # NEW
+        ├── writeoff_risk_classifier.py        # NEW
         ├── replenishment_optimizer.py          # NEW
-        └── evaluation.py
+        ├── evaluation.py
+        └── jobs/
+            ├── 1_demand_forecasting.py
+            ├── 2_writeoff_risk_model.py
+            └── 3_replenishment_optimization.py
 ```
 
 ---
 
 ## 3️⃣ AI Customer Service Agents
 
-**Business Value**: Labour cost reduction + scalability | Cross-business (Healthcare, MedTech, TWC)  
-**Use Case**: Automate common queries, improve satisfaction, provide order tracking visibility  
+**Business Value**: Labour cost reduction + scalability | Cross-business (Healthcare, MedTech, TWC)
+**Use Case**: Automate common queries, improve satisfaction, provide order tracking visibility
 **Current Status**: ⚠️ Not implemented
 
 ### Data Requirements
@@ -309,18 +328,21 @@ databricks-misc/
 
 ### Databricks Architecture
 
-**Offline Preparation**:
+**Offline Preparation** (bundle under use-case):
 ```
-jobs/customer_service_agent/
-├── 1_intent_training.py                # Train intent classifier
-│   └── Load labeled messages from silver_case_messages
-│   └── Train DistilBERT or sklearn model
-│   └── Register to Unity Catalog
-│
-└── 2_knowledge_indexing.py             # Build vector index
-    └── Chunk knowledge docs, generate embeddings
-    └── Store in Databricks Vector Search (Unity Catalog)
-    └── Refresh weekly or on doc updates
+use_cases/customer_service_agent/
+├── jobs/
+│   ├── 1_intent_training.py           # Train intent classifier
+│   │   └── Load labeled messages from silver_case_messages
+│   │   └── Train DistilBERT or sklearn model
+│   │   └── Register to Unity Catalog
+│   │
+│   └── 2_knowledge_indexing.py         # Build vector index
+│       └── Chunk knowledge docs, generate embeddings
+│       └── Store in Databricks Vector Search (Unity Catalog)
+│       └── Refresh weekly or on doc updates
+├── resources/
+└── databricks.yml
 ```
 
 **Serving Architecture**:
@@ -394,14 +416,19 @@ databricks-misc/
 │               ├── gold_agent_performance.sql
 │               └── gold_knowledge_index.sql
 │
-└── modelling/
-    └── customer_service_agent/                # NEW MODULE
+└── use_cases/
+    └── customer_service_agent/                 # NEW MODULE
         ├── README.md
+        ├── databricks.yml
+        ├── resources/
         ├── requirements.txt                   # sentence-transformers, openai, fastapi, streamlit
         ├── intent_classifier.py
         ├── rag_pipeline.py
         ├── agent_orchestrator.py              # Main logic
         ├── evaluation.py
+        ├── jobs/
+        │   ├── 1_intent_training.py
+        │   └── 2_knowledge_indexing.py
         └── app/                               # NEW: Databricks App
             ├── agent_admin_dashboard.py       # Streamlit app
             └── requirements.txt               # streamlit, databricks-sql-connector
@@ -411,8 +438,8 @@ databricks-misc/
 
 ## 4️⃣ Document Intelligence (Finance & Ordering)
 
-**Business Value**: Manual labour reduction | High ROI for P2P, O2C, invoice processing  
-**Use Case**: Reduce manual document processing using AI to interpret and integrate into target systems  
+**Business Value**: Manual labour reduction | High ROI for P2P, O2C, invoice processing
+**Use Case**: Reduce manual document processing using AI to interpret and integrate into target systems
 **Current Status**: ✅ **Partial** - Spark NLP setup exists, needs implementation
 
 ### Data Requirements
@@ -430,7 +457,7 @@ databricks-misc/
 
 **Expected volume**: ~1k documents/month (synthetic)
 
-**Existing asset**: Spark NLP setup in `/modelling/document_intelligence/`
+**Existing asset**: Spark NLP setup in `use_cases/document_intelligence/`
 
 ### Modelling Approach
 
@@ -450,37 +477,36 @@ databricks-misc/
 
 ### Databricks Architecture
 
-**Batch Processing Pipeline**:
+**Batch Processing Pipeline** (bundle under use-case):
 ```
-jobs/document_intelligence/
-├── 1_ingest_documents.py               # Auto Loader
-│   └── Monitor blob storage/volume for new PDFs
-│   └── Load to bronze_documents (binary + metadata)
-│
-├── 2_ocr_extraction.py                 # Spark OCR
-│   └── Convert PDF → text, extract tables
-│   └── Write to silver_doc_pages
-│
-├── 3_field_extraction.py               # Spark NLP NER
-│   └── Apply fine-tuned NER models
-│   └── Extract: supplier, invoice_number, date, total, line_items
-│   └── Write to silver_doc_fields_extracted
-│
-└── 4_validation_matching.py            # Post-processing
-    └── Validate extracted fields (date formats, amounts)
-    └── Match supplier names to silver_suppliers
-    └── Route exceptions to gold_doc_exceptions_queue
-    └── Route approved to gold_doc_posting_ready
-```
-
-**Training Workflow**:
-```
-jobs/document_intelligence_training/
-└── train_ner_model.py                  # Fine-tune NER
-    └── Load labeled documents from gold_doc_labels
-    └── Fine-tune spark-nlp NER model
-    └── Evaluate on test set
-    └── Register model to Unity Catalog
+use_cases/document_intelligence/
+├── jobs/
+│   ├── 1_ingest_documents.py            # Auto Loader
+│   │   └── Monitor blob storage/volume for new PDFs
+│   │   └── Load to bronze_documents (binary + metadata)
+│   │
+│   ├── 2_ocr_extraction.py              # Spark OCR
+│   │   └── Convert PDF → text, extract tables
+│   │   └── Write to silver_doc_pages
+│   │
+│   ├── 3_field_extraction.py           # Spark NLP NER
+│   │   └── Apply fine-tuned NER models
+│   │   └── Extract: supplier, invoice_number, date, total, line_items
+│   │   └── Write to silver_doc_fields_extracted
+│   │
+│   ├── 4_validation_matching.py        # Post-processing
+│   │   └── Validate extracted fields (date formats, amounts)
+│   │   └── Match supplier names to silver_suppliers
+│   │   └── Route exceptions to gold_doc_exceptions_queue
+│   │   └── Route approved to gold_doc_posting_ready
+│   │
+│   └── train_ner_model.py              # Fine-tune NER
+│       └── Load labeled documents from gold_doc_labels
+│       └── Fine-tune spark-nlp NER model
+│       └── Evaluate on test set
+│       └── Register model to Unity Catalog
+├── resources/
+└── databricks.yml
 ```
 
 **Application**:
@@ -501,7 +527,7 @@ jobs/document_intelligence_training/
 - **Users**: Finance team, AP clerks, document processing team
 
 **Annotation Tool** (Existing Asset):
-- **Reuse**: Existing prescription PDF annotation app at `/data/prescription_pdf_generator/annotator/`
+- **Reuse**: Existing prescription PDF annotation app at `use_cases/document_intelligence/annotator/`
 - **Purpose**: Create labeled training data for NER model fine-tuning
 - **Adaptation**: Extend for invoice/PO annotation (similar field extraction patterns)
 - **Integration**: Labeled data feeds into `gold_doc_labels` table for model training
@@ -530,11 +556,10 @@ databricks-misc/
 │   │   └── src/
 │   │       └── generate_documents.py
 │   │
-│   ├── prescription_pdf_generator/      # EXISTS - reuse annotation app
-│   │   └── annotator/
-│   │       └── app.py                   # Adapt for invoice/PO annotation
+│   ├── prescription_pdf_generator/      # EXISTS (data/) - general PDF generation
+│   │   └── ...
 │   │
-│   └── document_intelligence_medallion/ # NEW dbt project
+│   └── document_intelligence_medallion/ # NEW dbt project (or extend healthcare_data_medallion)
 │       └── src/models/
 │           ├── bronze/
 │           │   └── bronze_documents.sql
@@ -546,15 +571,24 @@ databricks-misc/
 │               ├── gold_doc_exceptions_queue.sql
 │               └── gold_doc_posting_ready.sql
 │
-└── modelling/
+└── use_cases/
     └── document_intelligence/           # EXISTS - extend
+        ├── annotator/                   # EXISTS - prescription PDF annotation app
         ├── setup_spark_nlp.ipynb        # EXISTS
         ├── requirements.spark.txt       # EXISTS
         ├── README.md                    # NEW
+        ├── databricks.yml
+        ├── resources/
         ├── ocr_pipeline.py              # NEW
         ├── ner_field_extraction.py      # NEW
         ├── train_ner.py                 # NEW
         ├── evaluation.py                # NEW
+        ├── jobs/
+        │   ├── 1_ingest_documents.py
+        │   ├── 2_ocr_extraction.py
+        │   ├── 3_field_extraction.py
+        │   ├── 4_validation_matching.py
+        │   └── train_ner_model.py
         └── app/                         # NEW: Databricks App
             ├── doc_review_dashboard.py  # Streamlit app for exception review
             └── requirements.txt         # streamlit, databricks-sql-connector
@@ -564,8 +598,8 @@ databricks-misc/
 
 ## 5️⃣ AI Powered Insights & Analytics
 
-**Business Value**: Strategic decision support | Multiple sub-initiatives  
-**Use Cases**: 
+**Business Value**: Strategic decision support | Multiple sub-initiatives
+**Use Cases**:
 1. Healthcare ranging & consolidation analytics
 2. Animal Care market intelligence automation
 3. TWC franchise reporting & store-level recommendations
@@ -611,42 +645,47 @@ databricks-misc/
 
 ### Databricks Architecture
 
-**Each sub-project gets own job**:
+**Each sub-project gets own use-case** (bundle under use-case):
 
 ```
-jobs/ranging_consolidation/
-└── ranging_optimizer.py                # Optimization or clustering
-    └── Output: gold_range_recommendations (SKU, DC, action, cost_impact)
-```
-
-```
-jobs/market_intelligence/
-├── 1_scrape_competitors.py             # Web scraping
-│   └── Scrape competitor sites daily
-│   └── Write to bronze_competitor_data
-│
-├── 2_price_tracking.py                 # Change detection
-│   └── Compare today vs yesterday
-│   └── Identify significant price changes
-│
-└── 3_weekly_summary.py                 # LLM summarization
-    └── Generate weekly brief with key insights
-    └── Store in gold_market_intelligence_reports
+use_cases/ranging_consolidation/
+├── jobs/
+│   └── ranging_optimizer.py            # Optimization or clustering
+│       └── Output: gold_range_recommendations (SKU, DC, action, cost_impact)
+├── resources/
+└── databricks.yml
 ```
 
 ```
-jobs/franchise_analytics/
-├── 1_store_clustering.py               # K-means clustering
-│   └── Group stores by similarity
-│   └── Output: gold_store_clusters
-│
-├── 2_promo_impact.py                   # Uplift modeling
-│   └── Measure promo effectiveness per cluster
-│   └── Output: gold_promo_impact
-│
-└── 3_recommendations.py                # Product recommendations
-    └── Reuse recommendation engine models
-    └── Output: gold_store_product_recs
+use_cases/market_intelligence/
+├── jobs/
+│   ├── 1_scrape_competitors.py          # Web scraping
+│   │   └── Scrape competitor sites daily
+│   │   └── Write to bronze_competitor_data
+│   ├── 2_price_tracking.py             # Change detection
+│   │   └── Compare today vs yesterday
+│   │   └── Identify significant price changes
+│   └── 3_weekly_summary.py             # LLM summarization
+│       └── Generate weekly brief with key insights
+│       └── Store in gold_market_intelligence_reports
+├── resources/
+└── databricks.yml
+```
+
+```
+use_cases/franchise_analytics/
+├── jobs/
+│   ├── 1_store_clustering.py           # K-means clustering
+│   │   └── Group stores by similarity
+│   │   └── Output: gold_store_clusters
+│   ├── 2_promo_impact.py               # Uplift modeling
+│   │   └── Measure promo effectiveness per cluster
+│   │   └── Output: gold_promo_impact
+│   └── 3_recommendations.py            # Product recommendations
+│       └── Reuse recommendation engine models
+│       └── Output: gold_store_product_recs
+├── resources/
+└── databricks.yml
 ```
 
 **Application**:
@@ -700,24 +739,40 @@ databricks-misc/
 │               ├── gold_promo_impact.sql      # NEW
 │               └── gold_store_product_recs.sql # NEW
 │
-└── modelling/
+└── use_cases/
     ├── ranging_consolidation/                  # NEW MODULE
     │   ├── README.md
-    │   ├── requirements.txt                    # scipy, sklearn
-    │   └── ranging_optimizer.py
+    │   ├── databricks.yml
+    │   ├── resources/
+    │   ├── requirements.txt                   # scipy, sklearn
+    │   ├── ranging_optimizer.py
+    │   └── jobs/
+    │       └── ranging_optimizer.py
     │
     ├── market_intelligence/                    # NEW MODULE
     │   ├── README.md
-    │   ├── requirements.txt                    # beautifulsoup4, scrapy, openai
+    │   ├── databricks.yml
+    │   ├── resources/
+    │   ├── requirements.txt                   # beautifulsoup4, scrapy, openai
     │   ├── competitor_scraper.py
-    │   └── summarizer.py
+    │   ├── summarizer.py
+    │   └── jobs/
+    │       ├── 1_scrape_competitors.py
+    │       ├── 2_price_tracking.py
+    │       └── 3_weekly_summary.py
     │
     └── franchise_analytics/                    # NEW MODULE
         ├── README.md
-        ├── requirements.txt                    # sklearn, causalml
+        ├── databricks.yml
+        ├── resources/
+        ├── requirements.txt                   # sklearn, causalml
         ├── store_clustering.py
         ├── promo_impact.py
-        └── evaluation.py
+        ├── evaluation.py
+        └── jobs/
+            ├── 1_store_clustering.py
+            ├── 2_promo_impact.py
+            └── 3_recommendations.py
 ```
 
 ---
@@ -732,10 +787,10 @@ databricks-misc/
 - Serverless-compatible implementations (no GPU dependencies unless required)
 
 **Data Generation**:
-- Extend existing `healthcare_data_generator` where possible (shared schema)
-- Create separate generators for domain-specific data (customer service, documents)
-- Use Faker library patterns for synthetic data
-- Maintain referential integrity with existing tables
+- **Extend and consolidate** existing `healthcare_data_generator` where possible (shared schema); one data foundation, many use-cases on top — mimics real-life: single medallion, n use-cases consuming it.
+- Create separate generators only for domain-specific data (e.g. customer service, document pipelines) where it does not fit the healthcare schema.
+- Use Faker library patterns for synthetic data.
+- Maintain referential integrity with existing tables.
 
 **Data Transformation**:
 - **dbt medallion architecture** for all projects (bronze → silver → gold)

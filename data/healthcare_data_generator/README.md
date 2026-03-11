@@ -104,7 +104,7 @@ Each table includes metadata columns (`_ingestion_timestamp`, `_source`) for dat
 
 ## ML Use Cases
 
-This data supports the ML scenarios outlined in the project (`use_cases/` and `use_cases/MODELLING.md`). Use-cases may add inline transformations (e.g. derived columns or labels) on top of medallion outputs; the generator aims to provide the base needed for most of them.
+This data supports the ML scenarios outlined in the project (`use_cases/` and root [EBOS_SHORTLIST.md](../../EBOS_SHORTLIST.md)). Use-cases may add inline transformations (e.g. derived columns or labels) on top of medallion outputs; the generator aims to provide the base needed for most of them.
 
 | Use case | Primary tables | Notes |
 |----------|----------------|-------|

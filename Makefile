@@ -14,7 +14,12 @@ PY ?= $(if $(wildcard $(VENV_PY)),$(VENV_PY),python3)
 DOC_INTEL_PDF_ARGS ?= -n 10
 DOC_INTEL_PDF_OUTPUT := use_cases/document_intelligence/prescription_pdfs
 
+# Marvelous MLOps: separate requirements, use sub-venv (make marvelous_mlops-venv first)
+MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
+MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
+
 .PHONY: help cleanup format document_intelligence-generate-pdfs
+.PHONY: marvelous_mlops-venv marvelous_mlops-fetch-medium marvelous_mlops-fetch-substack marvelous_mlops-fetch-youtube
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
 
 help:
@@ -26,6 +31,12 @@ help:
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
 	@echo "  make format [FMT_ARGS=.]  - Run autoflake8, isort, black"
 	@echo "  make document_intelligence-generate-pdfs [DOC_INTEL_PDF_ARGS=-n 10]  - Generate prescription PDFs under use_cases/document_intelligence"
+	@echo ""
+	@echo "  marvelous_mlops (separate venv; run marvelous_mlops-venv first):"
+	@echo "  make marvelous_mlops-venv             - Create .venv and install requirements in marvelous_mlops/"
+	@echo "  make marvelous_mlops-fetch-medium      - Fetch Medium articles"
+	@echo "  make marvelous_mlops-fetch-substack   - Fetch Substack posts"
+	@echo "  make marvelous_mlops-fetch-youtube    - Fetch YouTube transcripts"
 
 # --- UV environment (databricks-misc) ---
 uv-venv:
@@ -67,3 +78,23 @@ document_intelligence-generate-pdfs:
 		-o $(DOC_INTEL_PDF_OUTPUT) \
 		$(DOC_INTEL_PDF_ARGS)
 	@echo "Generated PDFs in $(DOC_INTEL_PDF_OUTPUT)/"
+
+# --- Marvelous MLOps (sub-usecase: own venv and requirements.txt) ---
+marvelous_mlops-venv:
+	cd $(MARVELOUS_MLOPS_DIR) && uv venv && .venv/bin/pip install -r requirements.txt
+	@echo "marvelous_mlops .venv ready. Run: make marvelous_mlops-fetch-medium|fetch-substack|fetch-youtube"
+
+marvelous_mlops-fetch-medium:
+	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous_mlops-venv" && exit 1)
+	cd $(MARVELOUS_MLOPS_DIR) && $(MARVELOUS_PY) fetch_medium.py
+	@echo "Medium fetch done."
+
+marvelous_mlops-fetch-substack:
+	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous_mlops-venv" && exit 1)
+	cd $(MARVELOUS_MLOPS_DIR) && $(MARVELOUS_PY) fetch_substack.py
+	@echo "Substack fetch done."
+
+marvelous_mlops-fetch-youtube:
+	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous_mlops-venv" && exit 1)
+	cd $(MARVELOUS_MLOPS_DIR) && $(MARVELOUS_PY) fetch_youtube.py
+	@echo "YouTube fetch done."

@@ -1,62 +1,101 @@
-# Databricks ML Experimentation Platform
+# EBOS AI/ML Technical Implementation Platform
 
-## Project Overview
+This repository implements the **EBOS AI/ML Technical Implementation Shortlist**: a prioritised set of use-cases for healthcare/pharmaceutical distribution (Databricks + Unity Catalog). It combines a **shared data foundation** (generators + medallion) with **use-cases** that consume that data — one data platform, many use-cases on top, mimicking real-life data generation and medallions.
 
-This project is an experimental platform for exploring Databricks functionality and implementing ML solutions for healthcare/pharmaceutical distribution scenarios. It combines **general-purpose data generation and domain modelling practice** with **specific use-cases** that consume shared data.
+**Full specification**: [EBOS_SHORTLIST.md](EBOS_SHORTLIST.md) (data requirements, modelling approach, architecture, file structure per use-case).
 
-**Scope:**
-- **Shared data foundation**: Synthetic healthcare data (generators + medallion) in `data/` — common to all use-cases. Use-cases may add inline transformations (e.g. derived columns for a given model) but do not duplicate raw/silver/gold pipelines.
-- **Use-cases**: Each lives under `use_cases/<name>/` with its own DAB bundle (jobs, endpoints, interactive compute as needed). Examples: lunch-and-learn demos, recommender (train → MLflow → endpoints → app), demand forecasting, document intelligence.
-- **Bundles**: Databricks Asset Bundle resources (jobs, endpoints, etc.) live under the use-case or data component they belong to — e.g. medallion jobs under `data/healthcare_data_medallion`, demand_forecasting jobs under `use_cases/demand_forecasting`. See `bundle_structure.md` for the pattern.
+---
 
-**Key Focus Areas:**
-- Supply chain optimization (demand forecasting, inventory management, logistics routing)
-- Healthcare customer analytics (churn prediction, market forecasting, recommender systems)
-- Operational efficiency (computer vision, anomaly detection, process optimization)
-- Regulatory compliance and fraud detection
-- Natural language processing for document processing and customer support
+## Priority order & infrastructure
 
-**Technical Stack:**
-- **Platform**: Databricks (free edition) - `dbc-f501771e-54b7.cloud.databricks.com`
-- **Development**: Local development with Databricks Connect for remote execution
-- **ML/AI**: PySpark MLlib, MLflow, Azure ML integration
-- **Data**: Unity Catalog for data governance, flat file organization for Databricks compatibility
+- **Priority**: Based on ELT "Business Value vs Complexity" prioritisation.
+- **Infrastructure**: Databricks + Unity Catalog (`workspace.default` schema).
+- **Repo layout**: Use-cases under `use_cases/<name>/`; DAB bundles (jobs, endpoints, interactive) live under each use-case or data component (see [bundle_structure.md](bundle_structure.md)).
 
-## Repo Structure
+**Existing assets**:
+- Healthcare data generator with medallion architecture (bronze/silver/gold)
+- Demand forecasting models (XGBoost, ETS, Prophet) with MLflow tracking in `use_cases/demand_forecasting/`
+- Spark NLP setup for document intelligence in `use_cases/document_intelligence/`
+- Prescription PDF generator in `data/prescription_pdf_generator/`; annotation app in `use_cases/document_intelligence/annotator/`
 
-- **`data/`** — Shared data generators and medallion. Consumed by all use-cases.
-  - `healthcare_data_generator` — DAB bundle; writes raw tables to Unity Catalog.
-  - `healthcare_data_medallion` — DAB bundle; dbt bronze/silver/gold.
-  - `prescription_pdf_generator` — General-purpose prescription PDF generation (no medallion). Document-intelligence annotation app lives under `use_cases/document_intelligence/annotator`.
-- **`use_cases/`** — One directory per use-case; each can contain notebooks, apps, and its own DAB bundle (jobs/endpoints/interactive).
-  - `lunch_and_learn` — Demos: lineage, dashboards, Genie, prediction-serving apps, synthetic data app.
-  - `recommender` — Train models, MLflow, deploy endpoints, small Databricks app.
-  - `demand_forecasting`, `document_intelligence`, etc.
+---
 
-## Todo List
+## Data strategy
 
-### 🚀 Immediate Priorities
-- [ ] **Unity Catalog Setup** - Set up Unity Catalog for data governance and organization
-- [x] **Data Generation Pipeline** - Create synthetic healthcare/pharmaceutical datasets for experimentation
-- [x] **Databricks Connect Setup** - Establish reliable local-to-remote development workflow
-- [ ] **MLflow Integration** - Set up experiment tracking and model versioning
+- **Extend and consolidate** the existing `healthcare_data_generator` (and medallion) for reuse across use-cases where possible. New tables (e.g. substitution_events, product_interactions, expiry_batches, writeoff_events) will be added incrementally as use-cases are implemented.
+- Use-cases may add inline transformations or derived columns; they do not duplicate raw/silver/gold pipelines.
+- Separate generators/medallions only where the domain is orthogonal (e.g. customer service, document pipelines).
 
-### 📊 Modelling & Data Science
-- [ ] **Demand Forecasting Models** - Implement time-series forecasting (Prophet, XGBoost, LSTM)
-- [ ] **Inventory Optimization** - Build constrained optimization models for stock replenishment
-- [ ] **Churn Prediction** - Develop customer retention models for pharmacy/hospital clients
-- [ ] **Anomaly Detection** - Create systems for detecting temperature excursions and suspicious orders
+---
 
-### 🛠️ Platform & Infrastructure
-- [x] **DAB (Databricks Asset Bundles)** - Local and remote deployment workflows
-- [ ] **Unity Catalog Organization** - Design catalog/schema structure for data governance
-- [ ] **Azure Integration** - Terraform deployment for production-ready Databricks workspace
-- [ ] **PostgreSQL Integration** - Connect external database to Databricks for data ingestion
-- [x] **DBT Integration** - Data transformation and modeling workflows
-- [ ] **CI/CD Pipelines** - CI/CD pipelines for the Databricks Asset Bundles
+## Use-cases (EBOS shortlist)
 
-### 🔧 Development & Testing
-- [ ] **PySpark Pipeline Development** - Segment work into manageable pipeline units
-- [ ] **MLflow 3.0 Features** - Explore new capabilities and differences from previous versions
-- [ ] **Databricks Connect Optimization** - Improve performance and reliability of local development
-- [ ] **Python Version Alignment** - Ensure compatibility between local and remote environments
+| #     | Use-case                                                                                                    | Status                                 | Location                                                                                               |
+| ----- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **1** | **Recommendation Engine for Ordering** — Similar products, auto-substitutions, margin-aware recommendations | ⚠️ Not implemented                      | `use_cases/recommendation_engine/`                                                                     |
+| **2** | **Inventory Optimisation** — Demand forecasting (reuse), write-off risk, replenishment optimisation         | ✅ Partial (demand forecasting exists)  | `use_cases/inventory_optimization/`, `use_cases/demand_forecasting/`                                   |
+| **3** | **AI Customer Service Agents** — Intent classification, RAG, order tracking                                 | ⚠️ Not implemented                      | `use_cases/customer_service_agent/`                                                                    |
+| **4** | **Document Intelligence (Finance & Ordering)** — OCR, NER, invoice/PO extraction                            | ✅ Partial (Spark NLP setup, annotator) | `use_cases/document_intelligence/`                                                                     |
+| **5** | **AI Powered Insights & Analytics** — Ranging/consolidation, market intelligence, franchise analytics       | ⚠️ Not implemented                      | `use_cases/ranging_consolidation/`, `use_cases/market_intelligence/`, `use_cases/franchise_analytics/` |
+
+Details (data requirements, modelling, jobs, apps): see [EBOS_SHORTLIST.md](EBOS_SHORTLIST.md).
+
+---
+
+## Repo structure
+
+```
+databricks-misc/
+├── data/                    # Shared data foundation
+│   ├── healthcare_data_generator/   # DAB bundle; raw tables → Unity Catalog
+│   ├── healthcare_data_medallion/   # DAB bundle; dbt bronze/silver/gold
+│   └── prescription_pdf_generator/ # General-purpose prescription PDFs
+│
+├── use_cases/               # One directory per use-case (each with own DAB bundle as needed)
+│   ├── recommendation_engine/
+│   ├── demand_forecasting/
+│   ├── inventory_optimization/
+│   ├── customer_service_agent/
+│   ├── document_intelligence/      # includes annotator/
+│   ├── ranging_consolidation/
+│   ├── market_intelligence/
+│   └── franchise_analytics/
+│
+├── docs/                    # Supporting documentation
+│   ├── OLD_MODELLING.md     # Pre–EBOS option space (historical)
+│   └── lunch_and_learn.md   # Session plan; to be aligned with EBOS use-cases
+│
+├── EBOS_SHORTLIST.md        # Full implementation shortlist (source of truth)
+├── pyproject.toml           # UV / local deps
+└── Makefile                 # cleanup, format, uv, document_intelligence generate_pdfs
+```
+
+**Lunch & Learn**: [docs/lunch_and_learn.md](docs/lunch_and_learn.md) is a standalone session plan; it will be revisited and aligned with the EBOS use-cases so demos draw on implemented capabilities.
+
+---
+
+## Technical stack
+
+- **Platform**: Databricks (free edition) — `dbc-f501771e-54b7.cloud.databricks.com`
+- **Development**: Local with Databricks Connect; UV env `databricks-misc` (see Makefile: `make uv-venv`, `make install`, `make uv-dev`)
+- **Data**: Unity Catalog; dbt medallion (bronze → silver → gold)
+- **ML**: MLflow, PySpark MLlib; model serving endpoints per use-case
+
+---
+
+## Todo (aligned with EBOS)
+
+### Immediate
+- [ ] **Recommendation Engine** — Data extensions, Phase 1–3 models, MLflow, endpoint, Streamlit app
+- [ ] **MLflow integration** — Experiment tracking and model registry across use-cases
+- [ ] **Unity Catalog** — Catalog/schema organisation
+
+### Next
+- [ ] **Inventory Optimisation** — Write-off risk model, replenishment optimizer (reuse demand_forecasting)
+- [ ] **Document Intelligence** — OCR/NER pipeline, exception review app
+- [ ] **Customer Service Agent** — Intent + RAG + order tracking
+- [ ] **Insights & Analytics** — Ranging, market intelligence, franchise analytics
+
+### Platform
+- [x] DAB (Databricks Asset Bundles) per use-case
+- [x] DBT medallion

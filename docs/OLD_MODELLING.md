@@ -1,3 +1,9 @@
+# OLD_MODELLING — Pre–EBOS shortlist option space
+
+*This document is historical: a broad landscape of possible modelling areas. The active implementation plan is the **EBOS AI/ML Technical Implementation Shortlist** (see root [EBOS_SHORTLIST.md](../EBOS_SHORTLIST.md) and [README.md](../README.md)).*
+
+---
+
 ### Possible Modelling
 ## 1. **Supply Chain & Logistics Optimisation**
 - **Demand Forecasting Models**
@@ -12,7 +18,7 @@
 	- Why: Pharmaceuticals have expiries, cold-chain needs, and tight margin for waste.
 	- Modelling note: combine forecast + constrained optimisation (linear/integer programming) or RL for dynamic policies; incorporate expiry-aware costs.
     - Predictive restocking models using reinforcement learning or optimisation with constraints (expiry dates, cold-chain requirements).
-    - Evidence: AmerisourceBergen has reported ML-based “smart replenishment” for critical medicines.
+    - Evidence: AmerisourceBergen has reported ML-based "smart replenishment" for critical medicines.
 - **Logistics / Routing Models**
 	- What: Plan deliveries (vehicles, routes, time windows) under stochastic demand and travel times.
 	- Why: Last-mile costs and timeliness matter for hospital/clinic deliveries and temperature-sensitive items.
@@ -31,7 +37,7 @@
 	- Why: Key for account management and contract retention — large customers = concentrated revenue risk.
 	- Modelling note: classification with explainability (SHAP) so commercial teams can act.
     - Predicting which pharmacies or vets may switch suppliers.
-    - Seen at Zuellig Pharma — “customer loyalty prediction” ML models.
+    - Seen at Zuellig Pharma — "customer loyalty prediction" ML models.
 - **Recommender Systems**
 	- What: Suggest products or bundles for pharmacy/retail customers.
 	- Why: Improves basket size, cross-sell of consumer brands.
@@ -56,7 +62,7 @@
 	- Why: Heavy regulatory exposure; distributors are often obliged to report suspicious activity.
 	- Modelling note: rule + ML hybrid systems; maintain high precision to avoid false alarms.
     - Supervised anomaly detection on claims, orders, controlled substances.
-    - Comparable: US distributors use ML to flag “suspicious opioid orders” as required by DEA.
+    - Comparable: US distributors use ML to flag "suspicious opioid orders" as required by DEA.
 - **Compliance / Governance Models**
 	- What: OCR + NLP for invoices, purchase orders, prescriptions and call transcripts.
 	- Why: Pharmacies and hospitals produce lots of semi-structured documents; automating reduces manual work and improves auditability.
@@ -84,7 +90,7 @@
     - Predicting seasonal pet product sales, optimizing marketing.
 - **E-commerce Personalisation** (VitaPet, Black Hawk brands).
     - Recommender engines (collaborative filtering, deep learning ranking).
-    - Analogous to Mars Petcare’s ML-based pet food personalization.
+    - Analogous to Mars Petcare's ML-based pet food personalization.
 ## 7. **Likely Tech/ML Patterns**
 Given typical job requirements and stack (Azure, Databricks
 Senior Machine Learning Enginee…
