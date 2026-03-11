@@ -20,7 +20,17 @@ databricks:
       host: "{{ env_var('DBT_HOST') }}"
       token: "{{ env_var('DBT_ACCESS_TOKEN') }}"
 
-# Optional: local medallion. Install dbt-sqlite; create DB and load source tables from generator CSVs first; then run dbt --profile sqlite.
+# Optional: local medallion (DuckDB). Run from repo root: make data-local-generate then make data-local-dbt-run.
+# Raw tables must exist in DuckDB (e.g. load data/local/*.csv or use DuckDB read_csv_auto views); set source_schema via env or override.
+duckdb:
+  target: local
+  outputs:
+    local:
+      type: duckdb
+      path: "{{ env_var('DBT_DUCKDB_PATH', 'data/local/medallion.duckdb') }}"
+      schema: healthcare_medallion_local
+
+# Optional: local medallion (SQLite). Install dbt-sqlite; create DB and load source tables from generator CSVs first.
 sqlite:
   target: local
   outputs:

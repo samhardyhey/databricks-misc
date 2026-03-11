@@ -9,6 +9,8 @@ export PYTHONPATH := $(REPO_ROOT):$(PYTHONPATH)
 # Prefer venv python if .venv exists
 VENV_PY := $(REPO_ROOT)/.venv/bin/python
 PY ?= $(if $(wildcard $(VENV_PY)),$(VENV_PY),python3)
+# dbt for local medallion (core dependency)
+DBT_BIN := $(REPO_ROOT)/.venv/bin/dbt
 
 # Local data: output dirs (data/local is gitignored)
 DATA_LOCAL_DIR := $(REPO_ROOT)/data/local
@@ -40,7 +42,7 @@ help:
 	@echo "  make data-local-generate        - Generate healthcare CSVs to data/local/ (default sizes)"
 	@echo "  make data-local-generate-quick  - Generate healthcare CSVs to data/local/ (small sizes)"
 	@echo "  make data-local-generate-pdfs   - Generate prescription PDFs (use_cases/document_intelligence/prescription_pdfs)"
-	@echo "  make data-local-dbt-run         - Run medallion dbt locally (dbt run --profile duckdb; requires DuckDB profile + raw data)"
+	@echo "  make data-local-dbt-run         - Run medallion dbt locally (requires DuckDB profile + raw data in data/local/)"
 	@echo ""
 	@echo "  make document_intelligence-generate-pdfs  - Alias for data-local-generate-pdfs [DOC_INTEL_PDF_ARGS=-n 10]"
 	@echo ""
@@ -107,10 +109,16 @@ data-local-generate-pdfs:
 
 data-local-dbt-run:
 	@test -d $(MEDALLION_DIR) || (echo "Medallion dir missing: $(MEDALLION_DIR)" && exit 1)
-	cd $(MEDALLION_DIR) && dbt run --profile duckdb
+	@test -x $(DBT_BIN) || (echo "dbt not found. Run: make install-dbt" && exit 1)
+	cd $(MEDALLION_DIR) && DBT_PROFILES_DIR=$(MEDALLION_DIR)/dbt_profiles DBT_DUCKDB_PATH=$(REPO_ROOT)/data/local/medallion.duckdb $(DBT_BIN) run --profile duckdb
 	@echo "dbt run (duckdb) done."
 
 document_intelligence-generate-pdfs: data-local-generate-pdfs
+
+install-dbt:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) -m pip install "dbt-duckdb>=1.9.0"
+	@echo "dbt-duckdb installed. You can run: make data-local-dbt-run (after setting up DuckDB profile + raw data)."
 
 # --- Marvelous MLOps (sub-usecase: own venv and requirements.txt) ---
 marvelous_mlops-venv:

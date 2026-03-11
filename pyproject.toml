@@ -5,6 +5,7 @@ requires-python = ">=3.11"
 dependencies = [
     "databricks-connect>=15.2.0",
     "databricks-sdk==0.69.0",
+    "dbt-duckdb>=1.9.0",
     "faker>=24.0.0",
     "pandas>=2.2.0",
     "numpy>=1.26.0",
