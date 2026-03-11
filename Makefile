@@ -25,7 +25,7 @@ MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
 MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
 .PHONY: help cleanup clean-local-data format document_intelligence-generate-pdfs
-.PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run
+.PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
 .PHONY: marvelous_mlops-venv marvelous_mlops-fetch-medium marvelous_mlops-fetch-substack marvelous_mlops-fetch-youtube
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
 
@@ -36,15 +36,16 @@ help:
 	@echo "  make uv-dev               - Install dev deps (autoflake, isort, black)"
 	@echo "  make uv-activate          - Print activate command for .venv"
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
-	@echo "  make clean-local-data     - Remove data/local/, test_output/, prescription_pdfs, medallion target/logs (start again)"
 	@echo "  make format [FMT_ARGS=.]  - Run autoflake, isort, black"
 	@echo ""
 	@echo "  Local (data generation / medallion):"
+	@echo "  make clean-local-data           - Remove data/local/, test_output/, prescription_pdfs, medallion target/logs (start again)"
 	@echo "  make data-local-generate        - Generate healthcare CSVs to data/local/ (default sizes)"
 	@echo "  make data-local-generate-quick  - Generate healthcare CSVs to data/local/ (small sizes)"
 	@echo "  make data-local-generate-pdfs   - Generate prescription PDFs (use_cases/document_intelligence/prescription_pdfs)"
 	@echo "  make data-local-duckdb-load     - Load data/local/*.csv into DuckDB as raw schema (run after generate)"
 	@echo "  make data-local-dbt-run         - Load data/local into DuckDB then run medallion dbt (run data-local-generate-quick first if no CSVs)"
+	@echo "  make data-local-dbt-test        - Run dbt tests (referential integrity, etc.); run after data-local-dbt-run"
 	@echo ""
 	@echo "  make document_intelligence-generate-pdfs  - Alias for data-local-generate-pdfs [DOC_INTEL_PDF_ARGS=-n 10]"
 	@echo ""
@@ -132,8 +133,16 @@ data-local-duckdb-load:
 data-local-dbt-run: data-local-duckdb-load
 	@test -d $(MEDALLION_DIR) || (echo "Medallion dir missing: $(MEDALLION_DIR)" && exit 1)
 	@test -x $(DBT_BIN) || (echo "dbt not found. Run: make install" && exit 1)
+	cd $(MEDALLION_DIR) && DBT_PROFILES_DIR=$(MEDALLION_DIR)/dbt_profiles $(DBT_BIN) deps
 	cd $(MEDALLION_DIR) && DBT_PROFILES_DIR=$(MEDALLION_DIR)/dbt_profiles DBT_DUCKDB_PATH=$(REPO_ROOT)/data/local/medallion.duckdb $(DBT_BIN) run --profile duckdb
 	@echo "dbt run (duckdb) done."
+
+data-local-dbt-test:
+	@test -d $(MEDALLION_DIR) || (echo "Medallion dir missing: $(MEDALLION_DIR)" && exit 1)
+	@test -x $(DBT_BIN) || (echo "dbt not found. Run: make install" && exit 1)
+	cd $(MEDALLION_DIR) && DBT_PROFILES_DIR=$(MEDALLION_DIR)/dbt_profiles $(DBT_BIN) deps
+	cd $(MEDALLION_DIR) && DBT_PROFILES_DIR=$(MEDALLION_DIR)/dbt_profiles DBT_DUCKDB_PATH=$(REPO_ROOT)/data/local/medallion.duckdb $(DBT_BIN) test --profile duckdb
+	@echo "dbt test (duckdb) done."
 
 document_intelligence-generate-pdfs: data-local-generate-pdfs
 

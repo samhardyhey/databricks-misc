@@ -364,7 +364,7 @@ class HealthcareDataGenerator:
             )
 
         data = []
-        for _ in range(n_orders):
+        for i in range(n_orders):
             # Randomly choose between pharmacy and hospital
             is_pharmacy = self.fake.boolean(chance_of_getting_true=80)
 
@@ -399,7 +399,7 @@ class HealthcareDataGenerator:
 
             data.append(
                 {
-                    "order_id": f"ORD_{self.fake.random_int(min=100000, max=999999)}",
+                    "order_id": f"ORD_{100000 + i}",
                     "customer_id": customer_id,
                     "customer_type": customer_type,
                     "product_id": product_id,
@@ -454,7 +454,7 @@ class HealthcareDataGenerator:
             raise ValueError("pharmacy_df and product_df must be provided")
 
         data = []
-        for _ in range(n_records):
+        for i in range(n_records):
             pharmacy_id = self.fake.random_element(pharmacy_df["pharmacy_id"].values)
             product_id = self.fake.random_element(product_df["product_id"].values)
             product_info = product_df[product_df["product_id"] == product_id].iloc[0]
@@ -469,7 +469,7 @@ class HealthcareDataGenerator:
 
             data.append(
                 {
-                    "inventory_id": f"INV_{self.fake.random_int(min=100000, max=999999)}",
+                    "inventory_id": f"INV_{100000 + i}",
                     "pharmacy_id": pharmacy_id,
                     "product_id": product_id,
                     "current_stock": current_stock,
@@ -531,7 +531,7 @@ class HealthcareDataGenerator:
         ]
 
         data = []
-        for _ in range(n_events):
+        for i in range(n_events):
             order_id = self.fake.random_element(order_df["order_id"].values)
             event_type = self.fake.random_element(event_types)
 
@@ -546,7 +546,7 @@ class HealthcareDataGenerator:
 
             data.append(
                 {
-                    "event_id": f"EVT_{self.fake.random_int(min=100000, max=999999)}",
+                    "event_id": f"EVT_{100000 + i}",
                     "order_id": order_id,
                     "event_type": event_type,
                     "event_timestamp": event_date,

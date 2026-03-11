@@ -52,23 +52,30 @@
 
 **Evaluation**: Precision@5, Recall@10, NDCG, offline substitution acceptance rate, margin improvement
 
+### Feature ownership (dbt vs ML code)
+
+**Keep in dbt (medallion):** Base, reusable aggregates that many consumers need (e.g. customer × product purchase counts, last order date, product/customer attributes from silver). Think of this as **feature storage / wide tables**, not the full model-specific feature set. Optionally one slim “training base” table (e.g. `gold_reco_training_base`: customer, product, label, key IDs).
+
+**Keep in Python (ML code):** Model-specific feature construction: time windows, normalization, one-hot/target encoding, train/test splits, negative sampling, and any logic used only by this model. **Serving path:** Whatever is computed at request time (or in a real-time pipeline) must use the same logic as in training, implemented in code (e.g. `feature_engineering.py`), not only in dbt.
+
+Use dbt for shared, stable, coarse-grained building blocks; do all model-specific and serving-aligned feature engineering in Python, reading from those gold (or silver) tables. This avoids train–serve skew and keeps the medallion from being a dependency for every small ML experiment, while still benefiting from a single, governed data foundation.
+
 ### Databricks Architecture
 
-**Data Pipeline** (dbt medallion):
+**Data Pipeline** (dbt medallion; use-case prefix `reco_` for recommendation-engine tables):
 ```
 data/healthcare_data_medallion/
 ├── bronze/
-│   ├── bronze_interactions.sql        # NEW: Raw interaction events
-│   └── bronze_substitutions.sql       # NEW: Raw substitution events
+│   ├── bronze_reco_interactions.sql   # Raw interaction events
+│   └── bronze_reco_substitutions.sql  # Raw substitution events
 │
 ├── silver/
-│   ├── silver_interactions.sql        # NEW: Cleansed interactions with joins
-│   └── silver_substitutions.sql       # NEW: Validated substitution events
+│   ├── silver_reco_interactions.sql   # Cleansed interactions with joins
+│   └── silver_reco_substitutions.sql # Validated substitution events
 │
 └── gold/
-    ├── gold_reco_features.sql         # NEW: Aggregated features for training
-    │   └── Purchase history, co-occurrence matrices, time-decay weights
-    ├── gold_reco_training_set.sql     # NEW: ML-ready dataset (positive/negative examples)
+    ├── gold_reco_training_base.sql    # Slim base (customer, product, label) for ML
+    ├── gold_reco_features.sql         # Optional: base aggregates / feature storage
     └── gold_reco_candidates.sql       # Batch-scored recommendations (top-50 per customer)
 ```
 

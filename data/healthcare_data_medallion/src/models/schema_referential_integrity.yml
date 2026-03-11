@@ -1,0 +1,200 @@
+# Referential integrity tests: ensure generated data joins correctly.
+# Each test fails if a non-null foreign key value is missing from the parent table.
+# Polymorphic FKs (e.g. customer_id -> pharmacy or hospital) are covered by singular tests.
+
+version: 2
+
+models:
+  # ---- Base tables ----
+  - name: bronze_orders
+    description: "Orders; FK to products and (polymorphic) customers"
+    columns:
+      - name: product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
+
+  - name: bronze_inventory
+    description: "Inventory; FK to pharmacies and products"
+    columns:
+      - name: pharmacy_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_pharmacies
+              ref_column: pharmacy_id
+      - name: product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
+
+  - name: bronze_supply_chain_events
+    description: "Supply chain events; FK to orders"
+    columns:
+      - name: order_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_orders
+              ref_column: order_id
+
+  - name: bronze_products
+    description: "Products; optional FK to suppliers"
+    columns:
+      - name: supplier_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_suppliers
+              ref_column: supplier_id
+
+  # ---- Recommendation engine (reco_) ----
+  - name: bronze_reco_interactions
+    description: "Reco: product interactions; product_id FK; customer_id is polymorphic (singular test)"
+    columns:
+      - name: product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
+
+  - name: bronze_reco_substitutions
+    description: "Reco: substitution events; FK to orders and products"
+    columns:
+      - name: order_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_orders
+              ref_column: order_id
+      - name: requested_product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
+      - name: substituted_product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
+
+  - name: bronze_inventory_availability
+    description: "Inventory availability; FK to products and warehouses"
+    columns:
+      - name: product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
+      - name: warehouse_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_warehouses
+              ref_column: warehouse_id
+
+  # ---- Inventory optimisation ----
+  - name: bronze_expiry_batches
+    description: "Expiry batches; FK to products and warehouses"
+    columns:
+      - name: product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
+      - name: warehouse_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_warehouses
+              ref_column: warehouse_id
+
+  - name: bronze_writeoff_events
+    description: "Writeoff events; FK to products and warehouses"
+    columns:
+      - name: product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
+      - name: warehouse_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_warehouses
+              ref_column: warehouse_id
+
+  - name: bronze_purchase_orders
+    description: "Purchase orders; FK to suppliers and products"
+    columns:
+      - name: supplier_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_suppliers
+              ref_column: supplier_id
+      - name: product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
+
+  - name: bronze_supplier_performance
+    description: "Supplier performance; FK to suppliers and products"
+    columns:
+      - name: supplier_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_suppliers
+              ref_column: supplier_id
+      - name: product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
+
+  - name: bronze_warehouse_costs
+    description: "Warehouse costs; FK to warehouses and products"
+    columns:
+      - name: warehouse_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_warehouses
+              ref_column: warehouse_id
+      - name: product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
+
+  # ---- Insights & analytics (store_id = pharmacy_id) ----
+  - name: bronze_store_sales
+    description: "Store sales; store_id = pharmacy_id, product_id FK"
+    columns:
+      - name: store_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_pharmacies
+              ref_column: pharmacy_id
+      - name: product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
+
+  - name: bronze_store_attributes
+    description: "Store attributes; store_id = pharmacy_id"
+    columns:
+      - name: store_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_pharmacies
+              ref_column: pharmacy_id
+
+  - name: bronze_promotions
+    description: "Promotions; store_id = pharmacy_id, product_id FK"
+    columns:
+      - name: store_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_pharmacies
+              ref_column: pharmacy_id
+      - name: product_id
+        tests:
+          - referential_integrity:
+              ref_model: bronze_products
+              ref_column: product_id
