@@ -15,7 +15,8 @@
 
 **Business Value**: ~$4.9m p.a. | Enterprise-wide (Healthcare, MedTech, Animal Care)
 **Use Case**: Recommend similar products and auto-substitutions to reduce sales leakage and increase margins
-**Current Status**: ⚠️ Not implemented
+**Current Status**: ⚠️ Not implemented  
+**Local dev**: Can be developed locally for most part (data gen, model training, model saving).
 
 ### Data Requirements
 
@@ -164,7 +165,8 @@ databricks-misc/
 
 **Business Value**: Direct EBIT + working capital benefits | High value across MedTech, TWC, Healthcare
 **Use Case**: Right product at right place/time/price to drive sales growth and reduce write-offs
-**Current Status**: ✅ **Partial** - Demand forecasting exists, optimization layer missing
+**Current Status**: ✅ **Partial** - Demand forecasting exists, optimization layer missing  
+**Local dev**: Can be developed locally for most part (data gen, model training, model saving).
 
 ### Data Requirements
 
@@ -291,7 +293,8 @@ databricks-misc/
 
 **Business Value**: Labour cost reduction + scalability | Cross-business (Healthcare, MedTech, TWC)
 **Use Case**: Automate common queries, improve satisfaction, provide order tracking visibility
-**Current Status**: ⚠️ Not implemented
+**Current Status**: ⚠️ Not implemented  
+**Local dev**: Cannot be developed locally easily; pass on local development for now.
 
 ### Data Requirements
 
@@ -440,7 +443,8 @@ databricks-misc/
 
 **Business Value**: Manual labour reduction | High ROI for P2P, O2C, invoice processing
 **Use Case**: Reduce manual document processing using AI to interpret and integrate into target systems
-**Current Status**: ✅ **Partial** - Spark NLP setup exists, needs implementation
+**Current Status**: ✅ **Partial** - Spark NLP setup exists, needs implementation  
+**Local dev**: Can be developed locally for most part (data gen, annotator). Use common open-source PDF OCR instead of Spark OCR/NLP for the local pipeline.
 
 ### Data Requirements
 
@@ -604,7 +608,8 @@ databricks-misc/
 2. Animal Care market intelligence automation
 3. TWC franchise reporting & store-level recommendations
 
-**Current Status**: ⚠️ Not implemented
+**Current Status**: ⚠️ Not implemented  
+**Local dev**: Can be developed locally for most part.
 
 ### Data Requirements
 

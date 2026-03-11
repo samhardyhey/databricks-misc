@@ -10,7 +10,11 @@ export PYTHONPATH := $(REPO_ROOT):$(PYTHONPATH)
 VENV_PY := $(REPO_ROOT)/.venv/bin/python
 PY ?= $(if $(wildcard $(VENV_PY)),$(VENV_PY),python3)
 
-# Prescription PDF generation: sensible defaults (override: make document_intelligence-generate-pdfs DOC_INTEL_PDF_ARGS="-n 5 -s 42")
+# Local data: output dirs (data/local is gitignored)
+DATA_LOCAL_DIR := $(REPO_ROOT)/data/local
+MEDALLION_DIR := $(REPO_ROOT)/data/healthcare_data_medallion
+
+# Prescription PDF generation: sensible defaults (override: make data-local-generate-pdfs DOC_INTEL_PDF_ARGS="-n 5 -s 42")
 DOC_INTEL_PDF_ARGS ?= -n 10
 DOC_INTEL_PDF_OUTPUT := use_cases/document_intelligence/prescription_pdfs
 
@@ -19,6 +23,7 @@ MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
 MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
 .PHONY: help cleanup format document_intelligence-generate-pdfs
+.PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-dbt-run
 .PHONY: marvelous_mlops-venv marvelous_mlops-fetch-medium marvelous_mlops-fetch-substack marvelous_mlops-fetch-youtube
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
 
@@ -30,9 +35,16 @@ help:
 	@echo "  make uv-activate          - Print activate command for .venv"
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
 	@echo "  make format [FMT_ARGS=.]  - Run autoflake, isort, black"
-	@echo "  make document_intelligence-generate-pdfs [DOC_INTEL_PDF_ARGS=-n 10]  - Generate prescription PDFs under use_cases/document_intelligence"
 	@echo ""
-	@echo "  marvelous_mlops (separate venv; run marvelous_mlops-venv first):"
+	@echo "  Local (data generation / medallion):"
+	@echo "  make data-local-generate        - Generate healthcare CSVs to data/local/ (default sizes)"
+	@echo "  make data-local-generate-quick  - Generate healthcare CSVs to data/local/ (small sizes)"
+	@echo "  make data-local-generate-pdfs   - Generate prescription PDFs (use_cases/document_intelligence/prescription_pdfs)"
+	@echo "  make data-local-dbt-run         - Run medallion dbt locally (dbt run --profile duckdb; requires DuckDB profile + raw data)"
+	@echo ""
+	@echo "  make document_intelligence-generate-pdfs  - Alias for data-local-generate-pdfs [DOC_INTEL_PDF_ARGS=-n 10]"
+	@echo ""
+	@echo "  Marvelous MLOps (separate venv; run marvelous_mlops-venv first):"
 	@echo "  make marvelous_mlops-venv             - Create .venv and install requirements in marvelous_mlops/"
 	@echo "  make marvelous_mlops-fetch-medium      - Fetch Medium articles"
 	@echo "  make marvelous_mlops-fetch-substack   - Fetch Substack posts"
@@ -75,12 +87,30 @@ format:
 	cd $(REPO_ROOT) && $(PY) -m black $(FMT_ARGS)
 	@echo "Format done."
 
-# --- Run local scripts (repo root = source root; use data.* / use_cases.* imports) ---
-document_intelligence-generate-pdfs:
+# --- Local: data generation and medallion (repo root = source root) ---
+data-local-generate:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) data/healthcare_data_generator/src/generate_local.py -o $(DATA_LOCAL_DIR)
+	@echo "Healthcare CSVs in $(DATA_LOCAL_DIR)/"
+
+data-local-generate-quick:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) data/healthcare_data_generator/src/generate_local.py -o $(DATA_LOCAL_DIR) --quick
+	@echo "Healthcare CSVs (quick) in $(DATA_LOCAL_DIR)/"
+
+data-local-generate-pdfs:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) data/prescription_pdf_generator/generate_prescription_pdfs_local.py \
 		-o $(DOC_INTEL_PDF_OUTPUT) \
 		$(DOC_INTEL_PDF_ARGS)
 	@echo "Generated PDFs in $(DOC_INTEL_PDF_OUTPUT)/"
+
+data-local-dbt-run:
+	@test -d $(MEDALLION_DIR) || (echo "Medallion dir missing: $(MEDALLION_DIR)" && exit 1)
+	cd $(MEDALLION_DIR) && dbt run --profile duckdb
+	@echo "dbt run (duckdb) done."
+
+document_intelligence-generate-pdfs: data-local-generate-pdfs
 
 # --- Marvelous MLOps (sub-usecase: own venv and requirements.txt) ---
 marvelous_mlops-venv:

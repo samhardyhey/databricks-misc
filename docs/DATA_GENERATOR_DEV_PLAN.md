@@ -2,21 +2,23 @@
 
 This plan covers **implementing all new data required by the EBOS use cases** ([docs/EBOS_USE_CASES.md](EBOS_USE_CASES.md)), **augmenting the existing `healthcare_data_generator`** where possible and adding separate generators only where the domain is orthogonal.
 
+**Local/remote workflow**: For a high-level description of data generation and medallion (local vs Databricks, DuckDB/local dbt), see [data/README.md](../data/README.md).
+
 ---
 
 ## 1. Current state
 
 ### 1.1 Existing generators
 
-| Asset | Location | Output |
-|-------|----------|--------|
-| **Healthcare data generator** | `data/healthcare_data_generator/` | `healthcare_pharmacies`, `healthcare_hospitals`, `healthcare_products`, `healthcare_orders`, `healthcare_inventory`, `healthcare_supply_chain_events` → Unity Catalog |
-| **Healthcare medallion** | `data/healthcare_data_medallion/` | dbt bronze → silver → gold on the above |
-| **Prescription PDF generator** | `data/prescription_pdf_generator/` | Synthetic prescription PDFs + JSON labels (files); no UC tables |
+| Asset                          | Location                           | Output                                                                                                                                                                |
+| ------------------------------ | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Healthcare data generator**  | `data/healthcare_data_generator/`  | `healthcare_pharmacies`, `healthcare_hospitals`, `healthcare_products`, `healthcare_orders`, `healthcare_inventory`, `healthcare_supply_chain_events` → Unity Catalog |
+| **Healthcare medallion**       | `data/healthcare_data_medallion/`  | dbt bronze → silver → gold on the above                                                                                                                               |
+| **Prescription PDF generator** | `data/prescription_pdf_generator/` | Synthetic prescription PDFs + JSON labels (files); no UC tables                                                                                                       |
 
 ### 1.2 Existing schema (relevant for extension)
 
-- **products**: `product_id`, `name`, `generic_name`, `category`, `manufacturer`, `supplier` (string), `pbs_code`, `atc_code`, `unit_price`, `wholesale_price`, `retail_price`, `is_prescription`, `is_controlled_substance`, `requires_cold_chain`, `storage_type`, `expiry_months`, `batch_size`, `minimum_order_quantity`, `lead_time_days`, `active_ingredient`, `dosage_form`, `pack_size`, `created_date`, `last_updated`.  
+- **products**: `product_id`, `name`, `generic_name`, `category`, `manufacturer`, `supplier` (string), `pbs_code`, `atc_code`, `unit_price`, `wholesale_price`, `retail_price`, `is_prescription`, `is_controlled_substance`, `requires_cold_chain`, `storage_type`, `expiry_months`, `batch_size`, `minimum_order_quantity`, `lead_time_days`, `active_ingredient`, `dosage_form`, `pack_size`, `created_date`, `last_updated`.
   **Missing for use cases**: `therapeutic_category`, `brand`, `generic_equivalent_id`, `pack_size_variants`, `margin_percentage`; and a proper **supplier_id** (supplier is currently a free-text field).
 - **inventory**: keyed by `pharmacy_id`, `product_id`; has `batch_number`, `expiry_date`, `current_stock`, `reorder_level`, etc. No **warehouse_id** (only pharmacy_id).
 - **orders**: `order_id`, `customer_id` (pharmacy_id or hospital_id), `product_id`, `order_date`, quantity, amounts, status, etc.
@@ -24,13 +26,13 @@ This plan covers **implementing all new data required by the EBOS use cases** ([
 
 ### 1.3 New data required by use case (from EBOS_USE_CASES.md)
 
-| Use case | New tables / extensions | Source (extend vs new) |
-|----------|--------------------------|-------------------------|
-| **1. Recommendation Engine** | `substitution_events`, `product_interactions`, `inventory_availability`; **products** +therapeutic_category, brand, generic_equivalent_id, pack_size_variants, margin_percentage | Extend healthcare generator |
-| **2. Inventory Optimisation** | `expiry_batches`, `writeoff_events`, `purchase_orders`, `supplier_performance` | Extend healthcare generator |
-| **3. Customer Service Agents** | `customer_service_cases`, `case_messages`, `knowledge_documents`, `order_status_events` | **New** generator (links to orders/customers) |
-| **4. Document Intelligence** | Synthetic invoice/PO/delivery-note PDFs; `bronze_documents` metadata; ground truth for NER | **New** generator (reuse prescription PDF patterns) |
-| **5. Insights & Analytics** | `warehouse_costs`, `competitor_products`, `competitor_price_history`; `store_sales`, `store_attributes`, `promotions` | Part extend (warehouse_costs), part new (competitor, store/franchise) |
+| Use case                       | New tables / extensions                                                                                                                                                          | Source (extend vs new)                                                |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| **1. Recommendation Engine**   | `substitution_events`, `product_interactions`, `inventory_availability`; **products** +therapeutic_category, brand, generic_equivalent_id, pack_size_variants, margin_percentage | Extend healthcare generator                                           |
+| **2. Inventory Optimisation**  | `expiry_batches`, `writeoff_events`, `purchase_orders`, `supplier_performance`                                                                                                   | Extend healthcare generator                                           |
+| **3. Customer Service Agents** | `customer_service_cases`, `case_messages`, `knowledge_documents`, `order_status_events`                                                                                          | **New** generator (links to orders/customers)                         |
+| **4. Document Intelligence**   | Synthetic invoice/PO/delivery-note PDFs; `bronze_documents` metadata; ground truth for NER                                                                                       | **New** generator (reuse prescription PDF patterns)                   |
+| **5. Insights & Analytics**    | `warehouse_costs`, `competitor_products`, `competitor_price_history`; `store_sales`, `store_attributes`, `promotions`                                                            | Part extend (warehouse_costs), part new (competitor, store/franchise) |
 
 Several of the above need **suppliers** and **warehouses** as first-class entities (supplier_id, warehouse_id) so we can join inventory, POs, and availability consistently.
 
@@ -38,9 +40,9 @@ Several of the above need **suppliers** and **warehouses** as first-class entiti
 
 ## 2. Cross-cutting: suppliers and warehouses
 
-- **Suppliers**: Today `products.supplier` is a string. Use cases 1 (inventory_availability), 2 (purchase_orders, supplier_performance), and 4 (silver_suppliers for matching) need **supplier_id**.  
+- **Suppliers**: Today `products.supplier` is a string. Use cases 1 (inventory_availability), 2 (purchase_orders, supplier_performance), and 4 (silver_suppliers for matching) need **supplier_id**.
   **Decision**: Add a **suppliers** table (`supplier_id`, `name`, `region`, etc.) and **products.supplier_id** (FK), and keep or derive `supplier` name for backward compatibility in silver.
-- **Warehouses**: Inventory and several new tables use **warehouse_id**. Options: (a) Add a **warehouses** table (e.g. distribution centres); (b) Treat **pharmacy_id** as warehouse_id for “pharmacy as stock location”.  
+- **Warehouses**: Inventory and several new tables use **warehouse_id**. Options: (a) Add a **warehouses** table (e.g. distribution centres); (b) Treat **pharmacy_id** as warehouse_id for “pharmacy as stock location”.
   **Decision**: Add a small **warehouses** table (e.g. 20–50 rows) and **inventory_availability / expiry_batches / writeoff_events** keyed by `warehouse_id`. Optionally link warehouses to regions; inventory can stay at pharmacy level for existing use cases and we add warehouse-level views or a separate **inventory_by_warehouse**-style table if needed. Simpler alternative for Phase 1: **reuse pharmacy_id as warehouse_id** (one warehouse per pharmacy) and add a `warehouses` view/table that is 1:1 with pharmacies, so no schema change to existing inventory.
 
 **Recommended for Phase 1**: Add **suppliers** table + **products.supplier_id**. For warehouse_id, use **pharmacy_id as warehouse_id** (pharmacy = stock-holding location) and add an optional **warehouses** table that is initially a copy of pharmacies with a `warehouse_id` alias, so all new tables can use `warehouse_id` and we can later swap to real DCs if needed.
@@ -158,14 +160,14 @@ Several of the above need **suppliers** and **warehouses** as first-class entiti
 
 ## 4. Implementation order and dependencies
 
-| Phase | Depends on | Delivers |
-|-------|------------|----------|
-| **0** | — | suppliers; product columns; warehouse_id convention |
-| **1** | Phase 0 | substitution_events, product_interactions, inventory_availability; product enhancements in UC |
-| **2** | Phase 0 | expiry_batches, writeoff_events, purchase_orders, supplier_performance |
-| **3** | Healthcare orders/customers in UC | customer_service_generator + medallion |
-| **4** | Phase 0 (supplier_id, product_id) optional | document_intelligence_generator + PDFs + metadata |
-| **5** | Phase 0 (warehouses/products) | warehouse_costs, competitor_*, store_*, promotions |
+| Phase | Depends on                                 | Delivers                                                                                      |
+| ----- | ------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| **0** | —                                          | suppliers; product columns; warehouse_id convention                                           |
+| **1** | Phase 0                                    | substitution_events, product_interactions, inventory_availability; product enhancements in UC |
+| **2** | Phase 0                                    | expiry_batches, writeoff_events, purchase_orders, supplier_performance                        |
+| **3** | Healthcare orders/customers in UC          | customer_service_generator + medallion                                                        |
+| **4** | Phase 0 (supplier_id, product_id) optional | document_intelligence_generator + PDFs + metadata                                             |
+| **5** | Phase 0 (warehouses/products)              | warehouse_costs, competitor_*, store_*, promotions                                            |
 
 Recommended sequence: **0 → 1 → 2** (all in healthcare generator + medallion), then **3** (new bundle), then **4** (new bundle), then **5** (extend healthcare again).
 
@@ -191,25 +193,37 @@ Recommended sequence: **0 → 1 → 2** (all in healthcare generator + medallion
 
 ## 6. Summary table: source of each new table
 
-| New table | Source | Phase |
-|-----------|--------|-------|
-| suppliers | healthcare_data_generator | 0 |
-| products (new columns + supplier_id) | healthcare_data_generator | 0 |
-| warehouses (optional) | healthcare_data_generator | 0 |
-| product_interactions | healthcare_data_generator | 1 |
-| substitution_events | healthcare_data_generator | 1 |
-| inventory_availability | healthcare_data_generator | 1 |
-| expiry_batches | healthcare_data_generator | 2 |
-| writeoff_events | healthcare_data_generator | 2 |
-| purchase_orders | healthcare_data_generator | 2 |
-| supplier_performance | healthcare_data_generator | 2 |
-| customer_service_cases | customer_service_generator | 3 |
-| case_messages | customer_service_generator | 3 |
-| knowledge_documents | customer_service_generator | 3 |
-| order_status_events | customer_service_generator | 3 |
-| invoice/PO/delivery PDFs + metadata | document_intelligence_generator | 4 |
-| warehouse_costs | healthcare_data_generator | 5 |
-| competitor_products / competitor_price_history | healthcare_data_generator | 5 |
-| store_sales, store_attributes, promotions | healthcare_data_generator | 5 |
+| New table                                      | Source                          | Phase |
+| ---------------------------------------------- | ------------------------------- | ----- |
+| suppliers                                      | healthcare_data_generator       | 0     |
+| products (new columns + supplier_id)           | healthcare_data_generator       | 0     |
+| warehouses (optional)                          | healthcare_data_generator       | 0     |
+| product_interactions                           | healthcare_data_generator       | 1     |
+| substitution_events                            | healthcare_data_generator       | 1     |
+| inventory_availability                         | healthcare_data_generator       | 1     |
+| expiry_batches                                 | healthcare_data_generator       | 2     |
+| writeoff_events                                | healthcare_data_generator       | 2     |
+| purchase_orders                                | healthcare_data_generator       | 2     |
+| supplier_performance                           | healthcare_data_generator       | 2     |
+| customer_service_cases                         | customer_service_generator      | 3     |
+| case_messages                                  | customer_service_generator      | 3     |
+| knowledge_documents                            | customer_service_generator      | 3     |
+| order_status_events                            | customer_service_generator      | 3     |
+| invoice/PO/delivery PDFs + metadata            | document_intelligence_generator | 4     |
+| warehouse_costs                                | healthcare_data_generator       | 5     |
+| competitor_products / competitor_price_history | healthcare_data_generator       | 5     |
+| store_sales, store_attributes, promotions      | healthcare_data_generator       | 5     |
 
 This keeps one shared healthcare foundation, one customer-service-specific generator, and one document-specific generator, with all EBOS use-case data either coming from the extended healthcare generator or from these two new bundles.
+
+---
+
+## 7. Local development
+
+For local use-case development (model training, feature engineering, evaluation), the following approach is recommended. See also [docs/LOCAL_DEVELOPMENT_REVIEW.md](LOCAL_DEVELOPMENT_REVIEW.md).
+
+**Recommendation**: **Raw CSVs in a gitignored directory** (e.g. `data/local/`) are sufficient for local use-case development—simplest, transparent, and fast. No SQLite is required for data loading or model training; use-case code can read CSVs directly into pandas (or polars) and run offline.
+
+- **Generator output for local**: When running the healthcare (or other) generator locally, write to `data/local/` (or a similar path under `data/` that is in `.gitignore`). Same CSV shape as production; no catalog or Spark needed.
+- **Optional — medallion locally**: To replicate the medallion as completely/realistically as possible locally (and speed up dev), run dbt against a **local DB**. Prefer **DuckDB** (dbt-duckdb): analytical SQL closer to Spark/Databricks, and you can point at CSVs directly (views or `read_csv_auto`) so no separate “load CSVs into tables” step. **SQLite** (dbt-sqlite) is fine too; you must populate it from CSVs first (e.g. a small script). Point the medallion’s local dbt profile at that DB; expect minor SQL dialect tweaks for Spark vs DuckDB/SQLite.
+- **Production**: The **Databricks profile** is kept for production; `generate_catalog_data_static.py` (and equivalent jobs) write to Unity Catalog. Local CSV output is additive and does not replace the catalog path.

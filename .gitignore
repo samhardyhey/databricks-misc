@@ -44,6 +44,7 @@ Thumbs.db
 .env.local
 *.csv
 test_output/
+data/local/
 logs/
 
 # dbt common ignores

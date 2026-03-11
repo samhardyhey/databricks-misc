@@ -1,28 +1,29 @@
 # This file defines dbt profiles for deployed dbt jobs.
+# Use profile "databricks" for Databricks; use "sqlite" for local medallion (requires dbt-sqlite, DB pre-loaded from CSVs).
 databricks:
   target: dev # default target
   outputs:
-    # The default target when deployed with the Databricks CLI
-    # N.B. when you use dbt from the command line, it uses the profile from .dbt/profiles.yml
     dev:
       type: databricks
       method: http
       catalog: workspace
       schema: "healthcare_medallion_dev"
       http_path: /sql/1.0/warehouses/2a475c6457a76313
-      # The workspace host / token are provided by Databricks
-      # see databricks.yml for the workspace host used for 'dev'
       host: "{{ env_var('DBT_HOST') }}"
       token: "{{ env_var('DBT_ACCESS_TOKEN') }}"
-
-    # The production target when deployed with the Databricks CLI
     prod:
       type: databricks
       method: http
       catalog: workspace
       schema: "healthcare_medallion_prod"
       http_path: /sql/1.0/warehouses/2a475c6457a76313
-      # The workspace host / token are provided by Databricks
-      # see databricks.yml for the workspace host used for 'prod'
       host: "{{ env_var('DBT_HOST') }}"
       token: "{{ env_var('DBT_ACCESS_TOKEN') }}"
+
+# Optional: local medallion. Install dbt-sqlite; create DB and load source tables from generator CSVs first; then run dbt --profile sqlite.
+sqlite:
+  target: local
+  outputs:
+    local:
+      type: sqlite
+      path: "data/local/medallion.db"
