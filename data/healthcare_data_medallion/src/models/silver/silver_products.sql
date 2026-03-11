@@ -46,7 +46,13 @@ with product_cleaned as (
         active_ingredient,
         dosage_form,
         pack_size,
-        
+        supplier_id,
+        therapeutic_category,
+        brand,
+        generic_equivalent_id,
+        pack_size_variants,
+        margin_percentage,
+
         -- Dates
         created_date,
         last_updated,

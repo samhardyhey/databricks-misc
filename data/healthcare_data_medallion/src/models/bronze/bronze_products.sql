@@ -35,7 +35,13 @@ select
     pack_size,
     created_date,
     last_updated,
-    
+    supplier_id,
+    therapeutic_category,
+    brand,
+    generic_equivalent_id,
+    pack_size_variants,
+    margin_percentage,
+
     -- Metadata columns for data lineage
     _ingestion_timestamp,
     _source,

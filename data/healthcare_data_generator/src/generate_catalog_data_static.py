@@ -157,89 +157,45 @@ def main():
     logger.info(f"🎯 Target environment: {BUNDLE_TARGET}")
     logger.info(f"📁 Target schema: {CATALOG_NAME}.{SCHEMA_NAME}")
 
-    # Check if base entities exist, if not create them
-    try:
-        spark.table(f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}pharmacies").count()
-        logger.info("📋 Base entities already exist, skipping creation")
-    except:
-        logger.info("📋 Creating base entities (pharmacies, hospitals)...")
-
-        # Generate base entities (pharmacies, hospitals) - these are relatively stable
-        pharmacies = generator.generator.generate_pharmacies(
-            BASE_ENTITY_SIZES["pharmacies"]
-        )
-        hospitals = generator.generator.generate_hospitals(
-            BASE_ENTITY_SIZES["hospitals"]
-        )
-
-        # Save base entities (overwrite mode for initial creation)
-        generator.save_to_catalog(pharmacies, "pharmacies", mode="overwrite")
-        generator.save_to_catalog(hospitals, "hospitals", mode="overwrite")
-
-        logger.info(
-            f"✅ Created {len(pharmacies)} pharmacies and {len(hospitals)} hospitals"
-        )
-
-    # Always generate large-scale transactional data
-    logger.info(
-        "📊 Generating large-scale transactional data (products, orders, inventory, events)..."
+    # Generate all datasets (base + use-case tables) in one pass
+    logger.info("📊 Generating full healthcare dataset (base + use-case tables)...")
+    n_pharmacies = BASE_ENTITY_SIZES["pharmacies"]
+    n_hospitals = BASE_ENTITY_SIZES["hospitals"]
+    n_suppliers = 80
+    datasets = generator.generator.generate_all_datasets(
+        n_pharmacies=n_pharmacies,
+        n_hospitals=n_hospitals,
+        n_suppliers=n_suppliers,
+        n_products=TRANSACTIONAL_SIZES["products"],
+        n_orders=TRANSACTIONAL_SIZES["orders"],
+        n_inventory=TRANSACTIONAL_SIZES["inventory"],
+        n_events=TRANSACTIONAL_SIZES["events"],
+        n_product_interactions_extra=10000,
+        substitution_ratio=0.1,
+        n_purchase_orders=3000,
+        n_writeoff_events=500,
+        n_competitor_products=200,
+        store_sales_days=90,
+        n_promotions=200,
     )
 
-    # Load existing base entities for foreign key relationships
-    try:
-        pharmacies_df = spark.table(
-            f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}pharmacies"
-        ).toPandas()
-        hospitals_df = spark.table(
-            f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}hospitals"
-        ).toPandas()
-        logger.info(
-            f"📋 Loaded {len(pharmacies_df)} pharmacies and {len(hospitals_df)} hospitals for foreign keys"
-        )
-    except Exception as e:
-        logger.error(f"❌ Failed to load base entities: {e}")
-        # Generate minimal base entities for this run
-        logger.info("🔄 Generating minimal base entities for this run...")
-        pharmacies_df = generator.generator.generate_pharmacies(5)
-        hospitals_df = generator.generator.generate_hospitals(3)
-
-    # Generate transactional data
-    products = generator.generator.generate_products(TRANSACTIONAL_SIZES["products"])
-    orders = generator.generator.generate_orders(
-        TRANSACTIONAL_SIZES["orders"], pharmacies_df, hospitals_df, products
-    )
-    inventory = generator.generator.generate_inventory(
-        TRANSACTIONAL_SIZES["inventory"], pharmacies_df, products
-    )
-    events = generator.generator.generate_supply_chain_events(
-        TRANSACTIONAL_SIZES["events"], orders
-    )
-
-    # Save transactional data (append mode for incremental updates)
-    datasets = {
-        "products": products,
-        "orders": orders,
-        "inventory": inventory,
-        "supply_chain_events": events,
-    }
-
+    # Save all tables to catalog (overwrite so each run is full refresh)
     for table_name, df in datasets.items():
-        generator.save_to_catalog(df, table_name, mode="append")
+        generator.save_to_catalog(df, table_name, mode="overwrite")
 
     # Display summary
-    logger.info("=== LARGE-SCALE DATA GENERATION COMPLETE ===")
+    logger.info("=== FULL HEALTHCARE DATA GENERATION COMPLETE ===")
     total_records = 0
     for name, df in datasets.items():
         records = len(df)
         total_records += records
-        logger.info(f"{name:20}: {records:6,} records (appended)")
-    logger.info(f"{'TOTAL':20}: {total_records:6,} records")
-    logger.info("🎯 Dataset ready for ML experimentation!")
+        logger.info(f"{name:25}: {records:6,} records")
+    logger.info(f"{'TOTAL':25}: {total_records:6,} records")
+    logger.info("🎯 All use-case tables ready for ML and medallion.")
 
     # Verify tables exist in catalog and show total counts
     logger.info("\n=== VERIFYING UNITY CATALOG TABLES ===")
-    all_tables = ["pharmacies", "hospitals"] + list(datasets.keys())
-    for table_name in all_tables:
+    for table_name in datasets.keys():
         full_table_name = f"{CATALOG_NAME}.{SCHEMA_NAME}.{TABLE_PREFIX}{table_name}"
         try:
             count = spark.table(full_table_name).count()
