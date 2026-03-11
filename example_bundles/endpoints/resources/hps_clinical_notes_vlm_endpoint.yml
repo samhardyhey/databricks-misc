@@ -1,0 +1,75 @@
+# HPS Clinical Notes VLM Model Serving Endpoint
+# Serves the JSL VLM 8B model for medical document processing
+
+resources:
+  model_serving_endpoints:
+    hps_clinical_notes_vlm_endpoint:
+      name: hps-clinical-notes-vlm-endpoint
+      description: Endpoint serving the JSL VLM 8B model for clinical notes processing with environment-specific scaling and logging configuration.
+
+      # Inference logging configuration for monitoring and analysis
+      # ai_gateway:
+      #   inference_table_config:
+      #     catalog_name: ${var.inference_table_catalog}
+      #     schema_name: ${var.inference_table_schema}
+      #     table_name_prefix: ${var.inference_table_name}
+      #     enabled: true
+  
+      # Endpoint configuration
+      config:
+        # Traffic configuration with environment-specific scaling
+        traffic_config:
+          routes:
+            - served_model_name: jsl-vlm-8b-2
+              traffic_percentage: 100
+        
+        # Served entities configuration
+        served_entities:
+          - name: jsl-vlm-8b-2
+            entity_name: jsl_delta_share.model.jsl-vlm-8b
+            entity_version: 2  # Based on your current Version 2
+            workload_type: GPU_LARGE  # GPU Large (A100)
+            
+            # Environment-specific scale configuration
+            scale_to_zero_enabled: ${var.scale_to_zero_enabled}
+            max_provisioned_concurrency: ${var.endpoint_max_concurrency}
+            min_provisioned_concurrency: ${var.endpoint_min_concurrency}
+            
+            # Environment variables for VLM configuration
+            environment_vars:
+              ENABLE_MLFLOW_TRACING: "true"
+              JSL_VLM_GPU_MEMORY_UTILIZATION: "0.9"
+              JSL_VLM_MAX_MODEL_LENGTH: "32768" 
+              NCORES: "1"
+              SPARK_NLP_LICENSE: ${var.spark_nlp_license}
+      
+      # Resource tags for organization and cost tracking
+      tags:
+        - key: business_unit
+          value: HPS
+        - key: division
+          value: Healthcare
+        - key: project
+          value: "HPS Clinical Notes"
+        
+      # Permissions - service principal, user, and AD groups with environment-specific configuration
+      permissions:
+        # Service principal and user permissions
+        - service_principal_name: ${var.service_principal_name}
+          level: CAN_MANAGE
+        - user_name: sam.hardy@ebosgroup.com
+          level: CAN_MANAGE
+        # AD Group permissions for ML AI and JSL teams
+        - group_name: ${var.ml_ai_group_name}
+          level: CAN_MANAGE
+        - group_name: ${var.ml_ai_group_name}
+          level: CAN_QUERY
+        - group_name: ${var.jsl_group_name}
+          level: CAN_MANAGE
+        - group_name: ${var.jsl_group_name}
+          level: CAN_QUERY
+        # AD Group permissions for CRUD team
+        - group_name: ${var.crud_group_name}
+          level: CAN_MANAGE
+        - group_name: ${var.crud_group_name}
+          level: CAN_QUERY

@@ -1,0 +1,138 @@
+# HPS Clinical Notes JSL Pipeline - Endpoints Bundle
+# Bundle for deploying model serving endpoints across environments
+
+bundle:
+  name: hps_clinical_notes_endpoints
+  uuid: 42bcdf34-fd32-4c88-cfba-9e68e453b24f
+
+include:
+  - resources/*.yml
+
+# Sync shared directories from parent project
+sync:
+  paths:
+    - ../../src        # Main project src for shared components
+
+# Variable declarations for environment-specific configurations
+variables:
+  inference_table_catalog:
+    description: Catalog for inference logging tables
+    default: hps_clinical_notes_discover
+  inference_table_schema:
+    description: Schema for inference logging tables
+    default: custom
+  inference_table_name:
+    description: Table name for inference logging
+    default: hps-clinical-notes-vlm-endpoint-logs
+  catalog:
+    description: The catalog to use
+    default: hive_metastore
+  schema:
+    description: The schema to use
+    default: default
+  service_principal_name:
+    description: Service principal name for the environment
+    default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
+  
+  # Endpoint scaling configuration
+  endpoint_min_concurrency:
+    description: Minimum endpoint concurrency (0 for scale-to-zero)
+    default: 0
+  endpoint_max_concurrency:
+    description: Maximum endpoint concurrency
+    default: 4
+  workload_size:
+    description: Endpoint workload size (Small/Medium/Large/Custom)
+    default: Custom
+  scale_to_zero_enabled:
+    description: Enable scale-to-zero for cost optimization
+    default: true
+  
+  # JSL license configuration - set per environment in targets
+  spark_nlp_license:
+    description: Spark NLP license key from environment-specific key vault
+  spark_ocr_license:
+    description: Spark OCR license key from environment-specific key vault
+  aws_access_key_id:
+    description: AWS access key ID from environment-specific key vault
+  aws_secret_access_key:
+    description: AWS secret access key from environment-specific key vault
+  
+  # Permission group configurations (can be environment-specific)
+  ml_ai_group_name:
+    description: ML AI group name for endpoint permissions
+    default: HPS_Clinical_Notes_Discover_MLAI_Group
+  jsl_group_name:
+    description: JSL group name for endpoint permissions
+    default: HPS_Clinical_Notes_Discover_JSL_Group
+  crud_group_name:
+    description: CRUD group name for endpoint permissions
+    default: HPS_Clinical_Notes_Discover_CRUD_Group
+
+targets:
+  dev-sp:
+    mode: development
+    workspace:
+      host: https://adb-3971167982293260.0.azuredatabricks.net  # TODO: Update when dev env available
+      root_path: /Workspace/Users/c8c4498a-fd58-45b7-a8c7-39f91f385dbf/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: hive_metastore
+      schema: dev
+      service_principal_name: <TBD-DEV-SP>
+      # Endpoint configuration for dev
+      endpoint_min_concurrency: 4
+      endpoint_max_concurrency: 4
+      workload_size: Custom
+      scale_to_zero_enabled: true
+      # Dev environment secrets for endpoints
+      spark_nlp_license: "{{secrets/dev_ml_secret_scope/<TBD>}}"
+      spark_ocr_license: "{{secrets/dev_ml_secret_scope/<TBD>}}"
+      aws_access_key_id: "{{secrets/dev_ml_secret_scope/<TBD>}}"
+      aws_secret_access_key: "{{secrets/dev_ml_secret_scope/<TBD>}}"
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+
+  test-sp:
+    mode: development
+    workspace:
+      host: https://adb-3971167982293260.0.azuredatabricks.net  # TODO: Update when test env available
+      root_path: /Workspace/Users/c8c4498a-fd58-45b7-a8c7-39f91f385dbf/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: hive_metastore
+      schema: test
+      service_principal_name: <TBD-TEST-SP>
+      # Endpoint configuration for test
+      endpoint_min_concurrency: 4
+      endpoint_max_concurrency: 4
+      workload_size: Custom
+      scale_to_zero_enabled: true
+      # Test environment secrets for endpoints
+      spark_nlp_license: "{{secrets/test_ml_secret_scope/<TBD>}}"
+      spark_ocr_license: "{{secrets/test_ml_secret_scope/<TBD>}}"
+      aws_access_key_id: "{{secrets/test_ml_secret_scope/<TBD>}}"
+      aws_secret_access_key: "{{secrets/test_ml_secret_scope/<TBD>}}"
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+
+  prod-sp:
+    mode: production
+    default: true
+    workspace:
+      host: https://adb-3971167982293260.0.azuredatabricks.net
+      root_path: /Workspace/Users/c8c4498a-fd58-45b7-a8c7-39f91f385dbf/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: hive_metastore
+      schema: prod
+      # Production endpoint configuration
+      # TODO: Eventually reset to 4-16 once lower envs are available
+      endpoint_min_concurrency: 4
+      endpoint_max_concurrency: 4
+      workload_size: Custom
+      scale_to_zero_enabled: false   # Disable for guaranteed SLA
+      # Production environment secrets for endpoints
+      spark_nlp_license: "{{secrets/prod_ml_secret_scope/10838-spark-nlp-license}}"
+      spark_ocr_license: "{{secrets/prod_ml_secret_scope/10838-spark-ocr-license}}"
+      aws_access_key_id: "{{secrets/prod_ml_secret_scope/10838-aws-access-key-id}}"
+      aws_secret_access_key: "{{secrets/prod_ml_secret_scope/10838-aws-secret-access-key}}"
+    run_as:
+      service_principal_name: ${var.service_principal_name}
