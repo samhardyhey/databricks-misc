@@ -1,14 +1,14 @@
 # EBOS AI/ML Technical Implementation Platform
 
-This repository implements the **EBOS AI/ML Technical Implementation Shortlist**: a prioritised set of use-cases for healthcare/pharmaceutical distribution (Databricks + Unity Catalog). It combines a **shared data foundation** (generators + medallion) with **use-cases** that consume that data — one data platform, many use-cases on top, mimicking real-life data generation and medallions.
+This repository implements the **EBOS AI/ML Use Cases**: a set of use-cases for healthcare/pharmaceutical distribution (Databricks + Unity Catalog). All use-cases are of equal priority; implementation order may vary. It combines a **shared data foundation** (generators + medallion) with **use-cases** that consume that data — one data platform, many use-cases on top, mimicking real-life data generation and medallions.
 
-**Full specification**: [EBOS_SHORTLIST.md](EBOS_SHORTLIST.md) (data requirements, modelling approach, architecture, file structure per use-case).
+**Full specification**: [docs/EBOS_USE_CASES.md](docs/EBOS_USE_CASES.md) (data requirements, modelling approach, architecture, file structure per use-case).  
+**Data generator roadmap**: [docs/DATA_GENERATOR_DEV_PLAN.md](docs/DATA_GENERATOR_DEV_PLAN.md) (phased plan to implement all new data for use cases, extending the healthcare generator where possible).
 
 ---
 
-## Priority order & infrastructure
+## Infrastructure & layout
 
-- **Priority**: Based on ELT "Business Value vs Complexity" prioritisation.
 - **Infrastructure**: Databricks + Unity Catalog (`workspace.default` schema).
 - **Repo layout**: Use-cases under `use_cases/<name>/`; DAB bundles (jobs, endpoints, interactive) live under each use-case or data component (see [bundle_structure.md](bundle_structure.md)).
 
@@ -38,7 +38,7 @@ This repository implements the **EBOS AI/ML Technical Implementation Shortlist**
 | **4** | **Document Intelligence (Finance & Ordering)** — OCR, NER, invoice/PO extraction                            | ✅ Partial (Spark NLP setup, annotator) | `use_cases/document_intelligence/`                                                                     |
 | **5** | **AI Powered Insights & Analytics** — Ranging/consolidation, market intelligence, franchise analytics       | ⚠️ Not implemented                      | `use_cases/ranging_consolidation/`, `use_cases/market_intelligence/`, `use_cases/franchise_analytics/` |
 
-Details (data requirements, modelling, jobs, apps): see [EBOS_SHORTLIST.md](EBOS_SHORTLIST.md).
+Details (data requirements, modelling, jobs, apps): see [docs/EBOS_USE_CASES.md](docs/EBOS_USE_CASES.md).
 
 ---
 
@@ -61,16 +61,16 @@ databricks-misc/
 │   ├── market_intelligence/
 │   └── franchise_analytics/
 │
-├── docs/                    # Supporting documentation
-│   ├── OLD_MODELLING.md     # Pre–EBOS option space (historical)
-│   └── lunch_and_learn.md   # Session plan; to be aligned with EBOS use-cases
-│
-├── EBOS_SHORTLIST.md        # Full implementation shortlist (source of truth)
+├── docs/                    # Documentation
+│   ├── EBOS_USE_CASES.md    # EBOS use-cases spec (source of truth)
+│   ├── DATA_GENERATOR_DEV_PLAN.md  # Phased plan for new data (all use cases)
+│   ├── MODELLING_OPTIONS.md # Alternative / non-EBOS modelling options
+│   └── LUNCH_AND_LEARN.md   # Session plan; to be aligned with EBOS use-cases
 ├── pyproject.toml           # UV / local deps
 └── Makefile                 # cleanup, format, uv, document_intelligence generate_pdfs
 ```
 
-**Lunch & Learn**: [docs/lunch_and_learn.md](docs/lunch_and_learn.md) is a standalone session plan; it will be revisited and aligned with the EBOS use-cases so demos draw on implemented capabilities.
+**Lunch & Learn**: [docs/LUNCH_AND_LEARN.md](docs/LUNCH_AND_LEARN.md) is a standalone session plan; it will be revisited and aligned with the EBOS use-cases so demos draw on implemented capabilities.
 
 ---
 

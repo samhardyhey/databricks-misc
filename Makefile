@@ -24,12 +24,12 @@ MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
 help:
 	@echo "Targets:"
-	@echo "  make uv-venv              - Create .venv (UV environment)"
-	@echo "  make uv-sync / install     - Install deps (uv sync); use install for dev deps: make install uv-dev"
-	@echo "  make uv-dev               - Install dev deps (autoflake8, isort, black)"
+	@echo "  make uv-venv              - Create .venv (uses uv if available, else python3 -m venv)"
+	@echo "  make uv-sync / install     - Install deps; use install then uv-dev for dev tools"
+	@echo "  make uv-dev               - Install dev deps (autoflake, isort, black)"
 	@echo "  make uv-activate          - Print activate command for .venv"
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
-	@echo "  make format [FMT_ARGS=.]  - Run autoflake8, isort, black"
+	@echo "  make format [FMT_ARGS=.]  - Run autoflake, isort, black"
 	@echo "  make document_intelligence-generate-pdfs [DOC_INTEL_PDF_ARGS=-n 10]  - Generate prescription PDFs under use_cases/document_intelligence"
 	@echo ""
 	@echo "  marvelous_mlops (separate venv; run marvelous_mlops-venv first):"
@@ -38,19 +38,21 @@ help:
 	@echo "  make marvelous_mlops-fetch-substack   - Fetch Substack posts"
 	@echo "  make marvelous_mlops-fetch-youtube    - Fetch YouTube transcripts"
 
-# --- UV environment (databricks-misc) ---
+# --- Environment (databricks-misc): use uv if available, else python3/pip ---
 uv-venv:
-	cd $(REPO_ROOT) && uv venv
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv venv) || (command -v python3.12 >/dev/null 2>&1 && python3.12 -m venv .venv) || (command -v python3.11 >/dev/null 2>&1 && python3.11 -m venv .venv) || python3 -m venv .venv
 	@echo "Created .venv. Next: make install  [make uv-dev for format tools]"
 
 uv-sync:
-	cd $(REPO_ROOT) && uv sync
-	@echo "Synced dependencies. For dev tools (autoflake8, isort, black): make uv-dev"
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync || .venv/bin/pip install -e .)
+	@echo "Deps installed. For dev tools (autoflake, isort, black): make uv-dev"
 
 install: uv-sync
 
 uv-dev:
-	cd $(REPO_ROOT) && uv sync --extra dev
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev || .venv/bin/pip install -e ".[dev]")
 	@echo "Dev deps installed."
 
 uv-activate:
@@ -64,12 +66,13 @@ cleanup:
 	rm -rf $(REPO_ROOT)/.pytest_cache $(REPO_ROOT)/.coverage $(REPO_ROOT)/.mypy_cache 2>/dev/null || true
 	@echo "Cleanup done."
 
-# --- Format (autoflake8 -> isort -> black) ---
+# --- Format (autoflake -> isort -> black); requires make uv-dev ---
 FMT_ARGS ?= data use_cases
 format:
-	autoflake8 $(FMT_ARGS) --remove-all-unused-imports --remove-unused-variables --recursive --in-place
-	isort $(FMT_ARGS)
-	black $(FMT_ARGS)
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make uv-dev" && exit 1)
+	cd $(REPO_ROOT) && $(PY) -m autoflake $(FMT_ARGS) --remove-all-unused-imports --remove-unused-variables --recursive --in-place
+	cd $(REPO_ROOT) && $(PY) -m isort $(FMT_ARGS)
+	cd $(REPO_ROOT) && $(PY) -m black $(FMT_ARGS)
 	@echo "Format done."
 
 # --- Run local scripts (repo root = source root; use data.* / use_cases.* imports) ---
@@ -81,7 +84,7 @@ document_intelligence-generate-pdfs:
 
 # --- Marvelous MLOps (sub-usecase: own venv and requirements.txt) ---
 marvelous_mlops-venv:
-	cd $(MARVELOUS_MLOPS_DIR) && uv venv && .venv/bin/pip install -r requirements.txt
+	cd $(MARVELOUS_MLOPS_DIR) && (command -v uv >/dev/null 2>&1 && uv venv || python3 -m venv .venv) && .venv/bin/pip install -r requirements.txt
 	@echo "marvelous_mlops .venv ready. Run: make marvelous_mlops-fetch-medium|fetch-substack|fetch-youtube"
 
 marvelous_mlops-fetch-medium:

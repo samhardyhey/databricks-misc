@@ -1,6 +1,6 @@
-# EBOS AI/ML Technical Implementation Shortlist
+# EBOS AI/ML Use Cases
 
-**Priority Order**: Based on ELT "Business Value vs Complexity" prioritisation
+**Use-cases**: Equal priority; implementation order may vary.
 **Infrastructure**: Databricks + Unity Catalog (`workspace.default` schema)
 **Repo layout**: Use-cases live under `use_cases/<name>/`; DAB bundles (jobs, endpoints, interactive) live under each use-case or data component. New data tables (generator/medallion extensions) are planned and will be implemented incrementally.
 
@@ -11,7 +11,7 @@
 
 ---
 
-## 1️⃣ Recommendation Engine for Ordering ✅ **TOP PRIORITY**
+## 1️⃣ Recommendation Engine for Ordering
 
 **Business Value**: ~$4.9m p.a. | Enterprise-wide (Healthcare, MedTech, Animal Care)
 **Use Case**: Recommend similar products and auto-substitutions to reduce sales leakage and increase margins

@@ -9,7 +9,7 @@
     "mlops",
     "databricks"
   ],
-  "fetched_at": "2026-03-11T13:50:08.684650",
+  "fetched_at": "2026-03-12T07:43:17.709966",
   "preview": "Lecture 6: Deploying a model serving endpoint Databricks recently introduced Free Edition, which opened the door for us to create a free hands-on course on MLOps with Databricks. This article is part …",
   "reading_time": "6 min read"
 }

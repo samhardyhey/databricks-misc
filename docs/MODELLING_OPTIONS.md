@@ -1,6 +1,6 @@
-# OLD_MODELLING — Pre–EBOS shortlist option space
+# Modelling options — alternative / non-EBOS
 
-*This document is historical: a broad landscape of possible modelling areas. The active implementation plan is the **EBOS AI/ML Technical Implementation Shortlist** (see root [EBOS_SHORTLIST.md](../EBOS_SHORTLIST.md) and [README.md](../README.md)).*
+*Broader landscape of possible modelling areas, not part of the current EBOS use-case set. The active implementation plan is the **EBOS AI/ML Use Cases** (see [EBOS_USE_CASES.md](EBOS_USE_CASES.md) and [README.md](../README.md)).*
 
 ---
 

@@ -1,6 +1,6 @@
 # Lunch & Learn — To be aligned with EBOS use cases
 
-*Standalone session plan. Will be revisited and aligned with the EBOS AI/ML use cases (see [EBOS_SHORTLIST.md](../EBOS_SHORTLIST.md) and [README.md](../README.md)) so demos draw on implemented use cases.*
+*Standalone session plan. Will be revisited and aligned with the EBOS AI/ML use cases (see [EBOS_USE_CASES.md](EBOS_USE_CASES.md) and [README.md](../README.md)) so demos draw on implemented use cases.*
 
 ---
 

@@ -24,6 +24,7 @@ TABLE_PREFIX = "healthcare_"
 
 # Get schema name from bundle environment variables
 import os
+
 BUNDLE_TARGET = os.getenv("BUNDLE_TARGET", "dev")
 SCHEMA_NAME = f"healthcare_{BUNDLE_TARGET}_raw"
 

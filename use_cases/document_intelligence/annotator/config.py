@@ -17,4 +17,3 @@ LABELS_DIR = BASE_DIR / "labels"
 
 # Directory where annotated JSON files will be saved
 ANNOTATED_DIR = BASE_DIR / "annotated"
-

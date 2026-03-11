@@ -7,14 +7,12 @@ saving annotated versions to a separate directory.
 
 import base64
 import json
-import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import streamlit as st
+from config import ANNOTATED_DIR, DOCUMENTS_DIR, LABELS_DIR
 from loguru import logger
-
-from config import DOCUMENTS_DIR, LABELS_DIR, ANNOTATED_DIR
 
 # Page configuration
 st.set_page_config(
@@ -110,7 +108,9 @@ def main():
     # Sidebar for navigation
     with st.sidebar:
         st.header("Configuration")
-        st.info(f"📁 Documents: `{DOCUMENTS_DIR}`\n📁 Labels: `{LABELS_DIR}`\n📁 Annotated: `{ANNOTATED_DIR}`")
+        st.info(
+            f"📁 Documents: `{DOCUMENTS_DIR}`\n📁 Labels: `{LABELS_DIR}`\n📁 Annotated: `{ANNOTATED_DIR}`"
+        )
         st.caption("Edit `config.py` to change directories")
 
         if st.button("Load Documents"):
@@ -183,7 +183,9 @@ def main():
             # Previous/Next buttons
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("⬅️ Previous", disabled=st.session_state.current_index == 0):
+                if st.button(
+                    "⬅️ Previous", disabled=st.session_state.current_index == 0
+                ):
                     st.session_state.current_index -= 1
                     st.rerun()
             with col2:
@@ -497,4 +499,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

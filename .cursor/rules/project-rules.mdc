@@ -5,7 +5,7 @@ alwaysApply: true
 ---
 
 ### Project Overview
-- Purpose: Implements the **EBOS AI/ML Technical Implementation Shortlist** (see root EBOS_SHORTLIST.md and README.md). Prioritised use-cases for healthcare/pharmaceutical distribution on Databricks + Unity Catalog.
+- Purpose: Implements the **EBOS AI/ML Use Cases** (see docs/EBOS_USE_CASES.md and README.md). Use-cases for healthcare/pharmaceutical distribution on Databricks + Unity Catalog (equal priority).
 - Target Domain: EBOS-style supply chain, logistics, healthcare analytics (recommendation engine, inventory optimisation, document intelligence, customer service agents, insights & analytics).
 - Platform: Databricks free edition - `dbc-f501771e-54b7.cloud.databricks.com`
 - Scope: Shared data foundation (extend healthcare_data_generator/medallion for reuse) plus use-cases under use_cases/<name>/; each use-case has its own DAB bundle where needed.
@@ -13,7 +13,7 @@ alwaysApply: true
 ### Repo Structure
 - **data/** — Shared data foundation. Generators (healthcare, prescription PDFs) and medallion. Extended incrementally for use-cases; one medallion, n use-cases on top.
 - **use_cases/** — One subdirectory per EBOS use-case (recommendation_engine, demand_forecasting, inventory_optimization, document_intelligence, customer_service_agent, ranging_consolidation, market_intelligence, franchise_analytics). DAB bundles (jobs, endpoints) live under the use-case or data component (bundle_structure.md).
-- **docs/** — OLD_MODELLING.md (pre-EBOS option space), lunch_and_learn.md (session plan; to be aligned with EBOS).
+- **docs/** — EBOS_USE_CASES.md (use-cases spec), MODELLING_OPTIONS.md (alternative / non-EBOS options), LUNCH_AND_LEARN.md (session plan; to be aligned with EBOS).
 
 ### Technical Architecture
 - Development Model: Local development with Databricks Connect for remote execution

@@ -2,43 +2,61 @@
 Main script to run demand forecasting experiments
 
 This script demonstrates how to use the forecasting models with real data.
-It loads data from Unity Catalog and runs all three models for comparison.
+When running on Databricks it loads from Unity Catalog; when running locally
+it loads from CSV (data/local/ or LOCAL_DATA_PATH) or falls back to sample data.
 """
+
+import os
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from data_preparation import prepare_forecasting_data
 from loguru import logger
 from model_comparison import run_full_comparison
-from pyspark.sql import SparkSession
+
+from use_cases.env_utils import is_running_on_databricks
+
+# Default directory for local CSV data (gitignored). Override with env LOCAL_DATA_PATH.
+DEFAULT_LOCAL_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "local"
 
 
-def load_healthcare_data(spark: SparkSession) -> pd.DataFrame:
-    """Load healthcare order data from Unity Catalog."""
+def load_healthcare_data_from_catalog(spark) -> pd.DataFrame:
+    """Load healthcare order data from Unity Catalog (Databricks only)."""
     logger.info("Loading healthcare data from Unity Catalog...")
+    orders_df = spark.table("workspace.default.healthcare_orders").toPandas()
+    orders_df["order_date"] = pd.to_datetime(orders_df["order_date"])
+    orders_df = orders_df[orders_df["order_date"].notna()]
+    orders_df = orders_df.sort_values("order_date")
+    logger.info(
+        f"Loaded {len(orders_df)} orders from {orders_df['order_date'].min()} to {orders_df['order_date'].max()}"
+    )
+    return orders_df
 
-    try:
-        # Load orders data
-        orders_df = spark.table("workspace.default.healthcare_orders").toPandas()
 
-        # Convert order_date to datetime
-        orders_df["order_date"] = pd.to_datetime(orders_df["order_date"])
-
-        # Filter out any invalid dates
-        orders_df = orders_df[orders_df["order_date"].notna()]
-
-        # Sort by date
-        orders_df = orders_df.sort_values("order_date")
-
-        logger.info(
-            f"Loaded {len(orders_df)} orders from {orders_df['order_date'].min()} to {orders_df['order_date'].max()}"
-        )
-
-        return orders_df
-
-    except Exception as e:
-        logger.error(f"Failed to load data: {e}")
-        raise
+def load_healthcare_data_local(data_dir: Path | None = None) -> pd.DataFrame | None:
+    """
+    Load orders from local CSV (e.g. from healthcare_data_generator save_datasets).
+    Looks for orders.csv in data_dir. Returns None if file missing.
+    """
+    data_dir = data_dir or Path(
+        os.environ.get("LOCAL_DATA_PATH", str(DEFAULT_LOCAL_DATA_DIR))
+    )
+    orders_path = data_dir / "orders.csv"
+    if not orders_path.exists():
+        return None
+    logger.info(f"Loading healthcare data from {orders_path}...")
+    orders_df = pd.read_csv(orders_path)
+    orders_df["order_date"] = pd.to_datetime(orders_df["order_date"])
+    orders_df = orders_df[orders_df["order_date"].notna()]
+    # Generator uses customer_id; forecasting code expects pharmacy_id for grouping
+    if "pharmacy_id" not in orders_df.columns and "customer_id" in orders_df.columns:
+        orders_df["pharmacy_id"] = orders_df["customer_id"].astype(str)
+    orders_df = orders_df.sort_values("order_date")
+    logger.info(
+        f"Loaded {len(orders_df)} orders from {orders_df['order_date'].min()} to {orders_df['order_date'].max()}"
+    )
+    return orders_df
 
 
 def create_sample_data() -> pd.DataFrame:
@@ -194,18 +212,34 @@ def run_product_level_forecasting(orders_df: pd.DataFrame) -> dict:
 def main():
     """Main function to run forecasting experiments."""
     logger.info("🚀 Starting Demand Forecasting Experiments")
+    on_databricks = is_running_on_databricks()
+    logger.info(f"Runtime: {'Databricks' if on_databricks else 'local'}")
 
-    # Initialize Spark session
-    spark = SparkSession.builder.appName("DemandForecasting").getOrCreate()
+    spark = None
+    if on_databricks:
+        from pyspark.sql import SparkSession
+
+        spark = SparkSession.builder.appName("DemandForecasting").getOrCreate()
 
     try:
-        # Try to load real data first
-        try:
-            orders_df = load_healthcare_data(spark)
-            logger.info("✅ Loaded real healthcare data from Unity Catalog")
-        except:
-            logger.warning("⚠️ Could not load real data, using sample data")
-            orders_df = create_sample_data()
+        if on_databricks:
+            try:
+                orders_df = load_healthcare_data_from_catalog(spark)
+                logger.info("✅ Loaded real healthcare data from Unity Catalog")
+            except Exception as e:
+                logger.warning(
+                    f"⚠️ Could not load from catalog ({e}), using sample data"
+                )
+                orders_df = create_sample_data()
+        else:
+            orders_df = load_healthcare_data_local()
+            if orders_df is None:
+                logger.warning(
+                    "⚠️ No local CSV at LOCAL_DATA_PATH/orders.csv, using sample data"
+                )
+                orders_df = create_sample_data()
+            else:
+                logger.info("✅ Loaded healthcare data from local CSV")
 
         # Run overall demand forecasting
         logger.info("Running overall demand forecasting...")
@@ -246,7 +280,8 @@ def main():
         logger.error(f"Experiment failed: {e}")
         raise
     finally:
-        spark.stop()
+        if spark is not None:
+            spark.stop()
 
 
 if __name__ == "__main__":

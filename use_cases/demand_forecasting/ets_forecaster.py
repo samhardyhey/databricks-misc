@@ -30,7 +30,7 @@ class ETSForecaster:
     def __init__(
         self,
         trend: Optional[str] = "add",
-        seasonal: Optional[str] = "add", 
+        seasonal: Optional[str] = "add",
         seasonal_periods: int = 7,
         damped_trend: bool = False,
         initialization_method: str = "estimated",
@@ -102,8 +102,8 @@ class ETSForecaster:
                 if self.params["trend"] is None:
                     # Simple Exponential Smoothing
                     self.model = SimpleExpSmoothing(
-                        ts_data, 
-                        initialization_method=self.params["initialization_method"]
+                        ts_data,
+                        initialization_method=self.params["initialization_method"],
                     )
                 else:
                     # Holt's method
@@ -111,7 +111,7 @@ class ETSForecaster:
                         ts_data,
                         exponential=(self.params["trend"] == "mul"),
                         damped_trend=self.params["damped_trend"],
-                        initialization_method=self.params["initialization_method"]
+                        initialization_method=self.params["initialization_method"],
                     )
             else:
                 # Full Holt-Winters with seasonality
@@ -129,7 +129,7 @@ class ETSForecaster:
 
             # Calculate training metrics
             fitted_values = self.fitted_model.fittedvalues
-            residuals = ts_data - fitted_values
+            ts_data - fitted_values
 
             train_mae = mean_absolute_error(ts_data, fitted_values)
             train_rmse = np.sqrt(mean_squared_error(ts_data, fitted_values))
@@ -149,7 +149,7 @@ class ETSForecaster:
                 "bic": bic,
                 "seasonal_periods": seasonal_periods,
                 "n_samples": len(ts_data),
-                "sse": getattr(self.fitted_model, 'sse', np.nan),
+                "sse": getattr(self.fitted_model, "sse", np.nan),
             }
 
         except Exception as e:
@@ -158,8 +158,7 @@ class ETSForecaster:
             # Fallback to simple exponential smoothing
             try:
                 self.model = SimpleExpSmoothing(
-                    ts_data, 
-                    initialization_method="estimated"
+                    ts_data, initialization_method="estimated"
                 )
                 self.fitted_model = self.model.fit()
 
@@ -173,7 +172,7 @@ class ETSForecaster:
                     "bic": self.fitted_model.bic,
                     "seasonal_periods": 0,
                     "n_samples": len(ts_data),
-                    "sse": getattr(self.fitted_model, 'sse', np.nan),
+                    "sse": getattr(self.fitted_model, "sse", np.nan),
                 }
             except Exception as e2:
                 logger.error(f"All ETS models failed: {e2}")
@@ -232,48 +231,57 @@ class ETSForecaster:
             return {}
 
         components = {}
-        
+
         # Get level component
-        if hasattr(self.fitted_model, 'level') and self.fitted_model.level is not None:
-            components['level'] = self.fitted_model.level
-        
+        if hasattr(self.fitted_model, "level") and self.fitted_model.level is not None:
+            components["level"] = self.fitted_model.level
+
         # Get trend component
-        if hasattr(self.fitted_model, 'trend') and self.fitted_model.trend is not None:
-            components['trend'] = self.fitted_model.trend
-            
+        if hasattr(self.fitted_model, "trend") and self.fitted_model.trend is not None:
+            components["trend"] = self.fitted_model.trend
+
         # Get seasonal component
-        if hasattr(self.fitted_model, 'season') and self.fitted_model.season is not None:
-            components['seasonal'] = self.fitted_model.season
-            
+        if (
+            hasattr(self.fitted_model, "season")
+            and self.fitted_model.season is not None
+        ):
+            components["seasonal"] = self.fitted_model.season
+
         # Get fitted values
-        if hasattr(self.fitted_model, 'fittedvalues'):
-            components['fitted'] = self.fitted_model.fittedvalues
-            
+        if hasattr(self.fitted_model, "fittedvalues"):
+            components["fitted"] = self.fitted_model.fittedvalues
+
         return components
 
     def get_model_parameters(self) -> Dict[str, float]:
         """Get the fitted parameters of the ETS model."""
         if self.fitted_model is None:
             return {}
-        
+
         params = {}
-        
+
         # Get smoothing parameters
-        if hasattr(self.fitted_model, 'params'):
+        if hasattr(self.fitted_model, "params"):
             fitted_params = self.fitted_model.params
-            for param_name in ['smoothing_level', 'smoothing_trend', 'smoothing_seasonal', 
-                             'damping_trend', 'initial_level', 'initial_trend']:
+            for param_name in [
+                "smoothing_level",
+                "smoothing_trend",
+                "smoothing_seasonal",
+                "damping_trend",
+                "initial_level",
+                "initial_trend",
+            ]:
                 if param_name in fitted_params:
                     params[param_name] = float(fitted_params[param_name])
-        
+
         # Get model fit statistics
-        if hasattr(self.fitted_model, 'sse'):
-            params['sse'] = float(self.fitted_model.sse)
-        if hasattr(self.fitted_model, 'aic'):
-            params['aic'] = float(self.fitted_model.aic)
-        if hasattr(self.fitted_model, 'bic'):
-            params['bic'] = float(self.fitted_model.bic)
-            
+        if hasattr(self.fitted_model, "sse"):
+            params["sse"] = float(self.fitted_model.sse)
+        if hasattr(self.fitted_model, "aic"):
+            params["aic"] = float(self.fitted_model.aic)
+        if hasattr(self.fitted_model, "bic"):
+            params["bic"] = float(self.fitted_model.bic)
+
         return params
 
     def get_decomposition(self, data: pd.Series) -> Dict[str, pd.Series]:
@@ -317,7 +325,7 @@ def run_ets_experiment(
         # Train model
         train_metrics = forecaster.train(train_data, target_column)
         mlflow.log_metrics(train_metrics)
-        
+
         # Log fitted parameters
         fitted_params = forecaster.get_model_parameters()
         if fitted_params:
@@ -347,10 +355,10 @@ def run_ets_experiment(
                 if series is not None and len(series) > 0:
                     component_stats[f"{name}_mean"] = float(series.mean())
                     component_stats[f"{name}_std"] = float(series.std())
-            
+
             if component_stats:
                 mlflow.log_dict(component_stats, "component_stats.json")
-        
+
         # Get decomposition for analysis
         decomposition = forecaster.get_decomposition(train_data[target_column])
         if decomposition:
