@@ -13,10 +13,25 @@ from loguru import logger
 CSV_TO_SOURCE = {
     "pharmacies": "healthcare_pharmacies",
     "hospitals": "healthcare_hospitals",
+    "suppliers": "healthcare_suppliers",
+    "warehouses": "healthcare_warehouses",
     "products": "healthcare_products",
     "orders": "healthcare_orders",
     "inventory": "healthcare_inventory",
     "supply_chain_events": "healthcare_supply_chain_events",
+    "product_interactions": "healthcare_product_interactions",
+    "substitution_events": "healthcare_substitution_events",
+    "inventory_availability": "healthcare_inventory_availability",
+    "expiry_batches": "healthcare_expiry_batches",
+    "writeoff_events": "healthcare_writeoff_events",
+    "purchase_orders": "healthcare_purchase_orders",
+    "supplier_performance": "healthcare_supplier_performance",
+    "warehouse_costs": "healthcare_warehouse_costs",
+    "competitor_products": "healthcare_competitor_products",
+    "competitor_price_history": "healthcare_competitor_price_history",
+    "store_sales": "healthcare_store_sales",
+    "store_attributes": "healthcare_store_attributes",
+    "promotions": "healthcare_promotions",
 }
 
 RAW_SCHEMA = "healthcare_dev_raw"
@@ -54,9 +69,17 @@ def main() -> None:
     if not csv_dir.is_dir():
         raise SystemExit(f"CSV dir not found: {csv_dir}. Run: make data-local-generate-quick")
 
-    missing = [f"{name}.csv" for name in CSV_TO_SOURCE if not (csv_dir / f"{name}.csv").exists()]
+    present = {
+        name for name in CSV_TO_SOURCE
+        if (csv_dir / f"{name}.csv").exists()
+    }
+    if not present:
+        raise SystemExit(
+            f"No healthcare CSVs found in {csv_dir}. Run: make data-local-generate-quick"
+        )
+    missing = set(CSV_TO_SOURCE) - present
     if missing:
-        raise SystemExit(f"Missing CSVs in {csv_dir}: {missing}. Run: make data-local-generate-quick")
+        logger.warning(f"Optional CSVs not found (will skip): {sorted(missing)}")
 
     csv_dir_str = str(csv_dir)
     conn = duckdb.connect(duckdb_path)
@@ -64,6 +87,8 @@ def main() -> None:
 
     for csv_name, table_name in CSV_TO_SOURCE.items():
         path = csv_dir / f"{csv_name}.csv"
+        if not path.exists():
+            continue
         # Add lineage columns expected by bronze models (Databricks ingest adds these; local CSV does not)
         conn.execute(
             f"""CREATE OR REPLACE TABLE {RAW_SCHEMA}.{table_name} AS

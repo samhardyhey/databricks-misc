@@ -191,3 +191,34 @@ sources:
               - not_null
               - accepted_values:
                   values: ["Success", "Warning", "Error", "Pending"]
+
+      - name: healthcare_suppliers
+        description: "Raw suppliers (foundation for products and POs)"
+      - name: healthcare_warehouses
+        description: "Raw warehouses (1:1 with pharmacies)"
+      - name: healthcare_product_interactions
+        description: "Raw product interactions (recommendation engine)"
+      - name: healthcare_substitution_events
+        description: "Raw substitution events (recommendation engine)"
+      - name: healthcare_inventory_availability
+        description: "Raw inventory availability (recommendation engine)"
+      - name: healthcare_expiry_batches
+        description: "Raw expiry batches (inventory optimisation)"
+      - name: healthcare_writeoff_events
+        description: "Raw writeoff events (inventory optimisation)"
+      - name: healthcare_purchase_orders
+        description: "Raw purchase orders (inventory optimisation)"
+      - name: healthcare_supplier_performance
+        description: "Raw supplier performance (inventory optimisation)"
+      - name: healthcare_warehouse_costs
+        description: "Raw warehouse costs (insights)"
+      - name: healthcare_competitor_products
+        description: "Raw competitor products (insights)"
+      - name: healthcare_competitor_price_history
+        description: "Raw competitor price history (insights)"
+      - name: healthcare_store_sales
+        description: "Raw store sales (insights)"
+      - name: healthcare_store_attributes
+        description: "Raw store attributes (insights)"
+      - name: healthcare_promotions
+        description: "Raw promotions (insights)"
