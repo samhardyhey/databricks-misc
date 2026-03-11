@@ -34,7 +34,7 @@ with events_cleaned as (
         
         -- Data quality flags
         case 
-            when event_timestamp > current_timestamp() then true
+            when event_timestamp > {{ current_timestamp_expr() }} then true
             else false
         end as has_future_timestamp,
         
@@ -61,7 +61,7 @@ with events_cleaned as (
         _source,
         _batch_id,
         bronze_processed_at,
-        current_timestamp() as silver_processed_at,
+        {{ current_timestamp_expr() }} as silver_processed_at,
         'silver_supply_chain_events' as silver_model_name
         
     from {{ ref('bronze_supply_chain_events') }}

@@ -3,12 +3,12 @@
   {% if not_null %}
     select * from {{ model }} where {{ column_name }} is null
   {% endif %}
-  
+
   {% if min_value is not none %}
     union all
     select * from {{ model }} where {{ column_name }} < {{ min_value }}
   {% endif %}
-  
+
   {% if max_value is not none %}
     union all
     select * from {{ model }} where {{ column_name }} > {{ max_value }}
@@ -17,7 +17,7 @@
 
 -- Macro to calculate business metrics
 {% macro calculate_discount_impact(gross_amount, discounted_amount) %}
-  case 
+  case
     when {{ gross_amount }} > 0 then round(({{ gross_amount }} - {{ discounted_amount }}) / {{ gross_amount }} * 100, 2)
     else 0
   end
@@ -25,7 +25,7 @@
 
 -- Macro to classify performance tiers
 {% macro classify_performance_tier(value, high_threshold, medium_threshold) %}
-  case 
+  case
     when {{ value }} >= {{ high_threshold }} then 'High'
     when {{ value }} >= {{ medium_threshold }} then 'Medium'
     else 'Low'

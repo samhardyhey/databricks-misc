@@ -50,7 +50,7 @@ with product_cleaned as (
         -- Dates
         created_date,
         last_updated,
-        datediff(current_date(), created_date) as days_since_created,
+        {{ datediff_days('created_date', 'current_date()') }} as days_since_created,
         
         -- Data quality flags
         case 
@@ -107,7 +107,7 @@ with product_cleaned as (
         _source,
         _batch_id,
         bronze_processed_at,
-        current_timestamp() as silver_processed_at,
+        {{ current_timestamp_expr() }} as silver_processed_at,
         'silver_products' as silver_model_name
         
     from {{ ref('bronze_products') }}

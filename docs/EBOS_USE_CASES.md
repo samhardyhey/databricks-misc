@@ -784,8 +784,13 @@ databricks-misc/
 
 ## Development Patterns
 
+**Local development** (run data gen, medallion, and model training without Databricks):
+- **Data generation**: Healthcare generator is pure pandas/Faker; writes CSVs to e.g. `data/local/`. No Spark or DB required. Optional: script to load CSVs into DuckDB/SQLite for a local “raw” DB.
+- **Medallion**: Default dbt profile is Databricks (Unity Catalog). To run medallion locally: use dbt-duckdb (or dbt-sqlite) profile, point sources at local DB populated from generator CSVs, and adjust SQL dialect if needed (e.g. `current_timestamp()`).
+- **Model training / MLflow**: Training code is pandas + sklearn/xgboost/prophet etc.; no Spark in model code. MLflow uses default tracking (local `./mlruns` when not on Databricks). Add explicit local data path (e.g. `RUN_LOCAL=1`, `DATA_PATH=...` or `use_cases.env_utils.is_running_on_databricks()`) so entrypoints load from CSV/local DB instead of requiring Spark and Unity Catalog; keep `create_sample_data()` as fallback.
+- **Use cases**: Recommendation, inventory, insights — core logic and training are local-friendly (DataFrame/CSV input). Customer service — same, with local vector store (e.g. Chroma/FAISS) instead of Databricks Vector Search. Document intelligence — PDF gen and annotation local; OCR/NER pipeline is Spark-based (local Spark or Databricks).
+
 **For all projects**:
-- Local development in `databricks-misc/` conda env
 - Use Databricks Connect for remote execution
 - MLflow tracking for all experiments
 - Unity Catalog for data + model governance

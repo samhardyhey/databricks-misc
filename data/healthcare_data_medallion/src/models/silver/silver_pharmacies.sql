@@ -25,7 +25,7 @@ with pharmacy_cleaned as (
         trim(upper(address)) as address,
         trim(upper(suburb)) as suburb,
         trim(upper(state)) as state,
-        trim(postcode) as postcode,
+        {{ trim_cast('postcode') }} as postcode,
         
         -- Contact information
         phone,
@@ -34,7 +34,7 @@ with pharmacy_cleaned as (
         
         -- Dates
         established_date,
-        datediff(current_date(), established_date) / 365 as years_in_operation,
+        {{ datediff_days('established_date', 'current_date()') }} / 365 as years_in_operation,
         
         -- Services
         pharmacist_in_charge,
@@ -80,7 +80,7 @@ with pharmacy_cleaned as (
         _source,
         _batch_id,
         bronze_processed_at,
-        current_timestamp() as silver_processed_at,
+        {{ current_timestamp_expr() }} as silver_processed_at,
         'silver_pharmacies' as silver_model_name
         
     from {{ ref('bronze_pharmacies') }}

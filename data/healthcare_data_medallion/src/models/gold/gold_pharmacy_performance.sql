@@ -116,7 +116,7 @@ select
     end as inventory_health,
     
     -- Metadata
-    current_timestamp() as gold_processed_at,
+    {{ current_timestamp_expr() }} as gold_processed_at,
     'gold_pharmacy_performance' as gold_model_name
 
 from {{ ref('silver_pharmacies') }} p

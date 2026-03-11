@@ -39,18 +39,18 @@ with order_cleaned as (
         
         -- Calculated fields
         case 
-            when actual_delivery is not null then datediff(actual_delivery, order_date)
+            when actual_delivery is not null then {{ datediff_days('order_date', 'actual_delivery') }}
             else null
         end as actual_delivery_days,
         
         case 
-            when expected_delivery is not null then datediff(expected_delivery, order_date)
+            when expected_delivery is not null then {{ datediff_days('order_date', 'expected_delivery') }}
             else null
         end as expected_delivery_days,
         
         case 
             when actual_delivery is not null and expected_delivery is not null then 
-                datediff(actual_delivery, expected_delivery)
+                {{ datediff_days('expected_delivery', 'actual_delivery') }}
             else null
         end as delivery_delay_days,
         
@@ -112,7 +112,7 @@ with order_cleaned as (
         _source,
         _batch_id,
         bronze_processed_at,
-        current_timestamp() as silver_processed_at,
+        {{ current_timestamp_expr() }} as silver_processed_at,
         'silver_orders' as silver_model_name
         
     from {{ ref('bronze_orders') }}

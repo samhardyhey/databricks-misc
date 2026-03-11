@@ -198,7 +198,7 @@ select
     end as monthly_discount_tier,
 
     -- Metadata
-    current_timestamp() as gold_processed_at,
+    {{ current_timestamp_expr() }} as gold_processed_at,
     'gold_financial_analytics' as gold_model_name
 
 from monthly_financials mf

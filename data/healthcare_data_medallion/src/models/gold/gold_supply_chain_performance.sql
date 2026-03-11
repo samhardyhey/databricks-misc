@@ -132,7 +132,7 @@ select
     sce.last_event_timestamp,
     case 
         when sce.first_event_timestamp is not null and sce.last_event_timestamp is not null then
-            datediff(sce.last_event_timestamp, sce.first_event_timestamp) * 24
+            {{ datediff_days('sce.first_event_timestamp', 'sce.last_event_timestamp') }} * 24
         else null
     end as fulfillment_duration_hours,
     
@@ -167,7 +167,7 @@ select
     end as risk_level,
 
     -- Metadata
-    current_timestamp() as gold_processed_at,
+    {{ current_timestamp_expr() }} as gold_processed_at,
     'gold_supply_chain_performance' as gold_model_name
 
 from order_fulfillment of

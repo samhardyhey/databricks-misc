@@ -37,7 +37,7 @@ with inventory_cleaned as (
 
         -- Calculated fields
         case 
-            when expiry_date is not null then datediff(expiry_date, current_date())
+            when expiry_date is not null then {{ datediff_days('current_date()', 'expiry_date') }}
             else null
         end as days_until_expiry,
 
@@ -52,7 +52,7 @@ with inventory_cleaned as (
         end as stock_to_reorder_ratio,
 
         case 
-            when last_restocked is not null then datediff(current_date(), last_restocked)
+            when last_restocked is not null then {{ datediff_days('last_restocked', 'current_date()') }}
             else null
         end as days_since_last_restock,
 
@@ -124,7 +124,7 @@ with inventory_cleaned as (
         _source,
         _batch_id,
         bronze_processed_at,
-        current_timestamp() as silver_processed_at,
+        {{ current_timestamp_expr() }} as silver_processed_at,
         'silver_inventory' as silver_model_name
 
     from {{ ref('bronze_inventory') }}

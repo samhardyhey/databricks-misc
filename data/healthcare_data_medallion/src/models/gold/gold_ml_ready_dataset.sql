@@ -27,8 +27,8 @@ with customer_features as (
         max(o.order_date) as last_order_date,
         
         -- Temporal features
-        datediff(current_date(), min(o.order_date)) as customer_age_days,
-        datediff(current_date(), max(o.order_date)) as days_since_last_order,
+        {{ datediff_days('min(o.order_date)', 'current_date()') }} as customer_age_days,
+        {{ datediff_days('max(o.order_date)', 'current_date()') }} as days_since_last_order,
         count(distinct date_trunc('month', o.order_date)) as active_months,
         
         -- Behavioral features
@@ -234,7 +234,7 @@ select
     end as customer_product_value_tier,
     
     -- Metadata
-    current_timestamp() as gold_processed_at,
+    {{ current_timestamp_expr() }} as gold_processed_at,
     'gold_ml_ready_dataset' as gold_model_name
 
 from customer_features cf

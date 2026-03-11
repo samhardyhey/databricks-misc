@@ -155,7 +155,7 @@ select
     end as avg_quantity_per_month,
     
     -- Metadata
-    current_timestamp() as gold_processed_at,
+    {{ current_timestamp_expr() }} as gold_processed_at,
     'gold_product_performance' as gold_model_name
 
 from {{ ref('silver_products') }} p
