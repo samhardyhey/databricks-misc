@@ -23,7 +23,7 @@ alwaysApply: true
 
 ### Technical Architecture
 - Development Model: Local development with Databricks Connect for remote execution
-  - use the `databricks-misc` conda env for any local run/dev
+  - Local Python: UV env `databricks-misc` (make uv-venv, make install, make uv-dev). Repo root is the source root: use imports from root (e.g. `from data.prescription_pdf_generator...`, `from use_cases...`). No per-subproject PYTHONPATH; set PYTHONPATH to repo root only if not using the venv.
 - Data Governance: Unity Catalog with three-level namespace (catalog.schema.table)
   - currently using the `workspace.default` catalog/schema
 

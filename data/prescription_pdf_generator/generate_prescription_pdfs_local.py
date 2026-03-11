@@ -6,11 +6,12 @@ from pathlib import Path
 from typing import List
 
 from faker import Faker
-from prescription_pdf_generator import (
+from loguru import logger
+
+from data.prescription_pdf_generator.prescription_pdf_generator import (
     create_prescription_pdf,
     generate_prescription_data,
 )
-from loguru import logger
 
 
 def generate_prescription_pdfs(
