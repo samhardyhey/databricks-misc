@@ -1,0 +1,4 @@
+# Inventory optimisation: core (scipy for safety-stock ROP)
+scipy>=1.10
+# Optional: lightgbm for write-off risk classifier (falls back to sklearn RandomForest if missing)
+lightgbm>=4.0

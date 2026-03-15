@@ -16,7 +16,7 @@
 **Business Value**: ~$4.9m p.a. | Enterprise-wide (Healthcare, MedTech, Animal Care)
 **Use Case**: Recommend similar products and auto-substitutions to reduce sales leakage and increase margins
 **Current Status**: ⚠️ Not implemented
-**Local dev**: Can be developed locally for most part (data gen, model training, model saving).
+**Local dev**: Can be developed locally for most part (data gen, model training, model saving). Same entrypoint (`run_reco.py`) runs locally (CSV) or on Databricks (Unity Catalog); data source switched via config — see `use_cases/recommendation_engine/RECO_DEV_PLAN.md`.
 
 ### Data Requirements
 

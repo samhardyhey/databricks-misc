@@ -1,16 +1,12 @@
 """
 Phase 2: Collaborative filtering (implicit ALS).
+Requires: pip install implicit (or install with [reco] extra).
 """
 
 import numpy as np
+from implicit.als import AlternatingLeastSquares
 from loguru import logger
-
-try:
-    from implicit.als import AlternatingLeastSquares
-    HAS_IMPLICIT = True
-except ImportError:
-    HAS_IMPLICIT = False
-    AlternatingLeastSquares = None
+from scipy.sparse import csr_matrix
 
 
 def train_als(
@@ -22,9 +18,6 @@ def train_als(
     regularization: float = 0.01,
 ):
     """Build user-item matrix and fit ALS. user_ids/item_ids are 0-based integer codes. Returns (model, csr_matrix)."""
-    if not HAS_IMPLICIT:
-        raise ImportError("implicit is required: pip install implicit")
-    from scipy.sparse import csr_matrix
     n_users = int(user_ids.max()) + 1
     n_items = int(item_ids.max()) + 1
     M = csr_matrix((weights, (user_ids, item_ids)), shape=(n_users, n_items))

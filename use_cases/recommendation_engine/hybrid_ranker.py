@@ -1,17 +1,13 @@
 """
 Phase 3: Hybrid ranker (LightGBM LGBMRanker) combining content + collaborative features.
+Requires: pip install lightgbm (or install with [reco] extra).
+Training entrypoints (run_reco, jobs) should log the trained model and params to MLflow.
 """
 
 import pandas as pd
 import numpy as np
+import lightgbm as lgb
 from loguru import logger
-
-try:
-    import lightgbm as lgb
-    HAS_LIGHTGBM = True
-except ImportError:
-    HAS_LIGHTGBM = False
-    lgb = None
 
 
 def train_ranker(
@@ -20,10 +16,8 @@ def train_ranker(
     group_col: str = "customer_id",
     label_col: str = "label",
     params: dict | None = None,
-) -> "lgb.Booster":
+) -> lgb.Booster:
     """Train LGBMRanker on (customer, product, features, label). Groups = number of products per customer."""
-    if not HAS_LIGHTGBM:
-        raise ImportError("lightgbm is required: pip install lightgbm")
     default = {"objective": "lambdarank", "metric": "ndcg", "verbosity": -1, "seed": 42}
     if params:
         default.update(params)

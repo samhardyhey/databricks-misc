@@ -26,6 +26,7 @@ MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
 .PHONY: help cleanup clean-local-data format document_intelligence-generate-pdfs
 .PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
+.PHONY: reco-data reco-run inventory-data inventory-run
 .PHONY: marvelous_mlops-venv marvelous_mlops-fetch-medium marvelous_mlops-fetch-substack marvelous_mlops-fetch-youtube
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
 
@@ -45,7 +46,13 @@ help:
 	@echo "  make data-local-generate-pdfs   - Generate prescription PDFs (use_cases/document_intelligence/prescription_pdfs)"
 	@echo "  make data-local-duckdb-load     - Load data/local/*.csv into DuckDB as raw schema (run after generate)"
 	@echo "  make data-local-dbt-run         - Load data/local into DuckDB then run medallion dbt (run data-local-generate-quick first if no CSVs)"
-	@echo "  make data-local-dbt-test        - Run dbt tests (referential integrity, etc.); run after data-local-dbt-run"
+	@echo "  make data-local-dbt-test        - Build medallion (dbt run) then run dbt tests (referential integrity, etc.)"
+	@echo ""
+	@echo "  Recommendation engine (local load/train/evaluate):"
+	@echo "  make reco-data                 - Generate healthcare CSVs to data/local/ (alias for data-local-generate-quick)"
+	@echo "  make reco-run                 - Load CSV, train item_similarity (+ ALS if implicit), evaluate (requires data/local/*.csv)"
+	@echo "  make inventory-data           - Generate healthcare CSVs (alias for data-local-generate-quick)"
+	@echo "  make inventory-run            - Load CSV, train write-off risk + replenishment, evaluate (requires data/local/*.csv)"
 	@echo ""
 	@echo "  make document_intelligence-generate-pdfs  - Alias for data-local-generate-pdfs [DOC_INTEL_PDF_ARGS=-n 10]"
 	@echo ""
@@ -137,14 +144,31 @@ data-local-dbt-run: data-local-duckdb-load
 	cd $(MEDALLION_DIR) && DBT_PROFILES_DIR=$(MEDALLION_DIR)/dbt_profiles DBT_DUCKDB_PATH=$(REPO_ROOT)/data/local/medallion.duckdb $(DBT_BIN) run --profile duckdb
 	@echo "dbt run (duckdb) done."
 
-data-local-dbt-test:
+data-local-dbt-test: data-local-dbt-run
 	@test -d $(MEDALLION_DIR) || (echo "Medallion dir missing: $(MEDALLION_DIR)" && exit 1)
 	@test -x $(DBT_BIN) || (echo "dbt not found. Run: make install" && exit 1)
-	cd $(MEDALLION_DIR) && DBT_PROFILES_DIR=$(MEDALLION_DIR)/dbt_profiles $(DBT_BIN) deps
 	cd $(MEDALLION_DIR) && DBT_PROFILES_DIR=$(MEDALLION_DIR)/dbt_profiles DBT_DUCKDB_PATH=$(REPO_ROOT)/data/local/medallion.duckdb $(DBT_BIN) test --profile duckdb
 	@echo "dbt test (duckdb) done."
 
 document_intelligence-generate-pdfs: data-local-generate-pdfs
+
+# --- Recommendation engine (local: CSV -> load / feature / train / evaluate) ---
+reco-data: data-local-generate-quick
+
+reco-run:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -f $(DATA_LOCAL_DIR)/product_interactions.csv || (echo "Run: make reco-data (or make data-local-generate-quick) first" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/run_reco_local.py
+	@echo "reco run done."
+
+# --- Inventory optimisation (local: CSV -> load / write-off risk / replenishment / evaluate) ---
+inventory-data: data-local-generate-quick
+
+inventory-run:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -f $(DATA_LOCAL_DIR)/inventory.csv || (echo "Run: make inventory-data (or make data-local-generate-quick) first" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/run_inventory_local.py
+	@echo "inventory run done."
 
 # --- Marvelous MLOps (sub-usecase: own venv and requirements.txt) ---
 marvelous_mlops-venv:
