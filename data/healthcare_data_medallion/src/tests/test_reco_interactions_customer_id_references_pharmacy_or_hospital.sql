@@ -1,4 +1,5 @@
--- Singular test: reco_interactions.customer_id must reference a valid pharmacy_id or hospital_id.
+-- Singular test: bronze_reco_interactions.customer_id must reference a valid pharmacy_id or hospital_id.
+-- Fails if any interaction has a customer_id that does not exist in either table.
 select interaction_id, customer_id
 from {{ ref('bronze_reco_interactions') }}
 where customer_id is not null
