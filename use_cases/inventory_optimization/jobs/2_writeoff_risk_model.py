@@ -1,13 +1,12 @@
 """
 Job 2: Train write-off risk classifier; optionally log to MLflow and register model.
+Uses config (INVENTORY_DATA_SOURCE / auto) for local vs catalog; same as run_inventory.py.
 """
-
-from pathlib import Path
 
 from loguru import logger
 
-from use_cases.env_utils import is_running_on_databricks
-from use_cases.inventory_optimization.data_loading import get_inventory_data
+from use_cases.inventory_optimization.config import get_config
+from use_cases.inventory_optimization.data_loading import load_inventory_data
 from use_cases.inventory_optimization.writeoff_risk_classifier import (
     build_writeoff_risk_features,
     train_writeoff_risk_classifier,
@@ -15,14 +14,14 @@ from use_cases.inventory_optimization.writeoff_risk_classifier import (
 
 
 def main():
-    on_databricks = is_running_on_databricks()
+    cfg = get_config()
     spark = None
-    if on_databricks:
+    if cfg["data_source"] == "catalog" and spark is None and cfg["on_databricks"]:
         from pyspark.sql import SparkSession
 
         spark = SparkSession.builder.appName("WriteoffRiskModel").getOrCreate()
 
-    data = get_inventory_data(spark)
+    data = load_inventory_data(config=cfg, spark=spark)
     inventory = data.get("inventory")
     orders = data.get("orders")
     products = data.get("products")
@@ -45,7 +44,7 @@ def main():
     model, feature_cols, metrics = train_writeoff_risk_classifier(features_df)
     logger.info("Write-off risk model trained: {}", metrics)
 
-    if on_databricks:
+    if cfg["on_databricks"]:
         try:
             import mlflow
             import mlflow.sklearn

@@ -34,6 +34,7 @@ help:
 	@echo "Targets:"
 	@echo "  make uv-venv              - Create .venv (uses uv if available, else python3 -m venv)"
 	@echo "  make uv-sync / install     - Install deps; use install then uv-dev for dev tools"
+	@echo "                             Optional: uv sync --extra reco | uv sync --extra inventory"
 	@echo "  make uv-dev               - Install dev deps (autoflake, isort, black)"
 	@echo "  make uv-activate          - Print activate command for .venv"
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
@@ -48,11 +49,12 @@ help:
 	@echo "  make data-local-dbt-run         - Load data/local into DuckDB then run medallion dbt (run data-local-generate-quick first if no CSVs)"
 	@echo "  make data-local-dbt-test        - Build medallion (dbt run) then run dbt tests (referential integrity, etc.)"
 	@echo ""
-	@echo "  Recommendation engine (local load/train/evaluate):"
+	@echo "  Recommendation engine (single entrypoint run_reco.py; data source via RECO_DATA_SOURCE):"
 	@echo "  make reco-data                 - Generate healthcare CSVs to data/local/ (alias for data-local-generate-quick)"
-	@echo "  make reco-run                 - Load CSV, train item_similarity (+ ALS if implicit), evaluate (requires data/local/*.csv)"
+	@echo "  make reco-run                 - Run recommendation engine (local CSV or catalog when on Databricks)"
+	@echo "  Inventory optimisation (single entrypoint run_inventory.py; data source via INVENTORY_DATA_SOURCE):"
 	@echo "  make inventory-data           - Generate healthcare CSVs (alias for data-local-generate-quick)"
-	@echo "  make inventory-run            - Load CSV, train write-off risk + replenishment, evaluate (requires data/local/*.csv)"
+	@echo "  make inventory-run            - Run inventory optimisation (local CSV or catalog when on Databricks)"
 	@echo ""
 	@echo "  make document_intelligence-generate-pdfs  - Alias for data-local-generate-pdfs [DOC_INTEL_PDF_ARGS=-n 10]"
 	@echo ""
@@ -152,22 +154,22 @@ data-local-dbt-test: data-local-dbt-run
 
 document_intelligence-generate-pdfs: data-local-generate-pdfs
 
-# --- Recommendation engine (local: CSV -> load / feature / train / evaluate) ---
+# --- Recommendation engine (single entrypoint; RECO_DATA_SOURCE=local|catalog|auto) ---
 reco-data: data-local-generate-quick
 
 reco-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
 	@test -f $(DATA_LOCAL_DIR)/product_interactions.csv || (echo "Run: make reco-data (or make data-local-generate-quick) first" && exit 1)
-	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/run_reco_local.py
+	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/run_reco.py
 	@echo "reco run done."
 
-# --- Inventory optimisation (local: CSV -> load / write-off risk / replenishment / evaluate) ---
+# --- Inventory optimisation (single entrypoint; INVENTORY_DATA_SOURCE=local|catalog|auto) ---
 inventory-data: data-local-generate-quick
 
 inventory-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
 	@test -f $(DATA_LOCAL_DIR)/inventory.csv || (echo "Run: make inventory-data (or make data-local-generate-quick) first" && exit 1)
-	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/run_inventory_local.py
+	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/run_inventory.py
 	@echo "inventory run done."
 
 # --- Marvelous MLOps (sub-usecase: own venv and requirements.txt) ---

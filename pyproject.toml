@@ -19,6 +19,10 @@ reco = [
     "implicit>=0.7.0",
     "lightgbm>=4.0.0",
 ]
+inventory = [
+    "scipy>=1.10",
+    "lightgbm>=4.0.0",
+]
 dev = [
     "autoflake>=2.0.0",
     "isort>=5.12.0",

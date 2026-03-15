@@ -17,6 +17,8 @@ Single pipeline (load → feature → train → evaluate) runs **locally** or **
 | RECO_DATA_SOURCE | `local` \| `catalog` \| `auto` | `auto` |
 | LOCAL_DATA_PATH | Directory for local CSVs (interactions, products, etc.) | repo `data/local` |
 | RECO_CATALOG_SCHEMA | Catalog/schema for reco tables (e.g. `workspace.healthcare_medallion`) | `workspace.healthcare_medallion` |
+| MLFLOW_TRACKING_URI | Override MLflow tracking (e.g. local path or custom server) | local: `LOCAL_DATA_PATH/mlruns`; Databricks: default |
+| MLFLOW_REGISTRY_URI | Override MLflow model registry | local: none; Databricks: `databricks-uc` |
 
 On Databricks, `auto` → `catalog`; locally, `auto` → `local`. Override to test catalog from local (e.g. Databricks Connect + `RECO_DATA_SOURCE=catalog`) or to force CSV on a job (`RECO_DATA_SOURCE=local` and provide CSVs).
 
@@ -54,4 +56,7 @@ This keeps one codebase, fast local iteration, and the ability to run the same p
 ## Optional deps and MLflow
 
 - **Reco optional deps**: `implicit`, `lightgbm` are in the project’s `[reco]` extra (`pip install .[reco]`). The ALS and ranker modules import them directly; if you don’t install `[reco]`, `run_reco` still runs item_similarity and skips ALS when the import fails.
-- **MLflow**: Training entrypoints (`run_reco.py`, jobs) are responsible for logging models and params to MLflow (e.g. `mlflow.log_params`, `mlflow.sklearn.log_model` / `mlflow.lightgbm.log_model`). Model modules (item_similarity, collaborative_filtering, hybrid_ranker) stay free of MLflow; callers log after training.
+- **MLflow**: ALS and ranker trainers log model artefacts, pyfunc, and metrics when `log_to_mlflow=True`. **MLflow config** switches with environment (same as data source):
+  - **Local**: tracking URI = `local_data_dir/mlruns` (or `MLFLOW_TRACKING_URI`); no registry URI (models only in local mlruns).
+  - **Databricks**: tracking URI left at workspace default; registry URI = `databricks-uc` so models can be registered in Unity Catalog.
+  - Override with **MLFLOW_TRACKING_URI** and **MLFLOW_REGISTRY_URI** if needed. `config.apply_mlflow_config()` is called by the trainers before logging.
