@@ -45,7 +45,7 @@ help:
 	@echo "  make clean-local-data           - Remove data/local/, test_output/, prescription_pdfs, medallion target/logs (start again)"
 	@echo "  make data-local-generate        - Generate healthcare CSVs to data/local/ (default sizes)"
 	@echo "  make data-local-generate-quick  - Generate healthcare CSVs to data/local/ (small sizes)"
-	@echo "  make data-local-generate-pdfs   - Generate prescription PDFs (use_cases/document_intelligence/prescription_pdfs)"
+	@echo "  make data-local-generate-pdfs   - Generate prescription PDFs (prescription_pdfs/)"
 	@echo "  make data-local-duckdb-load     - Load data/local/*.csv into DuckDB as raw schema (run after generate)"
 	@echo "  make data-local-dbt-run         - Load data/local into DuckDB then run medallion dbt (run data-local-generate-quick first if no CSVs)"
 	@echo "  make data-local-dbt-test        - Build medallion (dbt run) then run dbt tests (referential integrity, etc.)"
@@ -59,7 +59,10 @@ help:
 	@echo "  make inventory-data           - Generate healthcare CSVs (alias for data-local-generate-quick)"
 	@echo "  make inventory-run            - Run inventory optimisation (local CSV or catalog when on Databricks)"
 	@echo ""
-	@echo "  make document_intelligence-generate-pdfs  - Alias for data-local-generate-pdfs [DOC_INTEL_PDF_ARGS=-n 10]"
+	@echo "  Document intelligence (single entrypoint run_document_intelligence.py; prescription PDFs):"
+	@echo "  make document_intelligence-install       - Install doc-intel deps (pdfplumber, loguru); then make document_intelligence-run"
+	@echo "  make document_intelligence-generate-pdfs - Generate prescription PDFs (prescription_pdfs/; DOC_INTEL_PDF_ARGS=-n 10)"
+	@echo "  make document_intelligence-run           - Run document intelligence pipeline over local prescription_pdfs/"
 	@echo ""
 	@echo "  Marvelous MLOps (separate venv; run marvelous_mlops-venv first):"
 	@echo "  make marvelous_mlops-venv             - Create .venv and install requirements in marvelous_mlops/"
@@ -156,6 +159,19 @@ data-local-dbt-test: data-local-dbt-run
 	@echo "dbt test (duckdb) done."
 
 document_intelligence-generate-pdfs: data-local-generate-pdfs
+
+# --- Document intelligence (single entrypoint; DOCINT_BASE_DIR / LOCAL_DATA_PATH) ---
+document_intelligence-install:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
+	@cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra document_intelligence || .venv/bin/pip install -e ".[document_intelligence]") || \
+		(.venv/bin/pip install 'pdfplumber>=0.11.0' 'loguru>=0.7.0')
+	@echo "Document intelligence deps installed."
+
+document_intelligence-run:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -d $(DOC_INTEL_PDF_OUTPUT)/documents || (echo "Run: make document_intelligence-generate-pdfs first" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/document_intelligence/run_document_intelligence.py
+	@echo "document_intelligence run done."
 
 # --- Recommendation engine (single entrypoint; RECO_DATA_SOURCE=local|catalog|auto) ---
 reco-install:

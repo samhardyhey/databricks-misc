@@ -16,27 +16,32 @@ alwaysApply: true
 - **docs/** — EBOS_USE_CASES.md (use-cases spec), MODELLING_OPTIONS.md (alternative / non-EBOS options), LUNCH_AND_LEARN.md (session plan; to be aligned with EBOS).
 
 ### Databricks Bundles (multi-DAB pattern)
-- **General pattern**: All Databricks Asset Bundles (DABs) live under a `bundles/` subdirectory for each logical component so they are easy to find and manage.
+- **General pattern**: All Databricks Asset Bundles (DABs) for a component live under a `bundles/` subdirectory, and each bundle keeps its own `resources/` folder alongside its `databricks.yml`, mirroring `example_bundles`.
 - **Use-case bundles** (`use_cases/<name>/bundles/`):
-  - `bundles/jobs/databricks.yml` — primary **jobs bundle** for the use-case (training, batch scoring, orchestration). This bundle should:
-    - `include: resources/*.yml` — all DAB job definitions for this bundle live under a sibling `bundles/jobs/resources/` directory.
-    - define `sync.paths` (typically repo root or a narrow subset) so `use_cases/` and `data/` code is available in the workspace.
+  - `bundles/job/databricks.yml` — primary **jobs bundle** for the use-case (training, batch scoring, orchestration). This bundle should:
+    - keep job resources under `use_cases/<name>/bundles/job/resources/*.yml`
+    - `include: resources/*.yml` (relative to the bundle directory).
+    - define `sync.paths` (typically repo root) so `use_cases/` and `data/` code is available in the workspace.
     - declare shared `variables` (e.g. catalog, medallion_schema, workspace_root).
     - define 3‑env `targets` (`dev-sp`, `test-sp`, `prod-sp`) with `workspace.host`, `workspace.root_path`, per-target `variables` overrides, and optional `resources.jobs.*.schedule.pause_status` plus `run_as.service_principal_name`.
-  - `bundles/serving/databricks.yml` — optional **endpoints bundle** for model-serving endpoints (per use-case), with its own `resources/*.yml`.
-  - `bundles/app/databricks.yml` — optional **apps/interactive bundle** (e.g. Streamlit Databricks Apps) for demos/ops UIs, with its own `resources/*.yml`.
+  - `bundles/serving/databricks.yml` — optional **endpoints bundle** for model-serving endpoints (per use-case):
+    - keep endpoint resources under `use_cases/<name>/bundles/serving/resources/*.yml`
+    - `include: resources/*.yml`.
+  - `bundles/app/databricks.yml` — optional **apps/interactive bundle** (e.g. Streamlit Databricks Apps) for demos/ops UIs:
+    - keep app resources under `use_cases/<name>/bundles/app/resources/*.yml`
+    - `include: resources/*.yml`.
 - **Data bundles** (`data/<component>/bundles/databricks.yml`):
   - `data/healthcare_data_generator/bundles/databricks.yml` — generator jobs for raw synthetic data.
   - `data/healthcare_data_medallion/bundles/databricks.yml` — dbt medallion bundle (bronze/silver/gold).
 - **Example bundle structure (reference only)**:
   - `example_bundles/jobs/databricks.yml` demonstrates the canonical **jobs** bundle shape:
     - `bundle`: name/uuid
-    - `include: resources/*.yml` — all jobs for that bundle live under a sibling `resources/` directory.
+    - `include: resources/*.yml` — all jobs for that bundle live under a sibling `resources/` directory (e.g. `example_bundles/jobs/resources/*.yml`).
     - `sync.paths` — which source dirs to sync into the workspace (e.g. `../../notebooks`, `../../src`).
     - `variables` — env-specific settings (catalog, schema, service principal, secrets, endpoint scaling, etc.).
     - `targets dev-sp/test-sp/prod-sp` — each with `workspace.host`, `workspace.root_path`, `variables` overrides, and optional `resources.jobs.*.schedule.pause_status` and `run_as.service_principal_name`.
   - `example_bundles/endpoints/databricks.yml` shows the same pattern for endpoints bundles.
-  - Real use-case bundles (e.g. `use_cases/recommendation_engine/bundles/jobs/databricks.yml`, `use_cases/inventory_optimization/bundles/jobs/databricks.yml`) should follow this structure: bundle metadata, local `resources/*.yml` under `bundles/<type>/resources/`, repo-root `sync.paths`, shared `variables`, and 3‑env `targets` (dev-sp/test-sp/prod-sp).
+  - Real use-case bundles (e.g. `use_cases/recommendation_engine/bundles/{job,serving,app}/databricks.yml`, `use_cases/inventory_optimization/bundles/job/databricks.yml`) should follow this structure: bundle metadata, local `resources/*.yml` next to each bundle file, repo-root `sync.paths`, shared `variables`, and 3‑env `targets` (dev-sp/test-sp-prod-sp).
 
 ### Naming: DAB config vs Python code
 - Reserve the `bundles/**` tree strictly for **DAB configuration** (bundle `databricks.yml` files and their `resources/*.yml` job/endpoint/app definitions).
