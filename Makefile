@@ -175,9 +175,8 @@ document-intelligence-generate-pdfs: data-local-generate-pdfs
 # --- Document intelligence (single entrypoint; DOCINT_BASE_DIR / LOCAL_DATA_PATH) ---
 document-intelligence-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
-	@cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra document_intelligence || .venv/bin/pip install -e ".[document_intelligence]") || \
-		(.venv/bin/pip install 'pdfplumber>=0.11.0' 'loguru>=0.7.0')
-	@echo "Document intelligence deps installed."
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra document_intelligence || .venv/bin/pip install -e ".[document_intelligence]")
+	@echo "Document intelligence deps (pdfplumber) installed."
 
 document-intelligence-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
@@ -194,34 +193,34 @@ reco-install:
 reco-data: data-local-generate-quick
 
 reco-run:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
 	@test -f $(DATA_LOCAL_DIR)/product_interactions.csv || (echo "Run: make reco-data (or make data-local-generate-quick) first" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/run_reco.py
 	@echo "reco run done."
 
 # Per-model reco entrypoints (train/apply)
 reco-item-sim-train:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/item_similarity/train.py
 
 reco-item-sim-apply:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/item_similarity/predict.py
 
 reco-als-train:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/als/train.py
 
 reco-als-apply:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/als/predict.py
 
 reco-lightfm-train:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/lightfm/train.py
 
 reco-lightfm-apply:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/lightfm/predict.py
 
 # Streamlit app for recommendation engine

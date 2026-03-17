@@ -5,16 +5,13 @@ Intended for:
 - Local runs via `python use_cases/recommendation_engine/models/item_similarity/predict.py`
 - Databricks jobs for offline candidate generation (future gold_reco_candidates, etc.).
 
-Behaviour:
-- Uses recommendation_engine.config.get_config() for local vs catalog and schema.
-- Loads products (and optionally interactions) via load_reco_data.
-- Loads item_similarity model from MLflow.
-- Generates top-K similar items per product and optionally writes to a table on Databricks.
+Requires [reco] extra. Run: make reco-install.
 """
 
 import os
 from typing import Optional
 
+import mlflow
 import pandas as pd
 from loguru import logger
 
@@ -31,14 +28,6 @@ def _load_item_similarity_model(model_uri: Optional[str] = None):
     Load item_similarity model from MLflow. Locally set ITEM_SIMILARITY_MODEL_URI to
     a runs:/ or file:// URI; on Databricks jobs can use a registry URI. Returns None if not set.
     """
-    try:
-        import mlflow
-    except ImportError:
-        logger.info(
-            "Item_similarity predict skipped: mlflow is not installed; no model can be loaded."
-        )
-        return None
-
     uri = model_uri or os.environ.get("ITEM_SIMILARITY_MODEL_URI")
     if not uri:
         logger.info(
@@ -67,13 +56,7 @@ def main(model_uri: Optional[str] = None, k: int = 10) -> pd.DataFrame:
 
         spark = SparkSession.builder.appName("ItemSimilarityPredict").getOrCreate()
 
-    try:
-        import mlflow
-    except ImportError:
-        mlflow = None  # type: ignore[assignment]
-
-    if mlflow is not None:
-        apply_mlflow_config(cfg)
+    apply_mlflow_config(cfg)
 
     model = _load_item_similarity_model(model_uri=model_uri)
     if model is None:

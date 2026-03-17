@@ -114,22 +114,20 @@ def main() -> dict:
                 metrics = evaluate_recommendations(pred_df, truth, k=10)
                 logger.info("Metrics (item_similarity, test set): {}", metrics)
 
-        if _mlflow:
-            _log_item_similarity_mlflow(
-                nn, scaler, product_ids, n_neighbors, metrics=metrics
-            )
+        _log_item_similarity_mlflow(
+            nn, scaler, product_ids, n_neighbors, metrics=metrics
+        )
 
         return {
             "item_similarity": True,
             "metrics": metrics,
         }
     finally:
-        if _mlflow and mlflow is not None:
-            try:
-                if mlflow.active_run():
-                    mlflow.end_run()
-            except Exception:
-                pass
+        try:
+            if mlflow.active_run():
+                mlflow.end_run()
+        except Exception:
+            pass
         if spark is not None:
             spark.stop()
 

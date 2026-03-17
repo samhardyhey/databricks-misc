@@ -1,18 +1,17 @@
 """
 Batch apply ALS collaborative filtering model for a set of users.
 
-Current behaviour:
-- Uses the ALSRecoWrapper pyfunc logged by collaborative_filtering.train_als.
-- Expects a MLflow model URI (env ALS_MODEL_URI, default models:/RECO_als/Production).
-- Returns a DataFrame of recommendations per user; on Databricks, this can be
-  extended to write to a gold table.
+Uses the ALSRecoWrapper pyfunc logged by train_als. Expects MLflow model URI
+(env ALS_MODEL_URI, default models:/RECO_als/Production). Requires [reco] extra. Run: make reco-install.
 """
 
 import os
 from typing import Optional
 
+import mlflow
 import pandas as pd
 from loguru import logger
+from mlflow.exceptions import MlflowException
 
 from use_cases.recommendation_engine.config import apply_mlflow_config, get_config
 
@@ -21,17 +20,8 @@ def _load_als_model(model_uri: Optional[str] = None):
     """
     Load ALS model from MLflow. Locally use a runs:/ or file:// URI (set ALS_MODEL_URI);
     on Databricks jobs can set ALS_MODEL_URI to a registry URI (e.g. models:/RECO_als/Production).
-    Returns None if mlflow is not installed or the URI is not set (local) or load fails.
+    Returns None if the URI is not set or load fails.
     """
-    try:
-        import mlflow  # type: ignore[import-not-found]
-        from mlflow.exceptions import MlflowException
-    except ImportError:
-        logger.info(
-            "ALS predict skipped: mlflow is not installed; no model can be loaded."
-        )
-        return None
-
     uri = model_uri or os.environ.get("ALS_MODEL_URI")
     if not uri:
         logger.info(
@@ -57,13 +47,7 @@ def main(model_uri: Optional[str] = None, n_items: int = 10) -> pd.DataFrame:
         cfg["on_databricks"],
     )
 
-    try:
-        import mlflow  # type: ignore[import-not-found]
-    except ImportError:
-        mlflow = None  # type: ignore[assignment]
-
-    if mlflow is not None:
-        apply_mlflow_config(cfg)
+    apply_mlflow_config(cfg)
 
     model = _load_als_model(model_uri=model_uri)
     if model is None:
