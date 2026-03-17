@@ -12,8 +12,38 @@ alwaysApply: true
 
 ### Repo Structure
 - **data/** — Shared data foundation. Generators (healthcare, prescription PDFs) and medallion. Extended incrementally for use-cases; one medallion, n use-cases on top.
-- **use_cases/** — One subdirectory per EBOS use-case (recommendation_engine, demand_forecasting, inventory_optimization, document_intelligence, customer_service_agent, ranging_consolidation, market_intelligence, franchise_analytics). DAB bundles (jobs, endpoints) live under the use-case or data component (bundle_structure.md).
+- **use_cases/** — One subdirectory per EBOS use-case (recommendation_engine, demand_forecasting, inventory_optimization, document_intelligence, customer_service_agent, ranging_consolidation, market_intelligence, franchise_analytics).
 - **docs/** — EBOS_USE_CASES.md (use-cases spec), MODELLING_OPTIONS.md (alternative / non-EBOS options), LUNCH_AND_LEARN.md (session plan; to be aligned with EBOS).
+
+### Databricks Bundles (multi-DAB pattern)
+- **General pattern**: All Databricks Asset Bundles (DABs) live under a `bundles/` subdirectory for each logical component so they are easy to find and manage.
+- **Use-case bundles** (`use_cases/<name>/bundles/`):
+  - `bundles/jobs/databricks.yml` — primary **jobs bundle** for the use-case (training, batch scoring, orchestration). This bundle should:
+    - `include: resources/*.yml` — all DAB job definitions for this bundle live under a sibling `bundles/jobs/resources/` directory.
+    - define `sync.paths` (typically repo root or a narrow subset) so `use_cases/` and `data/` code is available in the workspace.
+    - declare shared `variables` (e.g. catalog, medallion_schema, workspace_root).
+    - define 3‑env `targets` (`dev-sp`, `test-sp`, `prod-sp`) with `workspace.host`, `workspace.root_path`, per-target `variables` overrides, and optional `resources.jobs.*.schedule.pause_status` plus `run_as.service_principal_name`.
+  - `bundles/serving/databricks.yml` — optional **endpoints bundle** for model-serving endpoints (per use-case), with its own `resources/*.yml`.
+  - `bundles/app/databricks.yml` — optional **apps/interactive bundle** (e.g. Streamlit Databricks Apps) for demos/ops UIs, with its own `resources/*.yml`.
+- **Data bundles** (`data/<component>/bundles/databricks.yml`):
+  - `data/healthcare_data_generator/bundles/databricks.yml` — generator jobs for raw synthetic data.
+  - `data/healthcare_data_medallion/bundles/databricks.yml` — dbt medallion bundle (bronze/silver/gold).
+- **Example bundle structure (reference only)**:
+  - `example_bundles/jobs/databricks.yml` demonstrates the canonical **jobs** bundle shape:
+    - `bundle`: name/uuid
+    - `include: resources/*.yml` — all jobs for that bundle live under a sibling `resources/` directory.
+    - `sync.paths` — which source dirs to sync into the workspace (e.g. `../../notebooks`, `../../src`).
+    - `variables` — env-specific settings (catalog, schema, service principal, secrets, endpoint scaling, etc.).
+    - `targets dev-sp/test-sp/prod-sp` — each with `workspace.host`, `workspace.root_path`, `variables` overrides, and optional `resources.jobs.*.schedule.pause_status` and `run_as.service_principal_name`.
+  - `example_bundles/endpoints/databricks.yml` shows the same pattern for endpoints bundles.
+  - Real use-case bundles (e.g. `use_cases/recommendation_engine/bundles/jobs/databricks.yml`, `use_cases/inventory_optimization/bundles/jobs/databricks.yml`) should follow this structure: bundle metadata, local `resources/*.yml` under `bundles/<type>/resources/`, repo-root `sync.paths`, shared `variables`, and 3‑env `targets` (dev-sp/test-sp/prod-sp).
+
+### Naming: DAB config vs Python code
+- Reserve the `bundles/**` tree strictly for **DAB configuration** (bundle `databricks.yml` files and their `resources/*.yml` job/endpoint/app definitions).
+- Keep substantive Python entrypoints / job scripts outside `bundles/`, under clear code-centric names such as:
+  - `use_cases/<name>/run_<use_case>.py` for the main pipeline entrypoint.
+  - `use_cases/<name>/pipelines/` or `use_cases/<name>/job_scripts/` for per-step Python scripts that DAB jobs call.
+- Do **not** put Python scripts under `bundles/` or name code folders `resources/` — that name is reserved for bundle YAML resources in the DAB layer.
 
 ### Technical Architecture
 - Development Model: Local development with Databricks Connect for remote execution
@@ -42,7 +72,7 @@ alwaysApply: true
 - if possible, use functions/functional programming instead of classes/object-oriented programming
 - Logging: Always use loguru instead of print statements
 - Module Structure: Prefer semantic naming (parent_module.semantic_name) over verbose names
-- Imports: Always use **root-based imports** from the repo root (e.g. `from use_cases.demand_forecasting.data_preparation import ...`, `from data.healthcare_data_generator.src.healthcare_data_generator import ...`). Avoid relative or package-local imports (`from .foo import ...`, `from foo import ...` inside subpackages) so that scripts run consistently from the repo root, Databricks jobs, and DAB bundles.
+- Imports: Always use **root-based imports** from the repo root (e.g. `from use_cases.inventory_optimization.demand_forecasting import prepare_forecasting_data, run_xgboost_experiment`, `from data.healthcare_data_generator.src.healthcare_data_generator import ...`). Avoid relative or package-local imports (`from .foo import ...`, `from foo import ...` inside subpackages) so that scripts run consistently from the repo root, Databricks jobs, and DAB bundles.
 
 ### Misc
 - Do not create unnecessary markdown/README files; we typically just one one root level README and then perhaps one in a major module ONLY if the complexity warrants it

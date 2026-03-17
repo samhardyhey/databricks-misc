@@ -1,0 +1,47 @@
+bundle:
+  name: recommendation_engine_app
+
+include:
+  - ../../resources/app/*.yml
+
+sync:
+  paths:
+    - ../../../..  # repo root so use_cases/* and data/ are available
+
+variables:
+  app_workspace_root:
+    description: Workspace root path for the app bundle
+    default: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+  reco_endpoint_url:
+    description: Optional override for the recommendation serving endpoint URL
+    default: ""
+
+targets:
+  dev-sp:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      app_workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      reco_endpoint_url: ""
+
+  test-sp:
+    mode: development
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      app_workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      reco_endpoint_url: ""
+
+  prod-sp:
+    mode: production
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      app_workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      reco_endpoint_url: ""
+

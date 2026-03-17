@@ -5,8 +5,12 @@ bundle:
   uuid: ebbc066e-3105-4f82-b446-4d5b1a31d23a
 
 include:
-  - resources/*.yml
-  - resources/*/*.yml
+  - ../resources/*.yml
+  - ../resources/*/*.yml
+
+sync:
+  paths:
+    - ../../..  # repo root
 
 variables:
   catalog:
@@ -57,3 +61,4 @@ targets:
     permissions:
       - user_name: samhardyhey@gmail.com
         level: CAN_MANAGE
+

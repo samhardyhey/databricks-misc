@@ -14,7 +14,7 @@ This repository implements the **EBOS AI/ML Use Cases**: a set of use-cases for 
 
 **Existing assets**:
 - Healthcare data generator with medallion architecture (bronze/silver/gold)
-- Demand forecasting models (XGBoost, ETS, Prophet) with MLflow tracking in `use_cases/demand_forecasting/`
+- Demand forecasting models (XGBoost, ETS, Prophet) with MLflow tracking, now owned by inventory optimisation in `use_cases/inventory_optimization/demand_forecasting.py`
 - Spark NLP setup for document intelligence in `use_cases/document_intelligence/`
 - Prescription PDF generator in `data/prescription_pdf_generator/`; annotation app in `use_cases/document_intelligence/annotator/`
 
@@ -33,7 +33,7 @@ This repository implements the **EBOS AI/ML Use Cases**: a set of use-cases for 
 | #     | Use-case                                                                                                    | Status                                 | Location                                                                                               |
 | ----- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | **1** | **Recommendation Engine for Ordering** — Similar products, auto-substitutions, margin-aware recommendations | ⚠️ Not implemented                      | `use_cases/recommendation_engine/`                                                                     |
-| **2** | **Inventory Optimisation** — Demand forecasting (reuse), write-off risk, replenishment optimisation         | ✅ Partial (demand forecasting exists)  | `use_cases/inventory_optimization/`, `use_cases/demand_forecasting/`                                   |
+| **2** | **Inventory Optimisation** — Demand forecasting (reuse), write-off risk, replenishment optimisation         | ✅ Partial (demand forecasting exists)  | `use_cases/inventory_optimization/` (demand forecasting via `inventory_optimization/demand_forecasting.py`) |
 | **3** | **AI Customer Service Agents** — Intent classification, RAG, order tracking                                 | ⚠️ Not implemented                      | `use_cases/customer_service_agent/`                                                                    |
 | **4** | **Document Intelligence (Finance & Ordering)** — OCR, NER, invoice/PO extraction                            | ✅ Partial (Spark NLP setup, annotator) | `use_cases/document_intelligence/`                                                                     |
 | **5** | **AI Powered Insights & Analytics** — Ranging/consolidation, market intelligence, franchise analytics       | ⚠️ Not implemented                      | `use_cases/ranging_consolidation/`, `use_cases/market_intelligence/`, `use_cases/franchise_analytics/` |
@@ -53,8 +53,7 @@ databricks-misc/
 │
 ├── use_cases/               # One directory per use-case (each with own DAB bundle as needed)
 │   ├── recommendation_engine/
-│   ├── demand_forecasting/
-│   ├── inventory_optimization/
+│   ├── inventory_optimization/          # includes demand_forecasting module
 │   ├── customer_service_agent/
 │   ├── document_intelligence/      # includes annotator/
 │   ├── ranging_consolidation/

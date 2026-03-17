@@ -1,0 +1,56 @@
+# Inventory optimization bundle (co-located with use case code).
+# Deploy: databricks bundle deploy -t dev-sp (from this directory or repo root).
+bundle:
+  name: inventory_optimization
+  uuid: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
+
+include:
+  - ../../resources/*.yml
+
+sync:
+  paths:
+    - ../../../..  # repo root so use_cases/* and data/ are available
+
+variables:
+  catalog:
+    description: Unity Catalog for medallion (inventory reads from medallion schema)
+    default: workspace
+  medallion_schema:
+    description: Catalog.schema for inventory tables (e.g. workspace.healthcare_medallion_dev)
+    default: workspace.healthcare_medallion_dev
+  workspace_root:
+    description: Workspace path where bundle is deployed (for PYTHONPATH)
+    default: ""
+
+targets:
+  dev-sp:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      medallion_schema: workspace.healthcare_medallion_dev
+      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+
+  test-sp:
+    mode: development
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      medallion_schema: workspace.healthcare_medallion_test
+      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+
+  prod-sp:
+    mode: production
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      medallion_schema: workspace.healthcare_medallion_prod
+      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+

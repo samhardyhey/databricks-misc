@@ -6,8 +6,8 @@
 
 **Existing Assets**:
 - Healthcare data generator with medallion architecture (bronze/silver/gold)
-- Demand forecasting models (XGBoost, ETS, Prophet) with MLflow tracking
-- Spark NLP setup for document intelligence
+- Inventory optimisation demand forecasting models (XGBoost, ETS, Prophet) with MLflow tracking (`use_cases/inventory_optimization/demand_forecasting.py`)
+- Prescription PDF generator and annotation app for document intelligence
 
 ---
 
@@ -190,7 +190,7 @@ databricks-misc/
 ### Modelling Approach
 
 **Component 1: Demand Forecasting** ✅ **EXISTS** - Reuse existing models
-- XGBoost, ETS, Prophet models already implemented in `use_cases/demand_forecasting/`
+- XGBoost, ETS, Prophet models implemented under `use_cases/inventory_optimization/demand_forecasting.py`
 - Train at product × warehouse granularity
 - Generate probabilistic forecasts (P50, P75, P90) for safety stock calculations
 
@@ -279,8 +279,7 @@ databricks-misc/
 │               └── gold_replenishment_recommendations.sql # NEW
 │
 └── use_cases/
-    ├── demand_forecasting/                     # EXISTS - reuse
-    └── inventory_optimization/                # NEW MODULE
+    └── inventory_optimization/                # Inventory optimisation (includes demand_forecasting module)
         ├── README.md
         ├── databricks.yml
         ├── resources/
@@ -446,43 +445,45 @@ databricks-misc/
 
 ---
 
-## 4️⃣ Document Intelligence (Finance & Ordering)
+## 4️⃣ Document Intelligence (Prescriptions & Ordering)
 
-**Business Value**: Manual labour reduction | High ROI for P2P, O2C, invoice processing
-**Use Case**: Reduce manual document processing using AI to interpret and integrate into target systems
-**Current Status**: ✅ **Partial** - Spark NLP setup exists, needs implementation
-**Local dev**: Can be developed locally for most part (data gen, annotator). Use common open-source PDF OCR instead of Spark OCR/NLP for the local pipeline.
+**Business Value**: Manual labour reduction | High ROI for prescription processing and order validation
+**Use Case**: Reduce manual processing of prescription PDFs using AI to interpret, validate, and integrate into downstream ordering systems
+**Current Status**: ✅ **Partial** - Prescription PDF generator and annotation app exist, needs end-to-end pipeline implementation
+**Local dev**: Can be developed locally for most part (PDF generation, OCR, annotator). Use common open-source PDF OCR + layout/NLP libraries (e.g. Tesseract, `pytesseract`, `pdfplumber`, transformer-based NER) that run without Spark.
 
 ### Data Requirements
 
-**New data pipeline** (synthetic PDFs):
-- Reuse/extend `/data/prescription_pdf_generator/` patterns for invoice/PO generation
-- Generate synthetic PDFs: invoices, purchase orders, delivery notes
+**New / extended data pipeline** (synthetic prescription PDFs):
+- **Reuse and extend** existing `/data/prescription_pdf_generator/` for prescription document generation (no separate finance document generator)
+- Generate synthetic prescription PDFs covering key real-world patterns: handwritten vs typed, different templates, multiple pages, varied pharmacies/doctors
 - Add `bronze_documents` table: `doc_id`, `file_path`, `doc_type`, `upload_timestamp`, `source_system`
-- Add labeled ground truth: `gold_doc_labels` with extracted fields (supplier, amount, date, line items)
+- Add labeled ground truth: `gold_doc_labels` with extracted fields (patient, prescriber, product, strength, dose, frequency, repeats, quantity, directions, dates)
 
-**Document types**:
-1. Invoices: supplier name, invoice number, date, line items (product, qty, price), total, GST, payment terms
-2. Purchase Orders: PO number, supplier, delivery address, line items, total, delivery date
-3. Delivery notes: delivery number, order reference, items delivered, signatures
+**Document types** (all within prescription workflows):
+1. **Community prescriptions**: typical GP to pharmacy scripts
+2. **Hospital discharge prescriptions**: longer medication lists with changing regimens
+3. **Repeat prescriptions / renewals**: focus on refills, validity dates, remaining repeats
 
 **Expected volume**: ~1k documents/month (synthetic)
 
-**Existing asset**: Spark NLP setup in `use_cases/document_intelligence/`
+**Existing assets**:
+- Prescription PDF generator under `data/prescription_pdf_generator/`
+- Prescription annotation / labeling app under `use_cases/document_intelligence/annotator/`
 
 ### Modelling Approach
 
 **Pipeline**:
-1. **OCR** - spark-ocr for PDF → text extraction
-2. **Layout Analysis** - Identify document structure (tables, header/footer, line items)
-3. **Field Extraction** - spark-nlp NER models fine-tuned for invoices/POs
-   - Pre-trained: start with `ner_deid` or general `ner_dl` models
-   - Fine-tune on synthetic labeled dataset (500-1000 docs)
-   - Extract entities: supplier, date, amounts, product codes, quantities
-4. **Post-processing** - Validation rules, entity matching to master data (`silver_products`, `silver_suppliers`)
-5. **Confidence Scoring** - Route low-confidence extractions to human review queue
+1. **OCR** - open-source OCR engine for PDF → text and layout extraction (e.g. Tesseract via `pytesseract`, `pdfplumber` for text/coordinates)
+2. **Layout Analysis** - Identify prescription structure (header with prescriber/pharmacy, patient block, medication lines, footer/notes)
+3. **Field Extraction** - NER / structured extraction models fine-tuned for prescriptions
+   - Start with general transformer-based NER (e.g. Hugging Face models) and fine-tune on labeled prescription dataset (500-1000 docs)
+   - Extract entities: patient, prescriber, product, strength, form, dose, frequency, quantity, repeats, directions, dates
+4. **Post-processing** - Validation rules, entity matching to master data (`silver_products`, `silver_pharmacies`, `silver_hospitals`)
+   - Normalise drug names and strengths, resolve ambiguous abbreviations, basic safety checks (e.g. maximum dose heuristics)
+5. **Confidence Scoring** - Route low-confidence extractions, conflicts, or potential safety issues to a human review queue
 
-**Libraries**: `spark-ocr`, `spark-nlp`, `spark-nlp-healthcare` (for advanced NER)
+**Libraries**: OCR (`pytesseract`, `pdfplumber`), layout/vision (`layoutparser`, `opencv-python` optional), NLP (`transformers`, `spacy` or similar)
 
 **Evaluation**: Field-level F1 score, end-to-end document accuracy, exception rate
 
@@ -493,27 +494,27 @@ databricks-misc/
 use_cases/document_intelligence/
 ├── jobs/
 │   ├── 1_ingest_documents.py            # Auto Loader
-│   │   └── Monitor blob storage/volume for new PDFs
+│   │   └── Monitor blob storage/volume for new prescription PDFs
 │   │   └── Load to bronze_documents (binary + metadata)
 │   │
-│   ├── 2_ocr_extraction.py              # Spark OCR
-│   │   └── Convert PDF → text, extract tables
+│   ├── 2_ocr_extraction.py              # OCR + layout
+│   │   └── Convert PDF → text and layout, extract line regions
 │   │   └── Write to silver_doc_pages
 │   │
-│   ├── 3_field_extraction.py           # Spark NLP NER
-│   │   └── Apply fine-tuned NER models
-│   │   └── Extract: supplier, invoice_number, date, total, line_items
+│   ├── 3_field_extraction.py           # NER / structured extraction
+│   │   └── Apply fine-tuned prescription NER / parsing models
+│   │   └── Extract: patient, prescriber, drugs, strengths, dose, frequency, repeats, quantity, dates
 │   │   └── Write to silver_doc_fields_extracted
 │   │
 │   ├── 4_validation_matching.py        # Post-processing
-│   │   └── Validate extracted fields (date formats, amounts)
-│   │   └── Match supplier names to silver_suppliers
+│   │   └── Validate extracted fields (date formats, product existence, dose sanity checks)
+│   │   └── Match products and prescribers to reference tables
 │   │   └── Route exceptions to gold_doc_exceptions_queue
-│   │   └── Route approved to gold_doc_posting_ready
+│   │   └── Route approved to gold_doc_posting_ready (ready for ordering system integration)
 │   │
-│   └── train_ner_model.py              # Fine-tune NER
+│   └── train_ner_model.py              # Fine-tune prescription NER
 │       └── Load labeled documents from gold_doc_labels
-│       └── Fine-tune spark-nlp NER model
+│       └── Fine-tune transformer-based NER / sequence models
 │       └── Evaluate on test set
 │       └── Register model to Unity Catalog
 ├── resources/
@@ -521,8 +522,8 @@ use_cases/document_intelligence/
 ```
 
 **Application**:
-- Finance team dashboard shows exceptions queue
-- Approved documents trigger downstream integration (ERP posting)
+- Pharmacy / operations dashboard shows exceptions queue
+- Approved prescriptions trigger downstream integration (ordering / dispensing systems)
 
 **Databricks App** (Streamlit):
 - **Purpose**: Human-in-the-loop document review and exception handling
@@ -537,11 +538,13 @@ use_cases/document_intelligence/
 - **Deployment**: Databricks App via DAB bundle
 - **Users**: Finance team, AP clerks, document processing team
 
-**Annotation Tool** (Existing Asset):
+**Annotation & Review Tool** (Existing Asset):
 - **Reuse**: Existing prescription PDF annotation app at `use_cases/document_intelligence/annotator/`
-- **Purpose**: Create labeled training data for NER model fine-tuning
-- **Adaptation**: Extend for invoice/PO annotation (similar field extraction patterns)
-- **Integration**: Labeled data feeds into `gold_doc_labels` table for model training
+- **Purpose**: Create and curate labeled training data for prescription NER model fine-tuning
+- **Usage Pattern**:
+  - Use the app to annotate synthetic prescription PDFs generated by `data/prescription_pdf_generator/`
+  - Periodically sample low-confidence real/synthetic documents from the exception queue for additional labeling
+- **Integration**: Labeled data feeds into `gold_doc_labels` table for model training and retraining
 
 **Data Pipeline** (dbt medallion - separate project):
 ```
@@ -554,20 +557,16 @@ data/document_intelligence_medallion/          # NEW dbt project
 │   └── silver_doc_fields_extracted.sql        # NEW: NER extracted fields
 │
 └── gold/
-    ├── gold_doc_labels.sql                    # NEW: Ground truth annotations
-    ├── gold_doc_exceptions_queue.sql          # NEW: Low-confidence extractions
-    └── gold_doc_posting_ready.sql             # NEW: Approved documents for ERP
+    ├── gold_doc_labels.sql                    # NEW: Ground truth annotations for prescriptions
+    ├── gold_doc_exceptions_queue.sql          # NEW: Low-confidence or safety-critical extractions
+    └── gold_doc_posting_ready.sql             # NEW: Approved prescription records for downstream systems
 ```
 
 **File Structure**:
 ```
 databricks-misc/
 ├── data/
-│   ├── document_intelligence_generator/ # NEW: invoice/PO PDF generator
-│   │   └── src/
-│   │       └── generate_documents.py
-│   │
-│   ├── prescription_pdf_generator/      # EXISTS (data/) - general PDF generation
+│   ├── prescription_pdf_generator/      # EXISTS (data/) - prescription PDF generation (reused)
 │   │   └── ...
 │   │
 │   └── document_intelligence_medallion/ # NEW dbt project (or extend healthcare_data_medallion)
@@ -585,13 +584,11 @@ databricks-misc/
 └── use_cases/
     └── document_intelligence/           # EXISTS - extend
         ├── annotator/                   # EXISTS - prescription PDF annotation app
-        ├── setup_spark_nlp.ipynb        # EXISTS
-        ├── requirements.spark.txt       # EXISTS
         ├── README.md                    # NEW
         ├── databricks.yml
         ├── resources/
-        ├── ocr_pipeline.py              # NEW
-        ├── ner_field_extraction.py      # NEW
+        ├── ocr_pipeline.py              # NEW: OCR + layout using non-Spark libraries
+        ├── ner_field_extraction.py      # NEW: transformer-based NER / parsing
         ├── train_ner.py                 # NEW
         ├── evaluation.py                # NEW
         ├── jobs/
@@ -795,7 +792,7 @@ databricks-misc/
 - **Data generation**: Healthcare generator is pure pandas/Faker; writes CSVs to e.g. `data/local/`. No Spark or DB required. Optional: script to load CSVs into DuckDB/SQLite for a local “raw” DB.
 - **Medallion**: Default dbt profile is Databricks (Unity Catalog). To run medallion locally: use dbt-duckdb (or dbt-sqlite) profile, point sources at local DB populated from generator CSVs, and adjust SQL dialect if needed (e.g. `current_timestamp()`).
 - **Model training / MLflow**: Training code is pandas + sklearn/xgboost/prophet etc.; no Spark in model code. MLflow uses default tracking (local `./mlruns` when not on Databricks). Add explicit local data path (e.g. `RUN_LOCAL=1`, `DATA_PATH=...` or `use_cases.env_utils.is_running_on_databricks()`) so entrypoints load from CSV/local DB instead of requiring Spark and Unity Catalog; keep `create_sample_data()` as fallback.
-- **Use cases**: Recommendation, inventory, insights — core logic and training are local-friendly (DataFrame/CSV input). Customer service — same, with local vector store (e.g. Chroma/FAISS) instead of Databricks Vector Search. Document intelligence — PDF gen and annotation local; OCR/NER pipeline is Spark-based (local Spark or Databricks).
+- **Use cases**: Recommendation, inventory, insights — core logic and training are local-friendly (DataFrame/CSV input). Customer service — same, with local vector store (e.g. Chroma/FAISS) instead of Databricks Vector Search. Document intelligence — PDF generation, OCR, and annotation are all runnable locally using open-source libraries (no Spark NLP/OCR requirement).
 
 **For all projects**:
 - Use Databricks Connect for remote execution

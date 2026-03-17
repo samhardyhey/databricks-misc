@@ -18,13 +18,13 @@ MEDALLION_DIR := $(REPO_ROOT)/data/healthcare_data_medallion
 
 # Prescription PDF generation: sensible defaults (override: make data-local-generate-pdfs DOC_INTEL_PDF_ARGS="-n 5 -s 42")
 DOC_INTEL_PDF_ARGS ?= -n 10
-DOC_INTEL_PDF_OUTPUT := use_cases/document_intelligence/prescription_pdfs
+DOC_INTEL_PDF_OUTPUT := prescription_pdfs
 
 # Marvelous MLOps: separate requirements, use sub-venv (make marvelous_mlops-venv first)
 MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
 MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
-.PHONY: help cleanup clean-local-data format document_intelligence-generate-pdfs
+.PHONY: help cleanup clean-local-data format document_intelligence-generate-pdfs document_intelligence-install document_intelligence-run
 .PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
 .PHONY: reco-data reco-run reco-install inventory-data inventory-run inventory-install
 .PHONY: marvelous_mlops-venv marvelous_mlops-fetch-medium marvelous_mlops-fetch-substack marvelous_mlops-fetch-youtube

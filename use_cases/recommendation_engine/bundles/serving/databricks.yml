@@ -1,0 +1,47 @@
+bundle:
+  name: recommendation_engine_serving
+
+include:
+  - ../../resources/serving/*.yml
+
+sync:
+  paths:
+    - ../../../..  # repo root so use_cases/* and data/ are available
+
+variables:
+  catalog:
+    description: Unity Catalog catalog for reco models
+    default: workspace
+  model_schema:
+    description: Schema for registered recommendation models (e.g. workspace.default)
+    default: workspace.default
+
+targets:
+  dev-sp:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      model_schema: workspace.default
+
+  test-sp:
+    mode: development
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      model_schema: workspace.default
+
+  prod-sp:
+    mode: production
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      model_schema: workspace.default
+
