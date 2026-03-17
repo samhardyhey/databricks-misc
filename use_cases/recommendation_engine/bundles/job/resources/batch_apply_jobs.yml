@@ -1,0 +1,35 @@
+# Recommendation engine batch application jobs (generate offline recommendations)
+resources:
+  jobs:
+    recommendation_engine_apply:
+      name: recommendation_engine_apply
+      description: "Batch application of recommendation engine to generate candidate recommendations (future gold_reco_candidates)"
+
+      schedule:
+        quartz_cron_expression: "0 30 6 * * ?"  # daily 6:30am
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: apply_recommendation_engine
+          # Currently reuses run_reco.py; in future this should point to a dedicated batch_scoring script
+          spark_python_task:
+            python_file: use_cases/recommendation_engine/run_reco.py
+          environment_key: apply_env
+
+      environments:
+        - environment_key: apply_env
+          spec:
+            client: "2"
+            env_vars:
+              RECO_DATA_SOURCE: auto
+              RECO_CATALOG_SCHEMA: ${var.medallion_schema}
+              PYTHONPATH: ${var.workspace_root}
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - joblib
+              - implicit
+              - lightgbm>=4.0
+              - mlflow

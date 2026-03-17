@@ -2,14 +2,12 @@ resources:
   apps:
     recommendation_engine_app:
       name: recommendation-engine-app
-      description: "Databricks app showcasing recommendation engine behaviour"
+      description: "Streamlit app showcasing recommendation engine behaviour"
       source_code_path: use_cases/recommendation_engine/app
       environment:
         spec:
           env_vars:
             RECO_ENDPOINT_URL: ${var.reco_endpoint_url}
           dependencies:
-            - streamlit
-            - pandas
-            - requests
+            - -r use_cases/recommendation_engine/app/requirements.txt
 

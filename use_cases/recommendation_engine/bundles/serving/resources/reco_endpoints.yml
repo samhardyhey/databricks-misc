@@ -1,7 +1,7 @@
 resources:
   model_serving_endpoints:
-    recommendation_engine_endpoint:
-      name: recommendation-engine-prod
+    recommendation_engine_item_similarity:
+      name: recommendation-engine-item-similarity
       config:
         served_models:
           - name: item_similarity
@@ -9,6 +9,11 @@ resources:
             model_version: "1"
             workload_size: Small
             scale_to_zero_enabled: true
+
+    recommendation_engine_als:
+      name: recommendation-engine-als
+      config:
+        served_models:
           - name: als_recommender
             model_name: ${var.model_schema}.reco_als
             model_version: "1"

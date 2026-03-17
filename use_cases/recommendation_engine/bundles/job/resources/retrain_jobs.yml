@@ -1,9 +1,9 @@
-# Recommendation engine job: runs run_reco.py using medallion data from Unity Catalog.
+# Recommendation engine retrain jobs (train models + log to MLflow)
 resources:
   jobs:
-    recommendation_engine_job:
-      name: recommendation_engine_job
-      description: "Run recommendation engine (item similarity, ALS, hybrid ranker) from medallion tables"
+    recommendation_engine_retrain:
+      name: recommendation_engine_retrain
+      description: "Retrain recommendation engine models (item_similarity, ALS, ranker) and log to MLflow"
 
       schedule:
         quartz_cron_expression: "0 0 6 * * ?"  # daily 6am
@@ -11,13 +11,13 @@ resources:
         pause_status: PAUSED
 
       tasks:
-        - task_key: run_reco
+        - task_key: retrain_recommendation_engine
           spark_python_task:
             python_file: use_cases/recommendation_engine/run_reco.py
-          environment_key: default
+          environment_key: retrain_env
 
       environments:
-        - environment_key: default
+        - environment_key: retrain_env
           spec:
             client: "2"
             env_vars:
@@ -32,4 +32,3 @@ resources:
               - implicit
               - lightgbm>=4.0
               - mlflow
-

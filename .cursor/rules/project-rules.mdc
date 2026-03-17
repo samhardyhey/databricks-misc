@@ -43,6 +43,30 @@ alwaysApply: true
   - `example_bundles/endpoints/databricks.yml` shows the same pattern for endpoints bundles.
   - Real use-case bundles (e.g. `use_cases/recommendation_engine/bundles/{job,serving,app}/databricks.yml`, `use_cases/inventory_optimization/bundles/job/databricks.yml`) should follow this structure: bundle metadata, local `resources/*.yml` next to each bundle file, repo-root `sync.paths`, shared `variables`, and 3‑env `targets` (dev-sp/test-sp-prod-sp).
 
+### Databricks Apps (Streamlit)
+- We standardise on **Streamlit** for Databricks Apps.
+- Per use-case, app code lives under `use_cases/<name>/app/`:
+  - `app/app.py` — main Streamlit entrypoint (also used for local `streamlit run app.py`).
+  - `app/requirements.txt` — app-only dependencies (Streamlit, SQL connector, requests, plotting, etc.).
+- The **apps bundle** is `use_cases/<name>/bundles/app/databricks.yml` and includes `bundles/app/resources/*.yml`.
+- App resources define a single Streamlit app pointing at the code directory:
+  - `source_code_path: use_cases/<name>/app`
+  - `environment.spec.dependencies` should normally reference the requirements file (e.g. `- -r use_cases/<name>/app/requirements.txt`) rather than duplicating libraries inline.
+- Local dev pattern for any app:
+  - `cd use_cases/<name>/app && uv pip install -r requirements.txt && streamlit run app.py` (or equivalent `pip`).
+
+### Job taxonomy (retrain vs apply)
+- For ML-heavy use-cases (e.g. recommendation, inventory optimisation), split jobs into **types** and then fan out by **model**:
+  - **Retrain jobs**: retrain or recompute model state / policy (e.g. demand forecasting models, write-off risk classifier, replenishment ROP policy). These:
+    - live in a dedicated resource file such as `bundles/job/resources/retrain_jobs.yml`
+    - have one job per model subtype (e.g. `*_demand_forecasting_retrain`, `*_writeoff_risk_retrain`, `*_replenishment_retrain`)
+    - typically use a heavier environment (MLflow, Prophet, XGBoost, statsmodels, etc.).
+  - **Batch apply jobs**: apply the latest trained models/policies to gold tables (e.g. `gold_demand_forecast`, `gold_writeoff_risk_scores`, `gold_replenishment_recommendations`). These:
+    - live in a separate resource file such as `bundles/job/resources/batch_apply_jobs.yml`
+    - also have one job per model subtype (e.g. `*_demand_forecasting_apply`, `*_writeoff_risk_apply`, `*_replenishment_apply`)
+    - can use a leaner environment focused on reading medallion tables and writing gold outputs.
+- It is acceptable (and often convenient) for retrain and apply jobs to reuse the same Python entrypoints initially; over time, you can split `*_retrain.py` vs `*_apply.py` while keeping the DAB job taxonomy unchanged.
+
 ### Naming: DAB config vs Python code
 - Reserve the `bundles/**` tree strictly for **DAB configuration** (bundle `databricks.yml` files and their `resources/*.yml` job/endpoint/app definitions).
 - Keep substantive Python entrypoints / job scripts outside `bundles/`, under clear code-centric names such as:
