@@ -16,10 +16,10 @@ from loguru import logger
 
 warnings.filterwarnings("ignore")
 
-from data_preparation import prepare_forecasting_data
-from ets_forecaster import run_ets_experiment
-from prophet_forecaster import run_prophet_experiment
-from xgboost_forecaster import run_xgboost_experiment
+from use_cases.demand_forecasting.data_preparation import prepare_forecasting_data
+from use_cases.demand_forecasting.ets_forecaster import run_ets_experiment
+from use_cases.demand_forecasting.prophet_forecaster import run_prophet_experiment
+from use_cases.demand_forecasting.xgboost_forecaster import run_xgboost_experiment
 
 
 def compare_forecasting_models(

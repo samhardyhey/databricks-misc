@@ -42,6 +42,7 @@ alwaysApply: true
 - if possible, use functions/functional programming instead of classes/object-oriented programming
 - Logging: Always use loguru instead of print statements
 - Module Structure: Prefer semantic naming (parent_module.semantic_name) over verbose names
+- Imports: Always use **root-based imports** from the repo root (e.g. `from use_cases.demand_forecasting.data_preparation import ...`, `from data.healthcare_data_generator.src.healthcare_data_generator import ...`). Avoid relative or package-local imports (`from .foo import ...`, `from foo import ...` inside subpackages) so that scripts run consistently from the repo root, Databricks jobs, and DAB bundles.
 
 ### Misc
 - Do not create unnecessary markdown/README files; we typically just one one root level README and then perhaps one in a major module ONLY if the complexity warrants it

@@ -26,7 +26,7 @@ MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
 .PHONY: help cleanup clean-local-data format document_intelligence-generate-pdfs
 .PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
-.PHONY: reco-data reco-run inventory-data inventory-run
+.PHONY: reco-data reco-run reco-install inventory-data inventory-run inventory-install
 .PHONY: marvelous_mlops-venv marvelous_mlops-fetch-medium marvelous_mlops-fetch-substack marvelous_mlops-fetch-youtube
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
 
@@ -34,7 +34,8 @@ help:
 	@echo "Targets:"
 	@echo "  make uv-venv              - Create .venv (uses uv if available, else python3 -m venv)"
 	@echo "  make uv-sync / install     - Install deps; use install then uv-dev for dev tools"
-	@echo "                             Optional: uv sync --extra reco | uv sync --extra inventory"
+	@echo "  make reco-install          - Install reco use-case deps (implicit, lightgbm, mlflow)"
+	@echo "  make inventory-install    - Install inventory use-case deps (scipy, lightgbm)"
 	@echo "  make uv-dev               - Install dev deps (autoflake, isort, black)"
 	@echo "  make uv-activate          - Print activate command for .venv"
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
@@ -50,9 +51,11 @@ help:
 	@echo "  make data-local-dbt-test        - Build medallion (dbt run) then run dbt tests (referential integrity, etc.)"
 	@echo ""
 	@echo "  Recommendation engine (single entrypoint run_reco.py; data source via RECO_DATA_SOURCE):"
+	@echo "  make reco-install             - Install reco deps (implicit, lightgbm, mlflow); then make reco-run"
 	@echo "  make reco-data                 - Generate healthcare CSVs to data/local/ (alias for data-local-generate-quick)"
 	@echo "  make reco-run                 - Run recommendation engine (local CSV or catalog when on Databricks)"
 	@echo "  Inventory optimisation (single entrypoint run_inventory.py; data source via INVENTORY_DATA_SOURCE):"
+	@echo "  make inventory-install       - Install inventory deps (scipy, lightgbm); then make inventory-run"
 	@echo "  make inventory-data           - Generate healthcare CSVs (alias for data-local-generate-quick)"
 	@echo "  make inventory-run            - Run inventory optimisation (local CSV or catalog when on Databricks)"
 	@echo ""
@@ -155,6 +158,12 @@ data-local-dbt-test: data-local-dbt-run
 document_intelligence-generate-pdfs: data-local-generate-pdfs
 
 # --- Recommendation engine (single entrypoint; RECO_DATA_SOURCE=local|catalog|auto) ---
+reco-install:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
+	@cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra reco || .venv/bin/pip install -e ".[reco]") || \
+		(.venv/bin/pip install 'mlflow>=2.9.0' 'lightgbm>=4.0.0' && echo "Note: implicit could not be installed; ALS will be skipped.")
+	@echo "Reco deps installed."
+
 reco-data: data-local-generate-quick
 
 reco-run:
@@ -164,6 +173,11 @@ reco-run:
 	@echo "reco run done."
 
 # --- Inventory optimisation (single entrypoint; INVENTORY_DATA_SOURCE=local|catalog|auto) ---
+inventory-install:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra inventory || .venv/bin/pip install -e ".[inventory]")
+	@echo "Inventory deps (scipy, lightgbm) installed."
+
 inventory-data: data-local-generate-quick
 
 inventory-run:

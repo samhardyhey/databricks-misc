@@ -1,0 +1,34 @@
+# Recommendation engine job: runs run_reco.py using medallion data from Unity Catalog.
+resources:
+  jobs:
+    recommendation_engine_job:
+      name: recommendation_engine_job
+      description: "Run recommendation engine (item similarity, ALS, hybrid ranker) from medallion tables"
+
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"  # daily 6am
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: run_reco
+          spark_python_task:
+            python_file: use_cases/recommendation_engine/run_reco.py
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "2"
+            env_vars:
+              RECO_DATA_SOURCE: auto
+              RECO_CATALOG_SCHEMA: ${var.medallion_schema}
+              PYTHONPATH: ${var.workspace_root}
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - joblib
+              - implicit
+              - lightgbm>=4.0
+              - mlflow

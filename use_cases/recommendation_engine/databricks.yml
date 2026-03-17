@@ -1,0 +1,55 @@
+# Recommendation engine bundle (co-located with use case code).
+# Deploy: databricks bundle deploy -t dev-sp (from this directory or repo root).
+bundle:
+  name: recommendation_engine
+  uuid: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+
+include:
+  - resources/*.yml
+
+sync:
+  paths:
+    - ../..  # repo root so use_cases/* and data/ are available
+
+variables:
+  catalog:
+    description: Unity Catalog for medallion (reco reads from medallion schema)
+    default: workspace
+  medallion_schema:
+    description: Catalog.schema for reco tables (e.g. workspace.healthcare_medallion_dev)
+    default: workspace.healthcare_medallion_dev
+  workspace_root:
+    description: Workspace path where bundle is deployed (for PYTHONPATH)
+    default: ""
+
+targets:
+  dev-sp:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      medallion_schema: workspace.healthcare_medallion_dev
+      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+
+  test-sp:
+    mode: development
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      medallion_schema: workspace.healthcare_medallion_test
+      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+
+  prod-sp:
+    mode: production
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      medallion_schema: workspace.healthcare_medallion_prod
+      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}

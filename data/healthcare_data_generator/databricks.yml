@@ -1,5 +1,5 @@
-# This is a Databricks asset bundle definition for healthcare_data.
-# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
+# Healthcare data generator bundle.
+# See https://docs.databricks.com/dev-tools/bundles/index.html
 bundle:
   name: healthcare_data_generator
   uuid: ebbc066e-3105-4f82-b446-4d5b1a31d23a
@@ -8,23 +8,52 @@ include:
   - resources/*.yml
   - resources/*/*.yml
 
+variables:
+  catalog:
+    description: Unity Catalog name for raw data
+    default: workspace
+  source_schema:
+    description: Schema for raw healthcare tables (e.g. healthcare_dev_raw)
+    default: healthcare_dev_raw
+
 targets:
-  dev:
-    # The default target uses 'mode: development' to create a development copy.
-    # - Deployed resources get prefixed with '[dev my_user_name]'
-    # - Any job schedules and triggers are paused by default.
-    # See also https://docs.databricks.com/dev-tools/bundles/deployment-modes.html.
+  dev-sp:
     mode: development
     default: true
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      source_schema: healthcare_dev_raw
+    resources:
+      jobs:
+        healthcare_data_generator_job:
+          schedule:
+            pause_status: PAUSED
 
-  prod:
+  test-sp:
+    mode: development
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      source_schema: healthcare_test_raw
+    resources:
+      jobs:
+        healthcare_data_generator_job:
+          schedule:
+            pause_status: PAUSED
+
+  prod-sp:
     mode: production
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      # We explicitly deploy to /Workspace/Users/samhardyhey@gmail.com to make sure we only have a single copy.
       root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      source_schema: healthcare_prod_raw
     permissions:
       - user_name: samhardyhey@gmail.com
         level: CAN_MANAGE

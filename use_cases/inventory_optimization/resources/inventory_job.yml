@@ -1,0 +1,32 @@
+# Inventory optimization job: runs run_inventory.py using medallion data from Unity Catalog.
+resources:
+  jobs:
+    inventory_optimization_job:
+      name: inventory_optimization_job
+      description: "Run inventory optimization (writeoff risk, replenishment) from medallion tables"
+
+      schedule:
+        quartz_cron_expression: "0 0 7 * * ?"  # daily 7am
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: run_inventory
+          spark_python_task:
+            python_file: use_cases/inventory_optimization/run_inventory.py
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "2"
+            env_vars:
+              INVENTORY_DATA_SOURCE: auto
+              INVENTORY_CATALOG_SCHEMA: ${var.medallion_schema}
+              PYTHONPATH: ${var.workspace_root}
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - scipy>=1.10
+              - lightgbm>=4.0

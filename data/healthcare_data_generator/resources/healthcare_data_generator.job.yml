@@ -23,6 +23,9 @@ resources:
         - environment_key: default
           spec:
             client: "2"
+            env_vars:
+              CATALOG_NAME: ${var.catalog}
+              SCHEMA_NAME: ${var.source_schema}
             dependencies:
               - faker>=24.0.0
               - pandas>=2.2.0

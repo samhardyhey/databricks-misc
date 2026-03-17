@@ -17,16 +17,13 @@ from loguru import logger
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import current_timestamp, lit
 
-# Unity Catalog configuration
-CATALOG_NAME = "workspace"
-SCHEMA_NAME = "default"  # Will be overridden by bundle environment
-TABLE_PREFIX = "healthcare_"
-
-# Get schema name from bundle environment variables
+# Unity Catalog configuration (override via bundle env: CATALOG_NAME, SCHEMA_NAME)
 import os
 
+TABLE_PREFIX = "healthcare_"
 BUNDLE_TARGET = os.getenv("BUNDLE_TARGET", "dev")
-SCHEMA_NAME = f"healthcare_{BUNDLE_TARGET}_raw"
+CATALOG_NAME = os.getenv("CATALOG_NAME", "workspace")
+SCHEMA_NAME = os.getenv("SCHEMA_NAME") or f"healthcare_{BUNDLE_TARGET}_raw"
 
 # Large-scale data generation for ML experimentation
 # One-time run with substantial dataset sizes

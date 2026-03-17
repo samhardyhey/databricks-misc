@@ -1,8 +1,33 @@
 # This file defines dbt profiles for deployed dbt jobs.
 # Use profile "databricks" for Databricks; use "sqlite" for local medallion (requires dbt-sqlite, DB pre-loaded from CSVs).
 databricks:
-  target: dev # default target
+  target: dev-sp
   outputs:
+    dev-sp:
+      type: databricks
+      method: http
+      catalog: workspace
+      schema: "healthcare_medallion_dev"
+      http_path: /sql/1.0/warehouses/2a475c6457a76313
+      host: "{{ env_var('DBT_HOST') }}"
+      token: "{{ env_var('DBT_ACCESS_TOKEN') }}"
+    test-sp:
+      type: databricks
+      method: http
+      catalog: workspace
+      schema: "healthcare_medallion_test"
+      http_path: /sql/1.0/warehouses/2a475c6457a76313
+      host: "{{ env_var('DBT_HOST') }}"
+      token: "{{ env_var('DBT_ACCESS_TOKEN') }}"
+    prod-sp:
+      type: databricks
+      method: http
+      catalog: workspace
+      schema: "healthcare_medallion_prod"
+      http_path: /sql/1.0/warehouses/2a475c6457a76313
+      host: "{{ env_var('DBT_HOST') }}"
+      token: "{{ env_var('DBT_ACCESS_TOKEN') }}"
+    # Legacy targets (kept for local or older deploys)
     dev:
       type: databricks
       method: http

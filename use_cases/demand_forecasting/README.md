@@ -33,7 +33,7 @@ This module provides comprehensive demand forecasting capabilities for healthcar
 ## Quick Start
 
 ```python
-from run_forecasting_experiment import main
+from use_cases.demand_forecasting.run_forecasting_experiment import main
 
 # Run complete forecasting experiment
 results = main()
@@ -42,10 +42,10 @@ results = main()
 ## Individual Model Usage
 
 ```python
-from xgboost_forecaster import run_xgboost_experiment
-from ets_forecaster import run_ets_experiment
-from prophet_forecaster import run_prophet_experiment
-from data_preparation import prepare_forecasting_data
+from use_cases.demand_forecasting.xgboost_forecaster import run_xgboost_experiment
+from use_cases.demand_forecasting.ets_forecaster import run_ets_experiment
+from use_cases.demand_forecasting.prophet_forecaster import run_prophet_experiment
+from use_cases.demand_forecasting.data_preparation import prepare_forecasting_data
 
 # Prepare data
 train_data, test_data, full_data = prepare_forecasting_data(orders_df)

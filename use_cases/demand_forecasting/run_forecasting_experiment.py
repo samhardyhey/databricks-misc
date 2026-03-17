@@ -11,9 +11,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from data_preparation import prepare_forecasting_data
+from use_cases.demand_forecasting.data_preparation import prepare_forecasting_data
 from loguru import logger
-from model_comparison import run_full_comparison
+from use_cases.demand_forecasting.model_comparison import run_full_comparison
 
 from use_cases.env_utils import is_running_on_databricks
 
