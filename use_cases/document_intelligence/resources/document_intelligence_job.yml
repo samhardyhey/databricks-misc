@@ -11,9 +11,16 @@ resources:
         pause_status: PAUSED
 
       tasks:
-        - task_key: run_document_intelligence
+        - task_key: ocr_extraction
           spark_python_task:
-            python_file: use_cases/document_intelligence/run_document_intelligence.py
+            python_file: use_cases/document_intelligence/jobs/1_ocr_extraction.py
+          environment_key: default
+
+        - task_key: field_extraction
+          depends_on:
+            - task_key: ocr_extraction
+          spark_python_task:
+            python_file: use_cases/document_intelligence/jobs/2_field_extraction.py
           environment_key: default
 
       environments:

@@ -188,6 +188,23 @@ reco-run:
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/run_reco.py
 	@echo "reco run done."
 
+# Per-model reco entrypoints (item_similarity)
+reco-item-sim-train:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/item_similarity/train.py
+
+reco-item-sim-apply:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/item_similarity/predict.py
+
+reco-als-train:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/als/train.py
+
+reco-als-apply:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/als/predict.py
+
 # --- Inventory optimisation (single entrypoint; INVENTORY_DATA_SOURCE=local|catalog|auto) ---
 inventory-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
@@ -201,6 +218,31 @@ inventory-run:
 	@test -f $(DATA_LOCAL_DIR)/inventory.csv || (echo "Run: make inventory-data (or make data-local-generate-quick) first" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/run_inventory.py
 	@echo "inventory run done."
+
+# Per-model inventory entrypoints (writeoff_risk)
+inventory-writeoff-train:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/writeoff_risk/train.py
+
+inventory-writeoff-apply:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/writeoff_risk/predict.py
+
+inventory-demand-train:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/demand_forecasting/train.py
+
+inventory-demand-apply:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/demand_forecasting/predict.py
+
+inventory-replenishment-train:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/replenishment/train.py
+
+inventory-replenishment-apply:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/replenishment/predict.py
 
 # --- Marvelous MLOps (sub-usecase: own venv and requirements.txt) ---
 marvelous_mlops-venv:

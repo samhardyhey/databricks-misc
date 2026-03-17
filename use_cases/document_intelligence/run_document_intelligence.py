@@ -17,20 +17,26 @@ entrypoint signature.
 from loguru import logger
 
 from use_cases.document_intelligence.config import get_config
+from use_cases.document_intelligence.data_loading import load_document_data
 from use_cases.document_intelligence.ner_field_extraction import run_field_extraction
 from use_cases.document_intelligence.ocr_pipeline import run_ocr
 
 
 def main(config: dict | None = None) -> dict:
     """
-    Run the document intelligence pipeline.
+    Run the document intelligence pipeline end-to-end.
 
     Returns a small summary dict for logging / diagnostics.
     """
     cfg = config or get_config()
+    data_info = load_document_data(cfg)
+
     logger.info(
-        "Document intelligence run: base_dir={}, on_databricks={}",
-        cfg["base_dir"],
+        "Document intelligence run: base_dir={}, pdfs={}, labels={}, annotated_labels={}, on_databricks={}",
+        data_info["base_dir"],
+        len(data_info["pdf_files"]),
+        len(data_info["label_files"]),
+        len(data_info["annotated_label_files"]),
         cfg["on_databricks"],
     )
 
