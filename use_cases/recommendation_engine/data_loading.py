@@ -52,7 +52,9 @@ def _load_from_local(data_dir: Path) -> dict[str, pd.DataFrame | None]:
         if path and (data_dir / path).exists():
             out[name] = pd.read_csv(data_dir / path)
             if name == "interactions" and "timestamp" in out[name].columns:
-                out[name]["interaction_timestamp"] = pd.to_datetime(out[name]["timestamp"])
+                out[name]["interaction_timestamp"] = pd.to_datetime(
+                    out[name]["timestamp"]
+                )
             elif name == "orders" and "order_date" in out[name].columns:
                 out[name]["order_date"] = pd.to_datetime(out[name]["order_date"])
             logger.info("Loaded {} from {}", name, data_dir / path)
@@ -61,9 +63,15 @@ def _load_from_local(data_dir: Path) -> dict[str, pd.DataFrame | None]:
     if out.get("interactions") is not None and out.get("training_base") is None:
         df = out["interactions"].copy()
         if "action_type" in df.columns:
-            ts = "interaction_timestamp" if "interaction_timestamp" in df.columns else "timestamp"
+            ts = (
+                "interaction_timestamp"
+                if "interaction_timestamp" in df.columns
+                else "timestamp"
+            )
             df["_label"] = (df["action_type"] == "purchased").astype(int)
-            out["training_base"] = df.groupby(["customer_id", "product_id"], as_index=False).agg(
+            out["training_base"] = df.groupby(
+                ["customer_id", "product_id"], as_index=False
+            ).agg(
                 label=("_label", "max"),
                 last_interaction_timestamp=(ts, "max"),
                 interaction_count=("customer_id", "count"),
@@ -71,7 +79,9 @@ def _load_from_local(data_dir: Path) -> dict[str, pd.DataFrame | None]:
     return out
 
 
-def load_reco_data(config: dict | None = None, spark=None) -> dict[str, pd.DataFrame | None]:
+def load_reco_data(
+    config: dict | None = None, spark=None
+) -> dict[str, pd.DataFrame | None]:
     """
     Load all reco data (interactions, products, orders, training_base).
     Uses config["data_source"]: 'local' -> CSV from config["local_data_dir"];
@@ -83,14 +93,21 @@ def load_reco_data(config: dict | None = None, spark=None) -> dict[str, pd.DataF
     cfg = config or get_config()
     if cfg["data_source"] == "catalog":
         if spark is None:
-            raise RuntimeError("data_source is 'catalog' but spark is None; create SparkSession on Databricks.")
+            raise RuntimeError(
+                "data_source is 'catalog' but spark is None; create SparkSession on Databricks."
+            )
         return _load_from_catalog(spark, cfg["catalog_schema"])
-    return _load_from_local(cfg["local_data_dir"] if isinstance(cfg["local_data_dir"], Path) else Path(cfg["local_data_dir"]))
+    return _load_from_local(
+        cfg["local_data_dir"]
+        if isinstance(cfg["local_data_dir"], Path)
+        else Path(cfg["local_data_dir"])
+    )
 
 
 # Back-compat
 def get_local_data_dir_default() -> Path:
     from use_cases.recommendation_engine.config import get_local_data_dir
+
     return get_local_data_dir()
 
 

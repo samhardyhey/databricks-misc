@@ -7,7 +7,6 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
-from loguru import logger
 
 
 def compute_demand_stats(
@@ -25,7 +24,11 @@ def compute_demand_stats(
     cutoff = pd.Timestamp.now().normalize() - pd.Timedelta(days=window_days)
     orders = orders[orders[date_col] >= cutoff]
     if group_cols is None:
-        group_cols = [c for c in ("product_id", "pharmacy_id", "warehouse_id") if c in orders.columns]
+        group_cols = [
+            c
+            for c in ("product_id", "pharmacy_id", "warehouse_id")
+            if c in orders.columns
+        ]
     if not group_cols:
         group_cols = ["product_id"]
     orders["_date"] = orders[date_col].dt.date
@@ -39,7 +42,9 @@ def compute_demand_stats(
     )
     daily["demand_std"] = daily["std"].fillna(0).clip(lower=0)
     daily["demand_mean"] = daily["mean"].clip(lower=0)
-    return daily.rename(columns={"mean": "daily_demand_mean", "std": "daily_demand_std"})
+    return daily.rename(
+        columns={"mean": "daily_demand_mean", "std": "daily_demand_std"}
+    )
 
 
 def safety_stock_reorder_point(
@@ -54,7 +59,9 @@ def safety_stock_reorder_point(
     from scipy import stats
 
     z = float(stats.norm.ppf(service_level))
-    rop = (demand_mean * lead_time_days) + (z * (demand_std or 0) * np.sqrt(max(lead_time_days, 0.1)))
+    rop = (demand_mean * lead_time_days) + (
+        z * (demand_std or 0) * np.sqrt(max(lead_time_days, 0.1))
+    )
     return max(0, rop)
 
 
@@ -120,5 +127,7 @@ def compute_replenishment_recommendations(
             inv["reorder_qty"] > 0, "reorder_qty"
         ].clip(lower=min_order_qty)
 
-    inv["priority"] = (inv["below_rop"].astype(int) * 2) + (inv["reorder_qty"] > 0).astype(int)
+    inv["priority"] = (inv["below_rop"].astype(int) * 2) + (
+        inv["reorder_qty"] > 0
+    ).astype(int)
     return inv

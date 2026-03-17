@@ -26,7 +26,9 @@ class ALSRecoWrapper(mlflow.pyfunc.PythonModel):
         self.model = data["model"]
         self.user_item_matrix = data["user_item_matrix"]
 
-    def predict(self, context, model_input: pd.DataFrame, params: dict | None = None) -> pd.DataFrame:
+    def predict(
+        self, context, model_input: pd.DataFrame, params: dict | None = None
+    ) -> pd.DataFrame:
         n_items = 10
         if params and "n_items" in params:
             n_items = int(params["n_items"])
@@ -42,11 +44,13 @@ class ALSRecoWrapper(mlflow.pyfunc.PythonModel):
                 N=n_items,
                 filter_already_liked=True,
             )
-            out.append({
-                "user_code": u,
-                "recommended_item_codes": item_ids.tolist(),
-                "recommended_scores": scores.astype(float).tolist(),
-            })
+            out.append(
+                {
+                    "user_code": u,
+                    "recommended_item_codes": item_ids.tolist(),
+                    "recommended_scores": scores.astype(float).tolist(),
+                }
+            )
         return pd.DataFrame(out)
 
 
@@ -82,17 +86,20 @@ def train_als(
 
     if log_to_mlflow:
         from use_cases.recommendation_engine.config import apply_mlflow_config
+
         apply_mlflow_config()
         if mlflow.active_run() is None:
             mlflow.start_run(run_name="reco_als")
         with tempfile.TemporaryDirectory() as tmp:
             art_path = Path(tmp) / "als_data.joblib"
             joblib.dump({"model": model, "user_item_matrix": M}, art_path)
-            mlflow.log_params({
-                "factors": factors,
-                "iterations": iterations,
-                "regularization": regularization,
-            })
+            mlflow.log_params(
+                {
+                    "factors": factors,
+                    "iterations": iterations,
+                    "regularization": regularization,
+                }
+            )
             mlflow.log_metrics(metrics)
             mlflow.pyfunc.log_model(
                 artifact_path=artifact_path,

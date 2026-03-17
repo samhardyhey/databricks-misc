@@ -26,15 +26,23 @@ def build_writeoff_risk_features(
 
     # Days until expiry (from expiry_date or precomputed)
     if "days_until_expiry" in inv.columns:
-        inv["days_until_expiry"] = pd.to_numeric(inv["days_until_expiry"], errors="coerce")
+        inv["days_until_expiry"] = pd.to_numeric(
+            inv["days_until_expiry"], errors="coerce"
+        )
     elif "expiry_date" in inv.columns:
         inv["expiry_date"] = pd.to_datetime(inv["expiry_date"], errors="coerce")
-        inv["days_until_expiry"] = (inv["expiry_date"] - pd.Timestamp.now().normalize()).dt.days
+        inv["days_until_expiry"] = (
+            inv["expiry_date"] - pd.Timestamp.now().normalize()
+        ).dt.days
     else:
         inv["days_until_expiry"] = np.nan
 
-    inv["current_stock"] = pd.to_numeric(inv.get("current_stock", 0), errors="coerce").fillna(0)
-    inv["max_stock"] = pd.to_numeric(inv.get("max_stock", 1), errors="coerce").replace(0, 1)
+    inv["current_stock"] = pd.to_numeric(
+        inv.get("current_stock", 0), errors="coerce"
+    ).fillna(0)
+    inv["max_stock"] = pd.to_numeric(inv.get("max_stock", 1), errors="coerce").replace(
+        0, 1
+    )
     inv["stock_pct"] = (inv["current_stock"] / inv["max_stock"]).clip(0, 1)
 
     # Demand proxy: orders in last 90 days per product x warehouse
@@ -55,7 +63,9 @@ def build_writeoff_risk_features(
                 .reset_index()
                 .rename(columns={qty_col: "demand_90d", wh_col: "warehouse_id"})
             )
-            demand_90["forecast_demand_30d"] = (demand_90["demand_90d"] / 3).clip(0, 1e6)
+            demand_90["forecast_demand_30d"] = (demand_90["demand_90d"] / 3).clip(
+                0, 1e6
+            )
             inv = inv.merge(
                 demand_90[["product_id", "warehouse_id", "forecast_demand_30d"]],
                 on=["product_id", "warehouse_id"],
@@ -74,9 +84,15 @@ def build_writeoff_risk_features(
 
     # Product category if available
     if products is not None and "product_id" in products.columns:
-        cat_col = "therapeutic_category" if "therapeutic_category" in products.columns else "category"
+        cat_col = (
+            "therapeutic_category"
+            if "therapeutic_category" in products.columns
+            else "category"
+        )
         if cat_col not in products.columns:
-            cat_col = [c for c in products.columns if "cat" in c.lower() or "type" in c.lower()]
+            cat_col = [
+                c for c in products.columns if "cat" in c.lower() or "type" in c.lower()
+            ]
             cat_col = cat_col[0] if cat_col else None
         if cat_col:
             inv = inv.merge(
@@ -100,8 +116,8 @@ def train_writeoff_risk_classifier(
     Train binary classifier for 'will expire in next 30 days'.
     Returns (model, feature_cols_used, metrics_dict).
     """
-    from sklearn.model_selection import train_test_split
     from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+    from sklearn.model_selection import train_test_split
 
     try:
         import lightgbm as lgb
@@ -133,7 +149,11 @@ def train_writeoff_risk_classifier(
     X = df[feature_cols]
     y = df[target_col].astype(int)
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y if y.nunique() > 1 else None
+        X,
+        y,
+        test_size=test_size,
+        random_state=random_state,
+        stratify=y if y.nunique() > 1 else None,
     )
 
     model = model_cls(**model_kw)

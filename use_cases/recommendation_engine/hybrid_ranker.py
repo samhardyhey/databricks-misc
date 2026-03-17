@@ -4,11 +4,10 @@ Requires: pip install lightgbm (or install with [reco] extra).
 Logs model artefact, pyfunc (via LightGBM flavour), and metrics to MLflow when training.
 """
 
-import pandas as pd
-import numpy as np
 import lightgbm as lgb
 import mlflow
 import mlflow.lightgbm
+import pandas as pd
 from loguru import logger
 
 
@@ -54,6 +53,7 @@ def train_ranker(
 
     if log_to_mlflow:
         from use_cases.recommendation_engine.config import apply_mlflow_config
+
         apply_mlflow_config()
         if mlflow.active_run() is None:
             mlflow.start_run(run_name="reco_ranker")
@@ -70,7 +70,9 @@ def rank_candidates(
 ) -> pd.DataFrame:
     """Score candidates and return top_k per group (e.g. per customer_id)."""
     if "customer_id" not in candidate_df.columns:
-        return candidate_df.assign(score=model.predict(candidate_df[feature_cols].fillna(0))).nlargest(top_k, "score")
+        return candidate_df.assign(
+            score=model.predict(candidate_df[feature_cols].fillna(0))
+        ).nlargest(top_k, "score")
     X = candidate_df[feature_cols].fillna(0)
     candidate_df = candidate_df.copy()
     candidate_df["score"] = model.predict(X)

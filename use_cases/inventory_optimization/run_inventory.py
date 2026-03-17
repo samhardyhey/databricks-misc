@@ -7,22 +7,20 @@ Override with INVENTORY_DATA_SOURCE=local|catalog|auto and INVENTORY_CATALOG_SCH
 Run: make inventory-run (local)  or  deploy as Databricks job with this script.
 """
 
-from pathlib import Path
-
 import pandas as pd
 from loguru import logger
 
 from use_cases.inventory_optimization.config import get_config
 from use_cases.inventory_optimization.data_loading import load_inventory_data
+from use_cases.inventory_optimization.evaluation import replenishment_summary
+from use_cases.inventory_optimization.replenishment_optimizer import (
+    compute_replenishment_recommendations,
+)
 from use_cases.inventory_optimization.writeoff_risk_classifier import (
     build_writeoff_risk_features,
     predict_writeoff_risk,
     train_writeoff_risk_classifier,
 )
-from use_cases.inventory_optimization.replenishment_optimizer import (
-    compute_replenishment_recommendations,
-)
-from use_cases.inventory_optimization.evaluation import replenishment_summary
 
 
 def create_sample_inventory_data() -> dict[str, pd.DataFrame]:
@@ -33,36 +31,44 @@ def create_sample_inventory_data() -> dict[str, pd.DataFrame]:
     np.random.seed(42)
     products = list(range(1, 11))
     warehouses = [f"WH_{i}" for i in range(1, 6)]
-    inventory = pd.DataFrame({
-        "inventory_id": [f"INV_{i}" for i in range(n)],
-        "pharmacy_id": np.random.choice(warehouses, n),
-        "product_id": np.random.choice(products, n),
-        "current_stock": np.random.randint(0, 200, n),
-        "max_stock": np.random.randint(100, 500, n),
-        "expiry_date": pd.date_range("2025-01-01", periods=n, freq="D")
-        + pd.Timedelta(days=np.random.randint(30, 400, n)),
-    })
+    inventory = pd.DataFrame(
+        {
+            "inventory_id": [f"INV_{i}" for i in range(n)],
+            "pharmacy_id": np.random.choice(warehouses, n),
+            "product_id": np.random.choice(products, n),
+            "current_stock": np.random.randint(0, 200, n),
+            "max_stock": np.random.randint(100, 500, n),
+            "expiry_date": pd.date_range("2025-01-01", periods=n, freq="D")
+            + pd.Timedelta(days=np.random.randint(30, 400, n)),
+        }
+    )
     inventory["warehouse_id"] = inventory["pharmacy_id"]
-    orders = pd.DataFrame({
-        "order_id": range(300),
-        "pharmacy_id": np.random.choice(warehouses, 300),
-        "product_id": np.random.choice(products, 300),
-        "order_date": pd.date_range("2024-06-01", periods=300, freq="D"),
-        "quantity": np.random.randint(1, 30, 300),
-    })
+    orders = pd.DataFrame(
+        {
+            "order_id": range(300),
+            "pharmacy_id": np.random.choice(warehouses, 300),
+            "product_id": np.random.choice(products, 300),
+            "order_date": pd.date_range("2024-06-01", periods=300, freq="D"),
+            "quantity": np.random.randint(1, 30, 300),
+        }
+    )
     orders["warehouse_id"] = orders["pharmacy_id"]
-    writeoff_events = pd.DataFrame({
-        "event_id": [f"WO_{i}" for i in range(20)],
-        "product_id": np.random.choice(products, 20),
-        "warehouse_id": np.random.choice(warehouses, 20),
-        "quantity": np.random.randint(1, 10, 20),
-        "reason": np.random.choice(["expired", "damaged", "obsolete"], 20),
-        "timestamp": pd.date_range("2024-01-01", periods=20, freq="D"),
-    })
-    products_df = pd.DataFrame({
-        "product_id": products,
-        "product_name": [f"Product_{p}" for p in products],
-    })
+    writeoff_events = pd.DataFrame(
+        {
+            "event_id": [f"WO_{i}" for i in range(20)],
+            "product_id": np.random.choice(products, 20),
+            "warehouse_id": np.random.choice(warehouses, 20),
+            "quantity": np.random.randint(1, 10, 20),
+            "reason": np.random.choice(["expired", "damaged", "obsolete"], 20),
+            "timestamp": pd.date_range("2024-01-01", periods=20, freq="D"),
+        }
+    )
+    products_df = pd.DataFrame(
+        {
+            "product_id": products,
+            "product_name": [f"Product_{p}" for p in products],
+        }
+    )
     return {
         "inventory": inventory,
         "orders": orders,
@@ -115,19 +121,25 @@ def main(config: dict | None = None, spark=None) -> dict:
         )
 
     # --- Write-off risk features and label ---
-    features_df = build_writeoff_risk_features(inventory, orders=orders, products=products)
+    features_df = build_writeoff_risk_features(
+        inventory, orders=orders, products=products
+    )
     if "days_until_expiry" in features_df.columns:
         features_df["will_expire_30d"] = (
-            (features_df["days_until_expiry"] >= 0) & (features_df["days_until_expiry"] <= 30)
+            (features_df["days_until_expiry"] >= 0)
+            & (features_df["days_until_expiry"] <= 30)
         ).astype(int)
     else:
         features_df["will_expire_30d"] = 0
 
     writeoff_metrics = {}
-    if features_df["will_expire_30d"].sum() >= 5 and features_df["will_expire_30d"].sum() < len(
-        features_df
-    ) - 5:
-        model, feature_cols, writeoff_metrics = train_writeoff_risk_classifier(features_df)
+    if (
+        features_df["will_expire_30d"].sum() >= 5
+        and features_df["will_expire_30d"].sum() < len(features_df) - 5
+    ):
+        model, feature_cols, writeoff_metrics = train_writeoff_risk_classifier(
+            features_df
+        )
         features_df["writeoff_risk_score"] = predict_writeoff_risk(
             model, features_df, feature_cols
         )

@@ -7,8 +7,12 @@ with the latest statsmodels API.
 
 import numpy as np
 import pandas as pd
-from use_cases.demand_forecasting.ets_forecaster import ETSForecaster, run_ets_experiment
 from loguru import logger
+
+from use_cases.demand_forecasting.ets_forecaster import (
+    ETSForecaster,
+    run_ets_experiment,
+)
 
 
 def create_test_data():

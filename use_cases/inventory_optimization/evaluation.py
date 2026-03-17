@@ -4,7 +4,6 @@ Inventory optimisation metrics: forecast error (MAE/RMSE/MAPE), write-off reduct
 
 import numpy as np
 import pandas as pd
-from loguru import logger
 
 
 def forecast_metrics(
@@ -45,7 +44,9 @@ def replenishment_summary(recommendations: pd.DataFrame) -> dict[str, float]:
     if recommendations is None or len(recommendations) == 0:
         return {"below_rop_count": 0, "reorder_lines": 0, "total_reorder_qty": 0.0}
     below = recommendations.get("below_rop", pd.Series(dtype=bool))
-    reorder_qty = pd.to_numeric(recommendations.get("reorder_qty", 0), errors="coerce").fillna(0)
+    reorder_qty = pd.to_numeric(
+        recommendations.get("reorder_qty", 0), errors="coerce"
+    ).fillna(0)
     return {
         "below_rop_count": int(below.sum()) if below is not None else 0,
         "reorder_lines": int((reorder_qty > 0).sum()),

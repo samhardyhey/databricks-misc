@@ -4,12 +4,15 @@ Reco metrics: Precision@K, Recall@K, NDCG.
 
 import numpy as np
 import pandas as pd
-from loguru import logger
 
 
 def precision_at_k(relevant: set, recommended: list, k: int) -> float:
     """Precision@k = |relevant ∩ recommended[:k]| / k."""
-    rec_k = set(recommended[:k]) if isinstance(recommended, (list, np.ndarray)) else set(list(recommended)[:k])
+    rec_k = (
+        set(recommended[:k])
+        if isinstance(recommended, (list, np.ndarray))
+        else set(list(recommended)[:k])
+    )
     return len(relevant & rec_k) / k if k > 0 else 0.0
 
 
@@ -17,13 +20,21 @@ def recall_at_k(relevant: set, recommended: list, k: int) -> float:
     """Recall@k = |relevant ∩ recommended[:k]| / |relevant|."""
     if not relevant:
         return 0.0
-    rec_k = set(recommended[:k]) if isinstance(recommended, (list, np.ndarray)) else set(list(recommended)[:k])
+    rec_k = (
+        set(recommended[:k])
+        if isinstance(recommended, (list, np.ndarray))
+        else set(list(recommended)[:k])
+    )
     return len(relevant & rec_k) / len(relevant)
 
 
 def dcg_at_k(relevant: set, recommended: list, k: int) -> float:
     """DCG@k (binary relevance)."""
-    rec = list(recommended)[:k] if hasattr(recommended, "__iter__") and not isinstance(recommended, set) else recommended[:k]
+    rec = (
+        list(recommended)[:k]
+        if hasattr(recommended, "__iter__") and not isinstance(recommended, set)
+        else recommended[:k]
+    )
     dcg = 0.0
     for i, item in enumerate(rec):
         if item in relevant:

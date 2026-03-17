@@ -7,6 +7,8 @@ directly to the Databricks Unity Catalog for ML experimentation and analysis.
 Usage: Run this script in a Databricks notebook or as a job.
 """
 
+# Unity Catalog configuration (override via bundle env: CATALOG_NAME, SCHEMA_NAME)
+import os
 from typing import Dict, Optional
 
 # Import the existing healthcare data generator
@@ -16,9 +18,6 @@ from loguru import logger
 # Databricks imports
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import current_timestamp, lit
-
-# Unity Catalog configuration (override via bundle env: CATALOG_NAME, SCHEMA_NAME)
-import os
 
 TABLE_PREFIX = "healthcare_"
 BUNDLE_TARGET = os.getenv("BUNDLE_TARGET", "dev")

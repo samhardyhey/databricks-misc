@@ -17,7 +17,12 @@ def _load_from_catalog(spark, catalog_schema: str) -> dict[str, pd.DataFrame | N
     table = f"{catalog_schema}.silver_inventory"
     logger.info("Loading inventory from {}", table)
     df = spark.table(table).toPandas()
-    for col in ("expiry_date", "last_restocked", "last_movement_date", "updated_timestamp"):
+    for col in (
+        "expiry_date",
+        "last_restocked",
+        "last_movement_date",
+        "updated_timestamp",
+    ):
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors="coerce")
     out["inventory"] = df
@@ -75,22 +80,35 @@ def _load_from_local(data_dir: Path) -> dict[str, pd.DataFrame | None]:
         if filepath.exists():
             out[name] = pd.read_csv(filepath)
             if name == "inventory":
-                for col in ("expiry_date", "last_restocked", "last_movement_date", "updated_timestamp"):
+                for col in (
+                    "expiry_date",
+                    "last_restocked",
+                    "last_movement_date",
+                    "updated_timestamp",
+                ):
                     if col in out[name].columns:
                         out[name][col] = pd.to_datetime(out[name][col], errors="coerce")
             elif name == "expiry_batches" and "expiry_date" in out[name].columns:
-                out[name]["expiry_date"] = pd.to_datetime(out[name]["expiry_date"], errors="coerce")
+                out[name]["expiry_date"] = pd.to_datetime(
+                    out[name]["expiry_date"], errors="coerce"
+                )
             elif name == "writeoff_events" and "timestamp" in out[name].columns:
-                out[name]["timestamp"] = pd.to_datetime(out[name]["timestamp"], errors="coerce")
+                out[name]["timestamp"] = pd.to_datetime(
+                    out[name]["timestamp"], errors="coerce"
+                )
             elif name == "orders" and "order_date" in out[name].columns:
-                out[name]["order_date"] = pd.to_datetime(out[name]["order_date"], errors="coerce")
+                out[name]["order_date"] = pd.to_datetime(
+                    out[name]["order_date"], errors="coerce"
+                )
             logger.info("Loaded {} from {}", name, filepath)
         else:
             out[name] = None
     return out
 
 
-def load_inventory_data(config: dict | None = None, spark=None) -> dict[str, pd.DataFrame | None]:
+def load_inventory_data(
+    config: dict | None = None, spark=None
+) -> dict[str, pd.DataFrame | None]:
     """
     Load all inventory data (inventory, orders, products, expiry_batches, writeoff_events).
     Uses config["data_source"]: 'local' -> CSV from config["local_data_dir"];
@@ -115,6 +133,8 @@ def get_local_data_dir_default() -> Path:
     return get_config()["local_data_dir"]
 
 
-def get_inventory_data(config: dict | None = None, spark=None) -> dict[str, pd.DataFrame | None]:
+def get_inventory_data(
+    config: dict | None = None, spark=None
+) -> dict[str, pd.DataFrame | None]:
     """Return inventory-related DataFrames. Uses load_inventory_data with config (default get_config())."""
     return load_inventory_data(config=config or get_config(), spark=spark)

@@ -21,12 +21,14 @@ def main():
     try:
         # Reuse demand_forecasting use-case when available
         try:
+            from use_cases.demand_forecasting.model_comparison import (
+                run_full_comparison,
+            )
             from use_cases.demand_forecasting.run_forecasting_experiment import (
+                create_sample_data,
                 load_healthcare_data_from_catalog,
                 load_healthcare_data_local,
-                create_sample_data,
             )
-            from use_cases.demand_forecasting.model_comparison import run_full_comparison
 
             if on_databricks and spark is not None:
                 try:
@@ -35,7 +37,9 @@ def main():
                     logger.warning("Catalog load failed ({}), using sample", e)
                     orders_df = create_sample_data()
             else:
-                default_data_dir = Path(__file__).resolve().parents[3] / "data" / "local"
+                default_data_dir = (
+                    Path(__file__).resolve().parents[3] / "data" / "local"
+                )
                 orders_df = load_healthcare_data_local(default_data_dir)
                 if orders_df is None:
                     orders_df = create_sample_data()

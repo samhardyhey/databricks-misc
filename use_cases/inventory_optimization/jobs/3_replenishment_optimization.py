@@ -7,10 +7,10 @@ from loguru import logger
 
 from use_cases.inventory_optimization.config import get_config
 from use_cases.inventory_optimization.data_loading import load_inventory_data
+from use_cases.inventory_optimization.evaluation import replenishment_summary
 from use_cases.inventory_optimization.replenishment_optimizer import (
     compute_replenishment_recommendations,
 )
-from use_cases.inventory_optimization.evaluation import replenishment_summary
 
 
 def main():
@@ -41,7 +41,9 @@ def main():
         try:
             spark_df = spark.createDataFrame(recommendations)
             catalog = "workspace.healthcare_medallion"
-            spark_df.write.saveAsTable(f"{catalog}.gold_replenishment_recommendations", mode="overwrite")
+            spark_df.write.saveAsTable(
+                f"{catalog}.gold_replenishment_recommendations", mode="overwrite"
+            )
             logger.info("Wrote gold_replenishment_recommendations")
         except Exception as e:
             logger.warning("Could not write to catalog: {}", e)
