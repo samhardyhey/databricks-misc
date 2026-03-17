@@ -15,8 +15,8 @@ from loguru import logger
 
 from use_cases.env_utils import is_running_on_databricks
 from use_cases.inventory_optimization.config import get_config
-from use_cases.inventory_optimization.data_loading import load_inventory_data
-from use_cases.inventory_optimization.demand_forecasting import (
+from use_cases.inventory_optimization.models.data_loading import load_inventory_data
+from use_cases.inventory_optimization.models.demand_forecasting.core import (
     compare_forecasting_models,
 )
 

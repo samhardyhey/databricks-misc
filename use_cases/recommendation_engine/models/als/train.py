@@ -4,16 +4,19 @@ Train the ALS collaborative filtering model for the recommendation engine.
 Intended for:
 - Local runs via `python use_cases/recommendation_engine/models/als/train.py`
 - Databricks jobs (ALS retrain).
+
+Requires the [reco] extra (implicit, lightgbm, mlflow). Run: make reco-install.
 """
 
+import mlflow
 from loguru import logger
 
 from use_cases.recommendation_engine.config import apply_mlflow_config, get_config
+from use_cases.recommendation_engine.models.als.core import train_als
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
 from use_cases.recommendation_engine.models.feature_engineering import (
     build_interaction_matrix,
 )
-from use_cases.recommendation_engine.models.als.core import train_als
 
 
 def main() -> dict:
@@ -30,19 +33,10 @@ def main() -> dict:
 
         spark = SparkSession.builder.appName("ALSRecoTrain").getOrCreate()
 
-    try:
-        import mlflow
-
-        _mlflow = True
-    except ImportError:
-        _mlflow = False
-        mlflow = None  # type: ignore[assignment]
-
-    if _mlflow:
-        apply_mlflow_config(cfg)
-        mlflow.set_experiment("recommendation_engine")
-        if mlflow.active_run() is None:
-            mlflow.start_run(run_name="reco_als_pipeline")
+    apply_mlflow_config(cfg)
+    mlflow.set_experiment("recommendation_engine")
+    if mlflow.active_run() is None:
+        mlflow.start_run(run_name="reco_als_pipeline")
 
     try:
         data = load_reco_data(config=cfg, spark=spark)
@@ -69,16 +63,16 @@ def main() -> dict:
             user_item_matrix.shape[1],
         )
         return {
+            "als_trained": True,
             "n_users": int(user_item_matrix.shape[0]),
             "n_items": int(user_item_matrix.shape[1]),
         }
     finally:
-        if _mlflow and mlflow is not None:
-            try:
-                if mlflow.active_run():
-                    mlflow.end_run()
-            except Exception:
-                pass
+        try:
+            if mlflow.active_run():
+                mlflow.end_run()
+        except Exception:
+            pass
         if spark is not None:
             spark.stop()
 

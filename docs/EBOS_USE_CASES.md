@@ -6,7 +6,8 @@
 
 **Existing Assets**:
 - Healthcare data generator with medallion architecture (bronze/silver/gold)
-- Inventory optimisation demand forecasting models (XGBoost, ETS, Prophet) with MLflow tracking (`use_cases/inventory_optimization/demand_forecasting.py`)
+- Inventory optimisation: demand forecasting, write-off risk, replenishment under `use_cases/inventory_optimization/models/`
+- Recommendation engine: item_similarity, ALS, LightFM, ranker under `use_cases/recommendation_engine/models/`
 - Prescription PDF generator and annotation app for document intelligence
 
 ---
@@ -15,8 +16,8 @@
 
 **Business Value**: ~$4.9m p.a. | Enterprise-wide (Healthcare, MedTech, Animal Care)
 **Use Case**: Recommend similar products and auto-substitutions to reduce sales leakage and increase margins
-**Current Status**: ⚠️ Not implemented
-**Local dev**: Can be developed locally for most part (data gen, model training, model saving). Same entrypoint (`run_reco.py`) runs locally (CSV) or on Databricks (Unity Catalog); data source switched via config — see `use_cases/recommendation_engine/RECO_DEV_PLAN.md`.
+**Current Status**: ✅ **Partial** — Item similarity, ALS, LightFM, ranker implemented under `models/`; DAB jobs and endpoints in place.
+**Local dev**: Develop locally (data gen, training, saving). Optional full-pipeline entrypoint `models/run_reco.py` runs locally (CSV) or on Databricks; per-model scripts (`models/<name>/train.py`, `predict.py`) and Make targets are the main surface. Data source via config.
 
 ### Data Requirements
 
@@ -56,7 +57,7 @@
 
 **Keep in dbt (medallion):** Base, reusable aggregates that many consumers need (e.g. customer × product purchase counts, last order date, product/customer attributes from silver). Think of this as **feature storage / wide tables**, not the full model-specific feature set. Optionally one slim “training base” table (e.g. `gold_reco_training_base`: customer, product, label, key IDs).
 
-**Keep in Python (ML code):** Model-specific feature construction: time windows, normalization, one-hot/target encoding, train/test splits, negative sampling, and any logic used only by this model. **Serving path:** Whatever is computed at request time (or in a real-time pipeline) must use the same logic as in training, implemented in code (e.g. `feature_engineering.py`), not only in dbt.
+**Keep in Python (ML code):** Model-specific feature construction: time windows, normalization, one-hot/target encoding, train/test splits, negative sampling, and any logic used only by this model. **Serving path:** Whatever is computed at request time (or in a real-time pipeline) must use the same logic as in training, implemented in code (e.g. `models/feature_engineering.py`), not only in dbt.
 
 Use dbt for shared, stable, coarse-grained building blocks; do all model-specific and serving-aligned feature engineering in Python, reading from those gold (or silver) tables. This avoids train–serve skew and keeps the medallion from being a dependency for every small ML experiment, while still benefiting from a single, governed data foundation.
 
@@ -79,23 +80,8 @@ data/healthcare_data_medallion/
     └── gold_reco_candidates.sql       # Batch-scored recommendations (top-50 per customer)
 ```
 
-**Training Workflow** (scheduled weekly; bundle under use-case):
-```
-use_cases/recommendation_engine/
-├── jobs/
-│   ├── 1_model_training.py           # Model training job
-│   │   └── Load gold_reco_training_set from Unity Catalog
-│   │   └── Train item-similarity, ALS, LightGBM models
-│   │   └── Log to MLflow with metrics (precision@5, recall@10, NDCG)
-│   │   └── Register winning model to Unity Catalog (workspace.default.reco_models)
-│   │
-│   └── 2_batch_scoring.py            # Candidate generation
-│       └── Score top-50 recommendations per customer
-│       └── Write to gold_reco_candidates (partitioned by customer_id)
-│       └── Cache for 7 days, refresh weekly
-├── resources/                        # DAB job/endpoint definitions
-└── databricks.yml
-```
+**Training Workflow** (scheduled weekly; DAB bundle under use-case):
+- Jobs live in `use_cases/recommendation_engine/bundles/job/resources/` (retrain_jobs.yml, batch_apply_jobs.yml). Each model (item_similarity, als, lightfm, ranker) has retrain and batch-apply jobs; entrypoints are `models/<name>/train.py` and `models/<name>/predict.py`. Optional full-pipeline entrypoint: `models/run_reco.py`. Serving endpoints in `bundles/serving/resources/reco_endpoints.yml`.
 
 **Serving Endpoint** (real-time API):
 - Databricks Model Serving endpoint: `recommendation-engine-prod`
@@ -125,45 +111,23 @@ use_cases/recommendation_engine/
 - **Deployment**: Databricks App via DAB bundle
 - **Users**: ML team, product managers, business stakeholders
 
-**File Structure**:
+**File structure**: Data/medallion as in Data Pipeline above (`data/healthcare_data_generator/`, `data/healthcare_data_medallion/`). Use-case layout:
 ```
-databricks-misc/
-├── data/
-│   ├── healthcare_data_generator/
-│   │   └── src/
-│   │       ├── generate_recommendation_data.py  # NEW: substitutions, interactions
-│   │       └── ...
-│   │
-│   └── healthcare_data_medallion/              # EXTEND existing dbt project
-│       └── src/models/
-│           ├── bronze/
-│           │   ├── bronze_interactions.sql      # NEW
-│           │   └── bronze_substitutions.sql    # NEW
-│           ├── silver/
-│           │   ├── silver_interactions.sql      # NEW
-│           │   └── silver_substitutions.sql    # NEW
-│           └── gold/
-│               ├── gold_reco_features.sql       # NEW
-│               ├── gold_reco_training_set.sql  # NEW
-│               └── gold_reco_candidates.sql    # NEW
-│
-└── use_cases/
-    └── recommendation_engine/                   # NEW MODULE
-        ├── README.md
-        ├── databricks.yml                       # DAB bundle for this use-case
-        ├── resources/                           # job/endpoint definitions
-        ├── requirements.txt                     # implicit, lightgbm, scikit-learn, streamlit
-        ├── item_similarity.py                   # Phase 1
-        ├── collaborative_filtering.py           # Phase 2 (ALS)
-        ├── hybrid_ranker.py                     # Phase 3 (LightGBM)
-        ├── feature_engineering.py
-        ├── evaluation.py
-        ├── jobs/
-        │   ├── 1_model_training.py
-        │   └── 2_batch_scoring.py
-        └── app/                                 # NEW: Databricks App
-            ├── recommendation_dashboard.py      # Streamlit app
-            └── requirements.txt                 # streamlit, databricks-sql-connector
+use_cases/recommendation_engine/
+├── config.py
+├── databricks.yml
+├── bundles/
+│   ├── job/resources/          # retrain_jobs.yml, batch_apply_jobs.yml (per model)
+│   ├── serving/resources/      # reco_endpoints.yml
+│   └── app/                    # Streamlit app (optional)
+├── models/                     # Per-model: core + train + predict
+│   ├── run_reco.py             # Optional full-pipeline entrypoint
+│   ├── data_loading.py, evaluation.py, feature_engineering.py
+│   ├── item_similarity/        # core.py, train.py, predict.py
+│   ├── als/
+│   ├── lightfm/
+│   └── ranker/
+└── app/                        # Databricks App (Streamlit)
 ```
 
 ---
@@ -172,8 +136,8 @@ databricks-misc/
 
 **Business Value**: Direct EBIT + working capital benefits | High value across MedTech, TWC, Healthcare
 **Use Case**: Right product at right place/time/price to drive sales growth and reduce write-offs
-**Current Status**: ✅ **Partial** - Demand forecasting exists, optimization layer missing
-**Local dev**: Can be developed locally for most part (data gen, model training, model saving).
+**Current Status**: ✅ **Partial** — Demand forecasting, write-off risk, replenishment under `models/`; DAB jobs in place.
+**Local dev**: Develop locally (data gen, training, saving). Per-model scripts `models/<name>/train.py`, `predict.py` and Make targets.
 
 ### Data Requirements
 
@@ -189,8 +153,8 @@ databricks-misc/
 
 ### Modelling Approach
 
-**Component 1: Demand Forecasting** ✅ **EXISTS** - Reuse existing models
-- XGBoost, ETS, Prophet models implemented under `use_cases/inventory_optimization/demand_forecasting.py`
+**Component 1: Demand Forecasting** ✅ **EXISTS**
+- XGBoost, ETS, Prophet under `use_cases/inventory_optimization/models/demand_forecasting/`
 - Train at product × warehouse granularity
 - Generate probabilistic forecasts (P50, P75, P90) for safety stock calculations
 
@@ -213,26 +177,7 @@ databricks-misc/
 
 ### Databricks Architecture
 
-**Training Workflow** (scheduled weekly; bundle under use-case):
-```
-use_cases/inventory_optimization/
-├── jobs/
-│   ├── 1_demand_forecasting.py        # REUSE existing models
-│   │   └── Run XGBoost/ETS/Prophet models per product × warehouse
-│   │   └── Output: gold_demand_forecast (date, product_id, warehouse_id, forecast_p50, forecast_p75, forecast_p90)
-│   │
-│   ├── 2_writeoff_risk_model.py      # NEW: Classification model
-│   │   └── Train RandomForest on historical expiry/writeoff data
-│   │   └── Features: days_to_expiry, inventory_level, forecast_demand, turnover_rate
-│   │   └── Output: gold_writeoff_risk_scores
-│   │
-│   └── 3_replenishment_optimization.py # NEW: Safety stock or LP solver
-│       └── Calculate reorder points and optimal order quantities
-│       └── Apply capacity and MOQ constraints
-│       └── Output: gold_replenishment_recommendations (product_id, warehouse_id, reorder_qty, priority)
-├── resources/
-└── databricks.yml
-```
+**Training Workflow** (scheduled weekly; DAB bundle under use-case): Jobs in `use_cases/inventory_optimization/bundles/job/resources/`. Entrypoints: `models/demand_forecasting/`, `models/writeoff_risk/`, `models/replenishment/` (each with core.py, train.py, predict.py).
 
 **Serving/Application**:
 - Batch scoring output to dashboard (Databricks SQL) for inventory planners
@@ -256,41 +201,16 @@ data/healthcare_data_medallion/
     └── gold_replenishment_recommendations.sql  # NEW: Reorder recommendations
 ```
 
-**File Structure**:
+**File structure**: Data/medallion as in Data Pipeline above. Use-case layout:
 ```
-databricks-misc/
-├── data/
-│   ├── healthcare_data_generator/
-│   │   └── src/
-│   │       ├── generate_inventory_data.py      # NEW: expiry, writeoffs, POs
-│   │       └── ...
-│   │
-│   └── healthcare_data_medallion/              # EXTEND existing dbt project
-│       └── src/models/
-│           ├── bronze/
-│           │   ├── bronze_expiry_batches.sql    # NEW
-│           │   └── bronze_writeoffs.sql        # NEW
-│           ├── silver/
-│           │   ├── silver_inventory_enhanced.sql # NEW
-│           │   └── silver_writeoffs.sql        # NEW
-│           └── gold/
-│               ├── gold_demand_forecast.sql    # NEW
-│               ├── gold_writeoff_risk_scores.sql # NEW
-│               └── gold_replenishment_recommendations.sql # NEW
-│
-└── use_cases/
-    └── inventory_optimization/                # Inventory optimisation (includes demand_forecasting module)
-        ├── README.md
-        ├── databricks.yml
-        ├── resources/
-        ├── requirements.txt                    # scipy, pulp (optional)
-        ├── writeoff_risk_classifier.py        # NEW
-        ├── replenishment_optimizer.py          # NEW
-        ├── evaluation.py
-        └── jobs/
-            ├── 1_demand_forecasting.py
-            ├── 2_writeoff_risk_model.py
-            └── 3_replenishment_optimization.py
+use_cases/inventory_optimization/
+├── config.py
+├── databricks.yml
+├── bundles/job/resources/     # retrain/batch-apply jobs per model
+└── models/                     # Per-model: core + train + predict
+    ├── demand_forecasting/
+    ├── writeoff_risk/
+    └── replenishment/
 ```
 
 ---

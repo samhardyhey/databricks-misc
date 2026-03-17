@@ -75,7 +75,8 @@ alwaysApply: true
     - calls into `<model_name>.core` functions,
     - handles MLflow setup and logging when appropriate.
   - `use_cases/<name>/models/<model_name>/predict.py` — orchestration entrypoint for batch apply / scoring:
-    - loads models from MLflow (or uses pure policy functions in `core.py`),
+    - loads models from MLflow (or uses pure policy functions in `core.py`): **local** = local model URI (env e.g. `*_MODEL_URI`: `runs:/...` or `file:///...`); **Databricks** = registry/model URI from env or job config,
+    - loads input data via use-case config and data loaders: **local** = DuckDB medallion (when `DBT_DUCKDB_PATH` and tables exist) with CSV fallback; **Databricks** = Unity Catalog,
     - writes results to local artifacts (DataFrame / CSV) or Unity Catalog tables when running on Databricks.
 - Existing flat model modules at the use-case root (e.g. `use_cases/recommendation_engine/item_similarity.py`, `collaborative_filtering.py`, `hybrid_ranker.py`, `use_cases/inventory_optimization/demand_forecasting.py`, `writeoff_risk_classifier.py`, `replenishment_optimizer.py`) should be **gradually refactored** so that:
   - Their substantive contents move into the corresponding `models/<model_name>/core.py`.
@@ -94,6 +95,10 @@ alwaysApply: true
   - Local Python: UV env `databricks-misc` (make uv-venv, make install, make uv-dev). Repo root is the source root: use imports from root (e.g. `from data.prescription_pdf_generator...`, `from use_cases...`). No per-subproject PYTHONPATH; set PYTHONPATH to repo root only if not using the venv.
 - Local vs remote: Use `use_cases.env_utils.is_running_on_databricks()` to fork behaviour. When local (no Databricks runtime): load data from `data/local/` CSVs or env `LOCAL_DATA_PATH`; skip Spark where applicable. MLflow uses local `./mlruns` when not on Databricks. See docs/EBOS_USE_CASES.md (Development Patterns).
 - **Local medallion (faster dev)**: Replicate the medallion as completely and realistically as possible locally to speed up development (run dbt without Databricks). Use a local DB as the dbt target: **prefer DuckDB** (dbt-duckdb) for closest realism—analytical SQL, optional CSV-as-source, single file. SQLite (dbt-sqlite) is fine if you prefer; populate from CSVs first. Production keeps the Databricks profile.
+- **Environment switching for prediction (batch apply)**: When running **locally**, prediction/apply scripts must honour the same environment split as training:
+  - **Model loading**: Use a **local model URI**—e.g. MLflow `runs:/<run_id>/model` or `file:///path/to/artifact`—configured via use-case or model-specific env (e.g. `WRITEOFF_RISK_MODEL_URI`, `*_MODEL_URI`). Do not assume a registry model (e.g. `models:/.../Production`) exists locally unless that URI is explicitly set; on Databricks, jobs can set the env to a registry URI.
+  - **Data loading**: Prefer loading input data from the **local DuckDB medallion** when available: use `DBT_DUCKDB_PATH` (default e.g. `data/local/medallion.duckdb`) and read from the same silver/gold table names as in catalog (e.g. `silver_inventory`, `silver_orders`). If the DuckDB file or medallion tables are not present, **fall back** to CSV from `data/local` (or `LOCAL_DATA_PATH` / use-case config) so that local dev works with either "DuckDB medallion" or "CSV only". Config (e.g. `get_config()`) should support this by exposing a local data source that can be "duckdb" (medallion) or "csv" (raw CSVs), with duckdb preferred when the file and tables exist.
+  - This keeps parity with production: production = Unity Catalog + registry/model URIs; local = DuckDB medallion (preferred) or CSV + local MLflow runs or file URIs.
 - Data Governance: Unity Catalog with three-level namespace (catalog.schema.table)
   - currently using the `workspace.default` catalog/schema
 

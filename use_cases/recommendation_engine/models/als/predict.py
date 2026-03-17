@@ -18,14 +18,35 @@ from use_cases.recommendation_engine.config import apply_mlflow_config, get_conf
 
 
 def _load_als_model(model_uri: Optional[str] = None):
+    """
+    Load ALS model from MLflow. Locally use a runs:/ or file:// URI (set ALS_MODEL_URI);
+    on Databricks jobs can set ALS_MODEL_URI to a registry URI (e.g. models:/RECO_als/Production).
+    Returns None if mlflow is not installed or the URI is not set (local) or load fails.
+    """
     try:
-        import mlflow
+        import mlflow  # type: ignore[import-not-found]
+        from mlflow.exceptions import MlflowException
     except ImportError:
-        raise RuntimeError("mlflow is required to load the ALS model.")
+        logger.info(
+            "ALS predict skipped: mlflow is not installed; no model can be loaded."
+        )
+        return None
 
-    uri = model_uri or os.environ.get("ALS_MODEL_URI", "models:/RECO_als/Production")
+    uri = model_uri or os.environ.get("ALS_MODEL_URI")
+    if not uri:
+        logger.info(
+            "ALS predict skipped: ALS_MODEL_URI is not set; set it to a model URI "
+            "(e.g. runs:/<run_id>/model locally or models:/RECO_als/Production on Databricks)."
+        )
+        return None
     logger.info("Loading ALS model from {}", uri)
-    return mlflow.pyfunc.load_model(uri)
+    try:
+        return mlflow.pyfunc.load_model(uri)
+    except MlflowException as e:
+        logger.info(
+            "ALS predict skipped: could not load model from '{}': {}", uri, e
+        )
+        return None
 
 
 def main(model_uri: Optional[str] = None, n_items: int = 10) -> pd.DataFrame:
@@ -37,7 +58,7 @@ def main(model_uri: Optional[str] = None, n_items: int = 10) -> pd.DataFrame:
     )
 
     try:
-        import mlflow
+        import mlflow  # type: ignore[import-not-found]
     except ImportError:
         mlflow = None  # type: ignore[assignment]
 
@@ -45,6 +66,9 @@ def main(model_uri: Optional[str] = None, n_items: int = 10) -> pd.DataFrame:
         apply_mlflow_config(cfg)
 
     model = _load_als_model(model_uri=model_uri)
+    if model is None:
+        logger.info("ALS predict: no model available; returning empty DataFrame.")
+        return pd.DataFrame()
 
     # For now we expect a simple CSV of user_codes to score (local) or
     # future extension to read from a medallion table when on Databricks.

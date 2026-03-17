@@ -5,17 +5,14 @@ Intended for:
 - Local runs via `python use_cases/recommendation_engine/models/item_similarity/train.py`
 - Databricks jobs (DAB spark_python_task.python_file pointing here)
 
-Behaviour:
-- Uses recommendation_engine.config.get_config() for local vs catalog and schema.
-- Loads data via load_reco_data.
-- Builds product feature matrix and trains NearestNeighbors-based item similarity.
-- Logs metrics and model artifact to MLflow (when available).
+Requires [reco] extra (mlflow, lightgbm, implicit). Run: make reco-install.
 """
 
 import tempfile
 from pathlib import Path
 
 import joblib
+import mlflow
 import pandas as pd
 from loguru import logger
 
@@ -35,10 +32,6 @@ from use_cases.recommendation_engine.models.item_similarity.core import (
 def _log_item_similarity_mlflow(
     nn, scaler, product_ids: list, n_neighbors: int, metrics: dict | None = None
 ) -> None:
-    try:
-        import mlflow
-    except ImportError:
-        return
     mlflow.log_param("model_type", "item_similarity")
     mlflow.log_param("n_neighbors", n_neighbors)
     mlflow.log_param("n_products", len(product_ids))
@@ -68,18 +61,9 @@ def main() -> dict:
 
         spark = SparkSession.builder.appName("ItemSimilarityTrain").getOrCreate()
 
-    try:
-        import mlflow
-
-        _mlflow = True
-    except ImportError:
-        _mlflow = False
-        mlflow = None  # type: ignore[assignment]
-
-    if _mlflow:
-        apply_mlflow_config(cfg)
-        mlflow.set_experiment("recommendation_engine")
-        mlflow.start_run(run_name="item_similarity_train")
+    apply_mlflow_config(cfg)
+    mlflow.set_experiment("recommendation_engine")
+    mlflow.start_run(run_name="item_similarity_train")
 
     try:
         data = load_reco_data(config=cfg, spark=spark)

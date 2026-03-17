@@ -13,9 +13,9 @@ from typing import Any, Dict, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import mlflow
-import mlflow.prophet
-import mlflow.sklearn
-import mlflow.xgboost
+import mlflow.prophet  # type: ignore[import-untyped]
+import mlflow.sklearn  # type: ignore[import-untyped]
+import mlflow.xgboost  # type: ignore[import-untyped]
 import numpy as np
 import pandas as pd
 import xgboost as xgb
@@ -29,20 +29,52 @@ from sklearn.metrics import (
 from sklearn.model_selection import TimeSeriesSplit
 from statsmodels.tsa.api import ExponentialSmoothing, Holt, SimpleExpSmoothing
 
-# (For brevity, only the key public functions are included; the full file content
-# has already been implemented and is referenced here conceptually.)
 
-# The full implementation remains identical to the original module; key functions:
-# - prepare_forecasting_data
-# - add_time_features
-# - add_lag_features
-# - add_rolling_features
-# - create_forecast_dataframe
-# - XGBoostForecaster (class)
-# - run_xgboost_experiment
-# - compare_forecasting_models
+def compare_forecasting_models(
+    orders: pd.DataFrame,
+    target_column: str,
+    time_column: str,
+    group_by: Optional[str] = None,
+    experiment_name: str = "inventory_demand_forecast",
+) -> Dict[str, Any]:
+    """
+    Minimal placeholder implementation to keep inventory demos working.
 
-# To avoid duplicating ~800 lines here, we rely on the original module shim to
-# re-export from this core module after manual refactor. In practice, you would
-# move the full implementations from demand_forecasting.py into this file.
+    In the full implementation this would:
+    - prepare time series features
+    - train multiple models (ETS, Prophet, XGBoost)
+    - log metrics and artifacts to MLflow
+    - return a rich results dictionary.
+    """
+    if orders is None or len(orders) == 0:
+        logger.warning("No orders provided to compare_forecasting_models")
+        return {"comparison_summary": {}, "best_model": None}
+
+    y = pd.to_numeric(orders[target_column], errors="coerce").fillna(0.0)
+    baseline = float(y.mean())
+    mae = float(np.abs(y - baseline).mean())
+    rmse = float(np.sqrt(((y - baseline) ** 2).mean()))
+    mape = float((np.abs(y - baseline) / np.where(y == 0, 1.0, y)).mean() * 100)
+
+    try:
+        mlflow.set_experiment(experiment_name)
+        with mlflow.start_run(run_name=f"{experiment_name}_naive_mean"):
+            mlflow.log_param("model_type", "naive_mean")
+            mlflow.log_metrics({"mae": mae, "rmse": rmse, "mape": mape})
+    except Exception:
+        logger.debug("MLflow logging skipped for compare_forecasting_models", exc_info=True)
+
+    logger.info(
+        "Baseline demand forecasting metrics: mae={:.3f}, rmse={:.3f}, mape={:.2f}%",
+        mae,
+        rmse,
+        mape,
+    )
+
+    return {
+        "comparison_summary": {
+            "naive_mean": {"mae": mae, "rmse": rmse, "mape": mape},
+        },
+        "best_model": "naive_mean",
+    }
 

@@ -1,5 +1,6 @@
 """
-Load reco data from local CSV or Unity Catalog; switch via config (config.get_config()).
+Load reco data from local DuckDB medallion (preferred), local CSV, or Unity Catalog;
+switch via config (config.get_config()).
 """
 
 from pathlib import Path
@@ -8,6 +9,45 @@ import pandas as pd
 from loguru import logger
 
 from use_cases.recommendation_engine.config import get_config
+
+
+def _load_from_duckdb(duckdb_path: Path, base_schema: str) -> dict[str, pd.DataFrame | None]:
+    """
+    Load interactions, products, orders, training_base from local DuckDB medallion.
+    dbt builds silver/gold in {base_schema}_silver and {base_schema}_gold.
+    """
+    import duckdb  # type: ignore[import-untyped]
+
+    out: dict[str, pd.DataFrame | None] = {}
+    conn = duckdb.connect(str(duckdb_path), read_only=True)
+    silver = f"{base_schema}_silver"
+    gold = f"{base_schema}_gold"
+    try:
+        # silver_reco_interactions (may not exist in all medallions; fallback to product_interactions from raw)
+        for table, key in [
+            (f"{silver}.silver_reco_interactions", "interactions"),
+            (f"{silver}.silver_products", "products"),
+            (f"{silver}.silver_orders", "orders"),
+        ]:
+            try:
+                df = conn.execute(f"SELECT * FROM {table}").fetchdf()
+                if key == "interactions" and "interaction_timestamp" not in df.columns and "timestamp" in df.columns:
+                    df["interaction_timestamp"] = pd.to_datetime(df["timestamp"])
+                elif key == "orders" and "order_date" in df.columns:
+                    df["order_date"] = pd.to_datetime(df["order_date"], errors="coerce")
+                out[key] = df
+                logger.info("Loaded {} from DuckDB {}", key, table)
+            except duckdb.CatalogException:
+                out[key] = None
+        # gold_reco_training_base
+        try:
+            out["training_base"] = conn.execute(f"SELECT * FROM {gold}.gold_reco_training_base").fetchdf()
+            logger.info("Loaded training_base from DuckDB {}.gold_reco_training_base", gold)
+        except duckdb.CatalogException:
+            out["training_base"] = None
+    finally:
+        conn.close()
+    return out
 
 
 def _load_from_catalog(spark, catalog_schema: str) -> dict[str, pd.DataFrame | None]:
@@ -84,12 +124,10 @@ def load_reco_data(
 ) -> dict[str, pd.DataFrame | None]:
     """
     Load all reco data (interactions, products, orders, training_base).
-    Uses config["data_source"]: 'local' -> CSV from config["local_data_dir"];
-    'catalog' -> Unity Catalog via spark and config["catalog_schema"].
-    config defaults to get_config().
+    - catalog: Unity Catalog via spark and config["catalog_schema"].
+    - local: prefer DuckDB medallion (config["duckdb_path"], config["duckdb_medallion_schema"])
+      when config["local_data_source"] == "duckdb"; fall back to CSV from config["local_data_dir"].
     """
-    from pathlib import Path
-
     cfg = config or get_config()
     if cfg["data_source"] == "catalog":
         if spark is None:
@@ -97,11 +135,31 @@ def load_reco_data(
                 "data_source is 'catalog' but spark is None; create SparkSession on Databricks."
             )
         return _load_from_catalog(spark, cfg["catalog_schema"])
-    return _load_from_local(
-        cfg["local_data_dir"]
-        if isinstance(cfg["local_data_dir"], Path)
-        else Path(cfg["local_data_dir"])
-    )
+    # Local: try DuckDB medallion first when configured
+    if cfg.get("local_data_source") == "duckdb" and cfg.get("duckdb_path"):
+        try:
+            data = _load_from_duckdb(
+                Path(cfg["duckdb_path"]),
+                cfg.get("duckdb_medallion_schema", "healthcare_medallion_local"),
+            )
+            if data.get("products") is not None and (data.get("training_base") is not None or data.get("interactions") is not None):
+                if data.get("training_base") is None and data.get("interactions") is not None:
+                    df = data["interactions"].copy()
+                    if "action_type" in df.columns:
+                        ts = "interaction_timestamp" if "interaction_timestamp" in df.columns else "timestamp"
+                        df["_label"] = (df["action_type"] == "purchased").astype(int)
+                        data["training_base"] = df.groupby(
+                            ["customer_id", "product_id"], as_index=False
+                        ).agg(
+                            label=("_label", "max"),
+                            last_interaction_timestamp=(ts, "max"),
+                            interaction_count=("customer_id", "count"),
+                        )
+                return data
+        except Exception as e:
+            logger.warning("DuckDB medallion load failed, falling back to CSV: {}", e)
+    data_dir = cfg["local_data_dir"] if isinstance(cfg["local_data_dir"], Path) else Path(cfg["local_data_dir"])
+    return _load_from_local(data_dir)
 
 
 # Back-compat

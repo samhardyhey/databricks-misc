@@ -22,7 +22,7 @@ import pandas as pd
 from loguru import logger
 
 from use_cases.inventory_optimization.config import get_config
-from use_cases.inventory_optimization.data_loading import load_inventory_data
+from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.writeoff_risk.core import (
     build_writeoff_risk_features,
     predict_writeoff_risk,
@@ -31,15 +31,31 @@ from use_cases.env_utils import is_running_on_databricks
 
 
 def _load_model(model_uri: Optional[str] = None):
+    """
+    Try to load write-off risk model from MLflow. Returns the model or None if:
+    - mlflow is not installed, or
+    - WRITEOFF_RISK_MODEL_URI is not set.
+
+    This keeps `make inventory-writeoff-apply` from failing on local setups where
+    no registry model has been configured yet, while still allowing Databricks
+    jobs to supply a concrete URI.
+    """
     try:
-        import mlflow
+        import mlflow  # type: ignore[import-not-found]
         import mlflow.sklearn  # noqa: F401
     except ImportError:
-        raise RuntimeError("mlflow is required to load the write-off risk model.")
+        logger.info(
+            "Write-off risk predict skipped: mlflow is not installed; no model can be loaded."
+        )
+        return None
 
-    uri = model_uri or os.environ.get(
-        "WRITEOFF_RISK_MODEL_URI", "models:/INV_writeoff_risk/Production"
-    )
+    uri = model_uri or os.environ.get("WRITEOFF_RISK_MODEL_URI")
+    if not uri:
+        logger.info(
+            "Write-off risk predict skipped: WRITEOFF_RISK_MODEL_URI is not set; "
+            "set it to an MLflow model URI to enable local batch scoring."
+        )
+        return None
     logger.info("Loading write-off risk model from {}", uri)
     return mlflow.sklearn.load_model(uri)
 
@@ -68,6 +84,13 @@ def main(model_uri: Optional[str] = None) -> pd.DataFrame:
         features_df = features_df.set_index("inventory_id")
 
     model = _load_model(model_uri=model_uri)
+    if model is None:
+        logger.info(
+            "Write-off risk predict: no model available; returning empty DataFrame."
+        )
+        if spark is not None:
+            spark.stop()
+        return pd.DataFrame()
     feature_cols = [
         c
         for c in [

@@ -1,6 +1,21 @@
 # Recommendation engine batch application jobs (generate offline recommendations)
 resources:
   jobs:
+
+    recommendation_engine_lightfm_apply:
+      name: recommendation_engine_lightfm_apply
+      description: "Batch application of LightFM recommender to generate recommendations"
+
+      schedule:
+        quartz_cron_expression: "0 40 6 * * ?"  # daily 6:40am
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: apply_lightfm
+          spark_python_task:
+            python_file: use_cases/recommendation_engine/models/lightfm/predict.py
+          environment_key: apply_env
     recommendation_engine_apply:
       name: recommendation_engine_apply
       description: "Batch application of recommendation engine to generate candidate recommendations (future gold_reco_candidates)"

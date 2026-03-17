@@ -37,6 +37,41 @@ def get_local_data_dir() -> Path:
     return Path(p).resolve()
 
 
+def get_duckdb_path() -> Path | None:
+    """
+    Path to local DuckDB medallion file when data_source is local.
+    From DBT_DUCKDB_PATH (default data/local/medallion.duckdb relative to repo).
+    Returns None if the file does not exist.
+    """
+    raw = os.environ.get("DBT_DUCKDB_PATH")
+    if raw:
+        p = Path(raw).resolve()
+    else:
+        repo = Path(__file__).resolve().parents[2]
+        p = (repo / "data" / "local" / "medallion.duckdb").resolve()
+    return p if p.is_file() else None
+
+
+def get_duckdb_medallion_schema() -> str:
+    """
+    Base schema name for DuckDB medallion (dbt builds e.g. {base}_silver, {base}_gold).
+    Override with DBT_DUCKDB_MEDALLION_SCHEMA. Default matches dbt duckdb profile local.
+    """
+    return os.environ.get(
+        "DBT_DUCKDB_MEDALLION_SCHEMA", "healthcare_medallion_local"
+    ).strip()
+
+
+def get_local_data_source() -> Literal["duckdb", "csv"]:
+    """
+    When data_source is 'local', prefer 'duckdb' if DBT_DUCKDB_PATH exists and is a file;
+    otherwise 'csv'. Loaders fall back to CSV if DuckDB is chosen but tables are missing.
+    """
+    if get_duckdb_path() is not None:
+        return "duckdb"
+    return "csv"
+
+
 def get_catalog_schema() -> str:
     """Unity Catalog schema for inventory tables. Override with INVENTORY_CATALOG_SCHEMA."""
     return os.environ.get("INVENTORY_CATALOG_SCHEMA", _DEFAULT_CATALOG_SCHEMA)
@@ -46,14 +81,21 @@ def get_config() -> dict:
     """
     Single config dict for the inventory pipeline.
     - data_source: 'local' | 'catalog'
-    - local_data_dir: Path (used when data_source == 'local')
+    - local_data_dir: Path (used when data_source == 'local', CSV fallback)
+    - local_data_source: 'duckdb' | 'csv' (when data_source == 'local': prefer DuckDB medallion)
+    - duckdb_path: Path | None (when local and DuckDB file exists)
+    - duckdb_medallion_schema: str (base schema for DuckDB)
     - catalog_schema: str (used when data_source == 'catalog')
     - on_databricks: bool (is_running_on_databricks())
     """
     data_source = get_data_source()
+    duckdb_path = get_duckdb_path()
     return {
         "data_source": data_source,
         "local_data_dir": get_local_data_dir(),
+        "local_data_source": get_local_data_source(),
+        "duckdb_path": duckdb_path,
+        "duckdb_medallion_schema": get_duckdb_medallion_schema(),
         "catalog_schema": get_catalog_schema(),
         "on_databricks": is_running_on_databricks(),
     }

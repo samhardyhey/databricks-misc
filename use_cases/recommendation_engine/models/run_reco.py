@@ -1,7 +1,7 @@
 """
 Single entrypoint for the recommendation engine: runs locally or on Databricks.
 Data source is switched via config (config.get_config()): local CSV vs Unity Catalog.
-Logs item_similarity, ALS (if implicit installed), and eval metrics to MLflow when mlflow is available.
+Requires [reco] extra (implicit, lightgbm, mlflow). Run: make reco-install.
 - Local: RECO_DATA_SOURCE=local (default when not on Databricks); data from LOCAL_DATA_PATH / data/local.
 - Databricks: RECO_DATA_SOURCE=auto (default) -> catalog when DATABRICKS_RUNTIME_VERSION is set; Spark loads from catalog.
 Override with RECO_DATA_SOURCE=local|catalog|auto and RECO_CATALOG_SCHEMA, LOCAL_DATA_PATH as needed.
@@ -12,10 +12,12 @@ import tempfile
 from pathlib import Path
 
 import joblib
+import mlflow
 import pandas as pd
 from loguru import logger
 
 from use_cases.recommendation_engine.config import apply_mlflow_config, get_config
+from use_cases.recommendation_engine.models.als.core import train_als
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
 from use_cases.recommendation_engine.models.evaluation import evaluate_recommendations
 from use_cases.recommendation_engine.models.feature_engineering import (
@@ -32,10 +34,6 @@ def _log_item_similarity_mlflow(
     nn, scaler, product_ids: list, n_neighbors: int, metrics: dict | None = None
 ) -> None:
     """Log item_similarity model (nn, scaler, product_ids) and optional metrics to active MLflow run."""
-    try:
-        import mlflow
-    except ImportError:
-        return
     mlflow.log_param("model_type", "item_similarity")
     mlflow.log_param("n_neighbors", n_neighbors)
     mlflow.log_param("n_products", len(product_ids))
@@ -71,16 +69,9 @@ def main(config: dict | None = None, spark=None) -> dict:
             "RECO_DATA_SOURCE=catalog requires a SparkSession (e.g. on Databricks)."
         )
 
-    try:
-        import mlflow
-
-        _mlflow = True
-    except ImportError:
-        _mlflow = False
-    if _mlflow:
-        apply_mlflow_config()
-        mlflow.set_experiment("recommendation_engine")
-        mlflow.start_run(run_name="reco_pipeline")
+    apply_mlflow_config()
+    mlflow.set_experiment("recommendation_engine")
+    mlflow.start_run(run_name="reco_pipeline")
 
     try:
         data = load_reco_data(config=cfg, spark=spark)
@@ -108,18 +99,12 @@ def main(config: dict | None = None, spark=None) -> dict:
         )
         logger.info("Item similarity trained ({} products)", len(product_ids))
 
-        # --- Optional ALS (Phase 2) ---
-        als_model = None
-        try:
-            from use_cases.recommendation_engine.models.als.core import train_als
-
-            u, i, w, _, _ = build_interaction_matrix(interactions)
-            als_model, _ = train_als(
-                u, i, w, factors=32, iterations=10, log_to_mlflow=True
-            )
-            logger.info("ALS trained")
-        except ImportError:
-            logger.debug("implicit not installed; skipping ALS")
+        # --- ALS (Phase 2) ---
+        u, i, w, _, _ = build_interaction_matrix(interactions)
+        als_model, _ = train_als(
+            u, i, w, factors=32, iterations=10, log_to_mlflow=True
+        )
+        logger.info("ALS trained")
 
         # --- Evaluate: train/test split on interactions ---
         interactions = interactions.copy()
@@ -155,23 +140,21 @@ def main(config: dict | None = None, spark=None) -> dict:
                 logger.info("Metrics (item_similarity, test set): {}", metrics)
 
         # --- MLflow: log item_similarity artifact and eval metrics ---
-        if _mlflow:
-            _log_item_similarity_mlflow(
-                nn, scaler, product_ids, n_neighbors, metrics=metrics
-            )
+        _log_item_similarity_mlflow(
+            nn, scaler, product_ids, n_neighbors, metrics=metrics
+        )
 
         return {
             "item_similarity": True,
-            "als": als_model is not None,
+            "als": True,
             "metrics": metrics,
         }
     finally:
-        if _mlflow:
-            try:
-                if mlflow.active_run():
-                    mlflow.end_run()
-            except Exception:
-                pass
+        try:
+            if mlflow.active_run():
+                mlflow.end_run()
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

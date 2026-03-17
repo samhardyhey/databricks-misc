@@ -1,6 +1,21 @@
 # Recommendation engine retrain jobs (train models + log to MLflow)
 resources:
   jobs:
+
+    recommendation_engine_lightfm_retrain:
+      name: recommendation_engine_lightfm_retrain
+      description: "Retrain LightFM recommender for recommendation engine"
+
+      schedule:
+        quartz_cron_expression: "0 15 6 * * ?"  # daily 6:15am
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: retrain_lightfm
+          spark_python_task:
+            python_file: use_cases/recommendation_engine/models/lightfm/train.py
+          environment_key: retrain_env
     recommendation_engine_retrain:
       name: recommendation_engine_retrain
       description: "Retrain recommendation engine models (item_similarity, ALS, ranker) and log to MLflow"

@@ -188,9 +188,8 @@ document-intelligence-run:
 # --- Recommendation engine (single entrypoint; RECO_DATA_SOURCE=local|catalog|auto) ---
 reco-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
-	@cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra reco || .venv/bin/pip install -e ".[reco]") || \
-		(.venv/bin/pip install 'mlflow>=2.9.0' 'lightgbm>=4.0.0' && echo "Note: implicit could not be installed; ALS will be skipped.")
-	@echo "Reco deps installed."
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra reco || .venv/bin/pip install -e ".[reco]")
+	@echo "Reco deps (implicit, lightgbm, mlflow) installed."
 
 reco-data: data-local-generate-quick
 

@@ -27,20 +27,29 @@ from use_cases.recommendation_engine.models.item_similarity.core import (
 
 
 def _load_item_similarity_model(model_uri: Optional[str] = None):
+    """
+    Load item_similarity model from MLflow. Locally set ITEM_SIMILARITY_MODEL_URI to
+    a runs:/ or file:// URI; on Databricks jobs can use a registry URI. Returns None if not set.
+    """
     try:
         import mlflow
     except ImportError:
-        raise RuntimeError("mlflow is required to load the item_similarity model.")
+        logger.info(
+            "Item_similarity predict skipped: mlflow is not installed; no model can be loaded."
+        )
+        return None
 
-    uri = model_uri or os.environ.get(
-        "ITEM_SIMILARITY_MODEL_URI", "models:/RECO_item_similarity/Production"
-    )
+    uri = model_uri or os.environ.get("ITEM_SIMILARITY_MODEL_URI")
+    if not uri:
+        logger.info(
+            "Item_similarity predict skipped: ITEM_SIMILARITY_MODEL_URI is not set; set it to a model URI "
+            "(e.g. runs:/<run_id>/model locally or models:/RECO_item_similarity/Production on Databricks)."
+        )
+        return None
     logger.info("Loading item_similarity model from {}", uri)
     model = mlflow.pyfunc.load_model(uri)
-    # Expect a dict-like artifact with keys: nn, scaler, product_ids
     artifacts = model.load_context().artifacts
     logger.debug("Loaded item_similarity artifacts: {}", list(artifacts.keys()))
-    # Fallback: let the pyfunc model handle prediction; we only need it in Databricks context.
     return model
 
 
@@ -66,6 +75,10 @@ def main(model_uri: Optional[str] = None, k: int = 10) -> pd.DataFrame:
     if mlflow is not None:
         apply_mlflow_config(cfg)
 
+    model = _load_item_similarity_model(model_uri=model_uri)
+    if model is None:
+        return pd.DataFrame()
+
     data = load_reco_data(config=cfg, spark=spark)
     products = data.get("products")
     if products is None or not len(products):
@@ -84,13 +97,10 @@ def main(model_uri: Optional[str] = None, k: int = 10) -> pd.DataFrame:
     product_ids = product_features.index.tolist()
     query_ids = product_ids
 
-    # This implementation assumes a future MLflow artifact format; until then, we can
-    # reuse recommend_similar_items_batch by re-training or by loading a pickled artifact.
-    # Here we simply construct an identity "similarity" (each product similar to itself)
-    # as a placeholder so the batch-apply pipeline is wired.
+    # Placeholder: use identity similarity until pyfunc predict is wired; model was loaded above.
     recs = {
         pid: [(pid, 0.0)] for pid in query_ids
-    }  # TODO: replace with true model loading when artifacts are standardized.
+    }  # TODO: replace with model.predict() when artifact format is standardized.
 
     rows = []
     for pid, sim_list in recs.items():

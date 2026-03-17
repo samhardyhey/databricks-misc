@@ -20,3 +20,13 @@ resources:
             workload_size: Small
             scale_to_zero_enabled: true
 
+    recommendation_engine_lightfm:
+      name: recommendation-engine-lightfm
+      config:
+        served_models:
+          - name: lightfm_recommender
+            model_name: ${var.model_schema}.reco_lightfm
+            model_version: "1"
+            workload_size: Small
+            scale_to_zero_enabled: true
+

@@ -10,11 +10,12 @@ This repository implements the **EBOS AI/ML Use Cases**: a set of use-cases for 
 ## Infrastructure & layout
 
 - **Infrastructure**: Databricks + Unity Catalog (`workspace.default` schema).
-- **Repo layout**: Use-cases under `use_cases/<name>/`; DAB bundles (jobs, endpoints, interactive) live under each use-case or data component (see [bundle_structure.md](bundle_structure.md)).
+- **Repo layout**: Use-cases under `use_cases/<name>/`; DAB bundles (jobs, endpoints, interactive) live under each use-case or data component (see [example_bundles/bundle_structure.md](example_bundles/bundle_structure.md)).
 
 **Existing assets**:
 - Healthcare data generator with medallion architecture (bronze/silver/gold)
-- Demand forecasting models (XGBoost, ETS, Prophet) with MLflow tracking, now owned by inventory optimisation in `use_cases/inventory_optimization/demand_forecasting.py`
+- Inventory optimisation: demand forecasting, write-off risk, replenishment (see `use_cases/inventory_optimization/models/`)
+- Recommendation engine: item_similarity, ALS, LightFM, ranker (see `use_cases/recommendation_engine/models/`)
 - Spark NLP setup for document intelligence in `use_cases/document_intelligence/`
 - Prescription PDF generator in `data/prescription_pdf_generator/`; annotation app in `use_cases/document_intelligence/annotator/`
 
@@ -32,8 +33,8 @@ This repository implements the **EBOS AI/ML Use Cases**: a set of use-cases for 
 
 | #     | Use-case                                                                                                    | Status                                 | Location                                                                                               |
 | ----- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **1** | **Recommendation Engine for Ordering** — Similar products, auto-substitutions, margin-aware recommendations | ⚠️ Not implemented                      | `use_cases/recommendation_engine/`                                                                     |
-| **2** | **Inventory Optimisation** — Demand forecasting (reuse), write-off risk, replenishment optimisation         | ✅ Partial (demand forecasting exists)  | `use_cases/inventory_optimization/` (demand forecasting via `inventory_optimization/demand_forecasting.py`) |
+| **1** | **Recommendation Engine for Ordering** — Similar products, auto-substitutions, margin-aware recommendations | ✅ Partial (item_similarity, ALS, LightFM, ranker) | `use_cases/recommendation_engine/` (`models/` for core, train, apply) |
+| **2** | **Inventory Optimisation** — Demand forecasting, write-off risk, replenishment optimisation         | ✅ Partial (demand_forecasting, writeoff_risk, replenishment)  | `use_cases/inventory_optimization/` (`models/` for core, train, apply) |
 | **3** | **AI Customer Service Agents** — Intent classification, RAG, order tracking                                 | ⚠️ Not implemented                      | `use_cases/customer_service_agent/`                                                                    |
 | **4** | **Document Intelligence (Finance & Ordering)** — OCR, NER, invoice/PO extraction                            | ✅ Partial (Spark NLP setup, annotator) | `use_cases/document_intelligence/`                                                                     |
 | **5** | **AI Powered Insights & Analytics** — Ranging/consolidation, market intelligence, franchise analytics       | ⚠️ Not implemented                      | `use_cases/ranging_consolidation/`, `use_cases/market_intelligence/`, `use_cases/franchise_analytics/` |
@@ -52,8 +53,8 @@ databricks-misc/
 │   └── prescription_pdf_generator/ # General-purpose prescription PDFs
 │
 ├── use_cases/               # One directory per use-case (each with own DAB bundle as needed)
-│   ├── recommendation_engine/
-│   ├── inventory_optimization/          # includes demand_forecasting module
+│   ├── recommendation_engine/          # config, app/; models/ (item_similarity, als, lightfm, ranker, run_reco, data_loading, etc.)
+│   ├── inventory_optimization/         # config; models/ (demand_forecasting, writeoff_risk, replenishment)
 │   ├── customer_service_agent/
 │   ├── document_intelligence/      # includes annotator/
 │   ├── ranging_consolidation/
@@ -63,7 +64,7 @@ databricks-misc/
 ├── docs/                    # Documentation
 │   ├── EBOS_USE_CASES.md    # EBOS use-cases spec (source of truth)
 │   ├── DATA_GENERATOR_DEV_PLAN.md  # Phased plan for new data (all use cases)
-│   ├── MODELLING_OPTIONS.md # Alternative / non-EBOS modelling options
+│   ├── GENERIC_MODELLING.md # Alternative / non-EBOS modelling options
 │   └── LUNCH_AND_LEARN.md   # Session plan; to be aligned with EBOS use-cases
 ├── pyproject.toml           # UV / local deps
 └── Makefile                 # cleanup, format, uv, document_intelligence generate_pdfs
@@ -85,12 +86,12 @@ databricks-misc/
 ## Todo (aligned with EBOS)
 
 ### Immediate
-- [ ] **Recommendation Engine** — Data extensions, Phase 1–3 models, MLflow, endpoint, Streamlit app
+- [x] **Recommendation Engine** — Item similarity, ALS, LightFM, ranker under `models/`; run_reco pipeline; DAB jobs + endpoints
 - [ ] **MLflow integration** — Experiment tracking and model registry across use-cases
 - [ ] **Unity Catalog** — Catalog/schema organisation
 
 ### Next
-- [ ] **Inventory Optimisation** — Write-off risk model, replenishment optimizer (reuse demand_forecasting)
+- [x] **Inventory Optimisation** — Write-off risk, replenishment under `models/`; demand_forecasting in `models/demand_forecasting/`
 - [ ] **Document Intelligence** — OCR/NER pipeline, exception review app
 - [ ] **Customer Service Agent** — Intent + RAG + order tracking
 - [ ] **Insights & Analytics** — Ranging, market intelligence, franchise analytics
