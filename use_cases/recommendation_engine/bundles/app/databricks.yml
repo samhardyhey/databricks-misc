@@ -15,6 +15,9 @@ variables:
   reco_endpoint_url:
     description: Optional override for the recommendation serving endpoint URL
     default: ""
+  service_principal_name:
+    description: Service principal name for this environment (matches example endpoints bundle pattern)
+    default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
 
 targets:
   dev-sp:
@@ -26,6 +29,9 @@ targets:
     variables:
       app_workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
       reco_endpoint_url: ""
+      service_principal_name: <TBD-RECO-APP-DEV-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
 
   test-sp:
     mode: development
@@ -35,6 +41,9 @@ targets:
     variables:
       app_workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
       reco_endpoint_url: ""
+      service_principal_name: <TBD-RECO-APP-TEST-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
 
   prod-sp:
     mode: production
@@ -44,4 +53,7 @@ targets:
     variables:
       app_workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
       reco_endpoint_url: ""
+      service_principal_name: <TBD-RECO-APP-PROD-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
 

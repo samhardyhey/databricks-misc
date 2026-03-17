@@ -21,6 +21,9 @@ variables:
   workspace_root:
     description: Workspace path where bundle is deployed (for PYTHONPATH)
     default: ""
+  service_principal_name:
+    description: Service principal name for this environment (matches example endpoints bundle pattern)
+    default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
 
 targets:
   dev-sp:
@@ -33,6 +36,9 @@ targets:
       catalog: workspace
       medallion_schema: workspace.healthcare_medallion_dev
       workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      service_principal_name: <TBD-RECO-DEV-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
 
   test-sp:
     mode: development
@@ -43,6 +49,9 @@ targets:
       catalog: workspace
       medallion_schema: workspace.healthcare_medallion_test
       workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      service_principal_name: <TBD-RECO-TEST-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
 
   prod-sp:
     mode: production
@@ -53,4 +62,7 @@ targets:
       catalog: workspace
       medallion_schema: workspace.healthcare_medallion_prod
       workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      service_principal_name: <TBD-RECO-PROD-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
 

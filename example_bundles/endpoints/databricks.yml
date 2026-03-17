@@ -11,7 +11,7 @@ include:
 # Sync shared directories from parent project
 sync:
   paths:
-    - ../../src        # Main project src for shared components
+    - ../../src # Main project src for shared components
 
 # Variable declarations for environment-specific configurations
 variables:
@@ -33,7 +33,7 @@ variables:
   service_principal_name:
     description: Service principal name for the environment
     default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
-  
+
   # Endpoint scaling configuration
   endpoint_min_concurrency:
     description: Minimum endpoint concurrency (0 for scale-to-zero)
@@ -47,7 +47,7 @@ variables:
   scale_to_zero_enabled:
     description: Enable scale-to-zero for cost optimization
     default: true
-  
+
   # JSL license configuration - set per environment in targets
   spark_nlp_license:
     description: Spark NLP license key from environment-specific key vault
@@ -57,7 +57,7 @@ variables:
     description: AWS access key ID from environment-specific key vault
   aws_secret_access_key:
     description: AWS secret access key from environment-specific key vault
-  
+
   # Permission group configurations (can be environment-specific)
   ml_ai_group_name:
     description: ML AI group name for endpoint permissions
@@ -73,7 +73,7 @@ targets:
   dev-sp:
     mode: development
     workspace:
-      host: https://adb-3971167982293260.0.azuredatabricks.net  # TODO: Update when dev env available
+      host: https://adb-3971167982293260.0.azuredatabricks.net # TODO: Update when dev env available
       root_path: /Workspace/Users/c8c4498a-fd58-45b7-a8c7-39f91f385dbf/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: hive_metastore
@@ -95,7 +95,7 @@ targets:
   test-sp:
     mode: development
     workspace:
-      host: https://adb-3971167982293260.0.azuredatabricks.net  # TODO: Update when test env available
+      host: https://adb-3971167982293260.0.azuredatabricks.net # TODO: Update when test env available
       root_path: /Workspace/Users/c8c4498a-fd58-45b7-a8c7-39f91f385dbf/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: hive_metastore
@@ -128,7 +128,7 @@ targets:
       endpoint_min_concurrency: 4
       endpoint_max_concurrency: 4
       workload_size: Custom
-      scale_to_zero_enabled: false   # Disable for guaranteed SLA
+      scale_to_zero_enabled: false # Disable for guaranteed SLA
       # Production environment secrets for endpoints
       spark_nlp_license: "{{secrets/prod_ml_secret_scope/10838-spark-nlp-license}}"
       spark_ocr_license: "{{secrets/prod_ml_secret_scope/10838-spark-ocr-license}}"
