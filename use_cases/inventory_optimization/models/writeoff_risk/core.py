@@ -182,4 +182,3 @@ def predict_writeoff_risk(
     if hasattr(model, "predict_proba"):
         return pd.Series(model.predict_proba(X)[:, 1], index=features_df.index)
     return pd.Series(model.predict(X), index=features_df.index)
-

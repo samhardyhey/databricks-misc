@@ -20,7 +20,6 @@ from use_cases.recommendation_engine.config import apply_mlflow_config, get_conf
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
 from use_cases.recommendation_engine.models.evaluation import evaluate_recommendations
 from use_cases.recommendation_engine.models.feature_engineering import (
-    build_interaction_matrix,
     build_product_feature_matrix,
 )
 from use_cases.recommendation_engine.models.item_similarity.core import (
@@ -135,4 +134,3 @@ def main() -> dict:
 if __name__ == "__main__":
     result = main()
     logger.info("item_similarity train done: {}", result)
-

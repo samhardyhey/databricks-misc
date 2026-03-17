@@ -33,9 +33,7 @@ def _load_als_model(model_uri: Optional[str] = None):
     try:
         return mlflow.pyfunc.load_model(uri)
     except MlflowException as e:
-        logger.info(
-            "ALS predict skipped: could not load model from '{}': {}", uri, e
-        )
+        logger.info("ALS predict skipped: could not load model from '{}': {}", uri, e)
         return None
 
 
@@ -71,4 +69,3 @@ def main(model_uri: Optional[str] = None, n_items: int = 10) -> pd.DataFrame:
 if __name__ == "__main__":
     df = main()
     logger.info("Generated ALS recommendations for {} users", len(df))
-

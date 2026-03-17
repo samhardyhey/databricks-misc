@@ -6,7 +6,6 @@ Current behaviour:
 - Designed to be called from jobs or locally; can be extended to write to UC tables.
 """
 
-import os
 from typing import Optional
 
 import pandas as pd
@@ -14,9 +13,6 @@ from loguru import logger
 
 from use_cases.recommendation_engine.config import get_config
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
-from use_cases.recommendation_engine.models.feature_engineering import (
-    build_interaction_matrix,
-)
 from use_cases.recommendation_engine.models.lightfm.core import (
     LightFMArtifacts,
     recommend_for_users,
@@ -65,9 +61,7 @@ def main(user_ids: Optional[list[str]] = None, k: int = 10) -> pd.DataFrame:
         # Choose users to score
         if user_ids is None:
             # If ALS user coding exists, we could re-use, but here we simply use raw ids
-            user_ids = (
-                interactions["customer_id"].astype(str).unique().tolist()[:100]
-            )
+            user_ids = interactions["customer_id"].astype(str).unique().tolist()[:100]
 
         artifacts = _train_or_load_lightfm(interactions)
         recs = recommend_for_users(artifacts, user_ids=user_ids, k=k)
@@ -81,4 +75,3 @@ def main(user_ids: Optional[list[str]] = None, k: int = 10) -> pd.DataFrame:
 if __name__ == "__main__":
     df = main()
     logger.info("LightFM predictions for {} rows", len(df))
-

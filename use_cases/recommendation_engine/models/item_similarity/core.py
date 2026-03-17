@@ -66,4 +66,3 @@ def recommend_similar_items_batch(
         )
         for pid in query_product_ids
     }
-

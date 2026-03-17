@@ -129,4 +129,3 @@ def recommend_als(
         filter_already_liked=filter_already_liked,
     )
     return list(zip(item_ids, scores.astype(float)))
-

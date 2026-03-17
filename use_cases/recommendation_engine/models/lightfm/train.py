@@ -82,4 +82,3 @@ def main() -> dict:
 if __name__ == "__main__":
     result = main()
     logger.info("LightFM train done: {}", result)
-

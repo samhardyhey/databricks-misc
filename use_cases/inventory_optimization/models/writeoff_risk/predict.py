@@ -21,13 +21,13 @@ from typing import Optional
 import pandas as pd
 from loguru import logger
 
+from use_cases.env_utils import is_running_on_databricks
 from use_cases.inventory_optimization.config import get_config
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.writeoff_risk.core import (
     build_writeoff_risk_features,
     predict_writeoff_risk,
 )
-from use_cases.env_utils import is_running_on_databricks
 
 
 def _load_model(model_uri: Optional[str] = None):
@@ -78,7 +78,9 @@ def main(model_uri: Optional[str] = None) -> pd.DataFrame:
             spark.stop()
         return pd.DataFrame()
 
-    features_df = build_writeoff_risk_features(inventory, orders=orders, products=products)
+    features_df = build_writeoff_risk_features(
+        inventory, orders=orders, products=products
+    )
     # Ensure an index suitable for joining back
     if "inventory_id" in features_df.columns:
         features_df = features_df.set_index("inventory_id")
@@ -129,4 +131,3 @@ def main(model_uri: Optional[str] = None) -> pd.DataFrame:
 if __name__ == "__main__":
     df = main()
     logger.info("Scored {} inventory rows for write-off risk", len(df))
-

@@ -80,4 +80,3 @@ def main() -> dict:
 if __name__ == "__main__":
     result = main()
     logger.info("ALS train done: {}", result)
-

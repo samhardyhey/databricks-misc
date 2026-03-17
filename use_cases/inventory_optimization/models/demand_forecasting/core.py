@@ -9,25 +9,15 @@ normally be imported elsewhere (prepare_forecasting_data, run_xgboost_experiment
 compare_forecasting_models, etc.).
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
-import matplotlib.pyplot as plt
 import mlflow
 import mlflow.prophet  # type: ignore[import-untyped]
 import mlflow.sklearn  # type: ignore[import-untyped]
 import mlflow.xgboost  # type: ignore[import-untyped]
 import numpy as np
 import pandas as pd
-import xgboost as xgb
 from loguru import logger
-from prophet import Prophet
-from sklearn.metrics import (
-    mean_absolute_error,
-    mean_absolute_percentage_error,
-    mean_squared_error,
-)
-from sklearn.model_selection import TimeSeriesSplit
-from statsmodels.tsa.api import ExponentialSmoothing, Holt, SimpleExpSmoothing
 
 
 def compare_forecasting_models(
@@ -62,7 +52,9 @@ def compare_forecasting_models(
             mlflow.log_param("model_type", "naive_mean")
             mlflow.log_metrics({"mae": mae, "rmse": rmse, "mape": mape})
     except Exception:
-        logger.debug("MLflow logging skipped for compare_forecasting_models", exc_info=True)
+        logger.debug(
+            "MLflow logging skipped for compare_forecasting_models", exc_info=True
+        )
 
     logger.info(
         "Baseline demand forecasting metrics: mae={:.3f}, rmse={:.3f}, mape={:.2f}%",
@@ -77,4 +69,3 @@ def compare_forecasting_models(
         },
         "best_model": "naive_mean",
     }
-

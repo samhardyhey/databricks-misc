@@ -82,4 +82,3 @@ def rank_candidates(
         .groupby("customer_id", as_index=False)
         .head(top_k)
     )
-

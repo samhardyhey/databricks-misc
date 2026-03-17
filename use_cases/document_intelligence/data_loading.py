@@ -33,7 +33,9 @@ def load_document_data(config: dict) -> dict[str, Any]:
     pdf_files = sorted(documents_dir.glob("*.pdf")) if documents_dir.exists() else []
     label_files = sorted(labels_dir.glob("*.json")) if labels_dir.exists() else []
     annotated_label_files = (
-        sorted(annotated_labels_dir.glob("*.json")) if annotated_labels_dir.exists() else []
+        sorted(annotated_labels_dir.glob("*.json"))
+        if annotated_labels_dir.exists()
+        else []
     )
 
     logger.info(
@@ -53,4 +55,3 @@ def load_document_data(config: dict) -> dict[str, Any]:
         "label_files": label_files,
         "annotated_label_files": annotated_label_files,
     }
-

@@ -40,7 +40,9 @@ def main() -> None:
             spark.stop()
         return
 
-    features_df = build_writeoff_risk_features(inventory, orders=orders, products=products)
+    features_df = build_writeoff_risk_features(
+        inventory, orders=orders, products=products
+    )
     if "days_until_expiry" in features_df.columns:
         features_df["will_expire_30d"] = (
             (features_df["days_until_expiry"] >= 0)
@@ -82,4 +84,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

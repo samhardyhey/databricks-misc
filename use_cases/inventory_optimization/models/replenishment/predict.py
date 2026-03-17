@@ -10,13 +10,13 @@ import os
 
 from loguru import logger
 
+from use_cases.env_utils import is_running_on_databricks
 from use_cases.inventory_optimization.config import get_config
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.evaluation import replenishment_summary
 from use_cases.inventory_optimization.models.replenishment.core import (
     compute_replenishment_recommendations,
 )
-from use_cases.env_utils import is_running_on_databricks
 
 
 def main():
@@ -31,7 +31,12 @@ def main():
         data = load_inventory_data(config=cfg, spark=spark)
         inventory = data.get("inventory")
         orders = data.get("orders")
-        if inventory is None or orders is None or len(inventory) == 0 or len(orders) == 0:
+        if (
+            inventory is None
+            or orders is None
+            or len(inventory) == 0
+            or len(orders) == 0
+        ):
             logger.warning("Missing inventory or orders; nothing to apply.")
             return
 
@@ -63,4 +68,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

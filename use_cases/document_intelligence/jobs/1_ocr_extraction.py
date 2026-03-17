@@ -32,4 +32,3 @@ def main() -> dict:
 if __name__ == "__main__":
     result = main()
     logger.info("doc-intel OCR run done: {}", result)
-

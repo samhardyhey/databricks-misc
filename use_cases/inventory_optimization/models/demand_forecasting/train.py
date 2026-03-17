@@ -28,7 +28,9 @@ def main() -> None:
     if cfg["data_source"] == "catalog" and on_databricks:
         from pyspark.sql import SparkSession
 
-        spark = SparkSession.builder.appName("InventoryDemandForecastingTrain").getOrCreate()
+        spark = SparkSession.builder.appName(
+            "InventoryDemandForecastingTrain"
+        ).getOrCreate()
 
     try:
         data = load_inventory_data(config=cfg, spark=spark)
@@ -55,4 +57,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

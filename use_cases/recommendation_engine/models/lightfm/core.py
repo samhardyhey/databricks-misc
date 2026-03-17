@@ -135,7 +135,7 @@ def recommend_for_users(
     Recommend top-k items for each user in user_ids.
     """
     model = artifacts.model
-    ds = artifacts.dataset
+    artifacts.dataset
     user_map = artifacts.user_id_map
     item_map = artifacts.item_id_map
     inv_item_map = {v: k for k, v in item_map.items()}
@@ -159,4 +159,3 @@ def recommend_for_users(
                 }
             )
     return pd.DataFrame(rows)
-

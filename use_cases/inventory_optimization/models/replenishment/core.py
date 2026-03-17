@@ -133,4 +133,3 @@ def compute_replenishment_recommendations(
         inv["reorder_qty"] > 0
     ).astype(int)
     return inv
-

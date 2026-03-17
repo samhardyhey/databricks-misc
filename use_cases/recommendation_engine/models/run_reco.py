@@ -101,9 +101,7 @@ def main(config: dict | None = None, spark=None) -> dict:
 
         # --- ALS (Phase 2) ---
         u, i, w, _, _ = build_interaction_matrix(interactions)
-        als_model, _ = train_als(
-            u, i, w, factors=32, iterations=10, log_to_mlflow=True
-        )
+        als_model, _ = train_als(u, i, w, factors=32, iterations=10, log_to_mlflow=True)
         logger.info("ALS trained")
 
         # --- Evaluate: train/test split on interactions ---

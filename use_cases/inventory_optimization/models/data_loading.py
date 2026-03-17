@@ -11,7 +11,9 @@ from loguru import logger
 from use_cases.inventory_optimization.config import get_config
 
 
-def _load_from_duckdb(duckdb_path: Path, base_schema: str) -> dict[str, pd.DataFrame | None]:
+def _load_from_duckdb(
+    duckdb_path: Path, base_schema: str
+) -> dict[str, pd.DataFrame | None]:
     """
     Load inventory, orders, products, expiry_batches, writeoff_events from local DuckDB medallion.
     dbt builds silver (and optionally bronze) in {base_schema}_silver, {base_schema}_bronze.
@@ -22,7 +24,12 @@ def _load_from_duckdb(duckdb_path: Path, base_schema: str) -> dict[str, pd.DataF
     conn = duckdb.connect(str(duckdb_path), read_only=True)
     silver = f"{base_schema}_silver"
     bronze = f"{base_schema}_bronze"
-    datetime_cols_inventory = ("expiry_date", "last_restocked", "last_movement_date", "updated_timestamp")
+    datetime_cols_inventory = (
+        "expiry_date",
+        "last_restocked",
+        "last_movement_date",
+        "updated_timestamp",
+    )
     try:
         for table, key in [
             (f"{silver}.silver_inventory", "inventory"),
@@ -54,7 +61,9 @@ def _load_from_duckdb(duckdb_path: Path, base_schema: str) -> dict[str, pd.DataF
             try:
                 df = conn.execute(f"SELECT * FROM {table_candidate}").fetchdf()
                 if key == "expiry_batches" and "expiry_date" in df.columns:
-                    df["expiry_date"] = pd.to_datetime(df["expiry_date"], errors="coerce")
+                    df["expiry_date"] = pd.to_datetime(
+                        df["expiry_date"], errors="coerce"
+                    )
                 elif key == "writeoff_events" and "timestamp" in df.columns:
                     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
                 out[key] = df
@@ -190,7 +199,11 @@ def load_inventory_data(
                 return data
         except Exception as e:
             logger.warning("DuckDB medallion load failed, falling back to CSV: {}", e)
-    data_dir = cfg["local_data_dir"] if isinstance(cfg["local_data_dir"], Path) else Path(cfg["local_data_dir"])
+    data_dir = (
+        cfg["local_data_dir"]
+        if isinstance(cfg["local_data_dir"], Path)
+        else Path(cfg["local_data_dir"])
+    )
     return _load_from_local(data_dir)
 
 

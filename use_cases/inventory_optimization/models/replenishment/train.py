@@ -31,8 +31,15 @@ def main():
         data = load_inventory_data(config=cfg, spark=spark)
         inventory = data.get("inventory")
         orders = data.get("orders")
-        if inventory is None or orders is None or len(inventory) == 0 or len(orders) == 0:
-            logger.warning("Missing inventory or orders; run data generator / medallion first")
+        if (
+            inventory is None
+            or orders is None
+            or len(inventory) == 0
+            or len(orders) == 0
+        ):
+            logger.warning(
+                "Missing inventory or orders; run data generator / medallion first"
+            )
             return
 
         recommendations = compute_replenishment_recommendations(
@@ -50,4 +57,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

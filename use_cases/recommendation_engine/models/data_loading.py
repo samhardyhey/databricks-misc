@@ -11,7 +11,9 @@ from loguru import logger
 from use_cases.recommendation_engine.config import get_config
 
 
-def _load_from_duckdb(duckdb_path: Path, base_schema: str) -> dict[str, pd.DataFrame | None]:
+def _load_from_duckdb(
+    duckdb_path: Path, base_schema: str
+) -> dict[str, pd.DataFrame | None]:
     """
     Load interactions, products, orders, training_base from local DuckDB medallion.
     dbt builds silver/gold in {base_schema}_silver and {base_schema}_gold.
@@ -31,7 +33,11 @@ def _load_from_duckdb(duckdb_path: Path, base_schema: str) -> dict[str, pd.DataF
         ]:
             try:
                 df = conn.execute(f"SELECT * FROM {table}").fetchdf()
-                if key == "interactions" and "interaction_timestamp" not in df.columns and "timestamp" in df.columns:
+                if (
+                    key == "interactions"
+                    and "interaction_timestamp" not in df.columns
+                    and "timestamp" in df.columns
+                ):
                     df["interaction_timestamp"] = pd.to_datetime(df["timestamp"])
                 elif key == "orders" and "order_date" in df.columns:
                     df["order_date"] = pd.to_datetime(df["order_date"], errors="coerce")
@@ -41,8 +47,12 @@ def _load_from_duckdb(duckdb_path: Path, base_schema: str) -> dict[str, pd.DataF
                 out[key] = None
         # gold_reco_training_base
         try:
-            out["training_base"] = conn.execute(f"SELECT * FROM {gold}.gold_reco_training_base").fetchdf()
-            logger.info("Loaded training_base from DuckDB {}.gold_reco_training_base", gold)
+            out["training_base"] = conn.execute(
+                f"SELECT * FROM {gold}.gold_reco_training_base"
+            ).fetchdf()
+            logger.info(
+                "Loaded training_base from DuckDB {}.gold_reco_training_base", gold
+            )
         except duckdb.CatalogException:
             out["training_base"] = None
     finally:
@@ -142,11 +152,21 @@ def load_reco_data(
                 Path(cfg["duckdb_path"]),
                 cfg.get("duckdb_medallion_schema", "healthcare_medallion_local"),
             )
-            if data.get("products") is not None and (data.get("training_base") is not None or data.get("interactions") is not None):
-                if data.get("training_base") is None and data.get("interactions") is not None:
+            if data.get("products") is not None and (
+                data.get("training_base") is not None
+                or data.get("interactions") is not None
+            ):
+                if (
+                    data.get("training_base") is None
+                    and data.get("interactions") is not None
+                ):
                     df = data["interactions"].copy()
                     if "action_type" in df.columns:
-                        ts = "interaction_timestamp" if "interaction_timestamp" in df.columns else "timestamp"
+                        ts = (
+                            "interaction_timestamp"
+                            if "interaction_timestamp" in df.columns
+                            else "timestamp"
+                        )
                         df["_label"] = (df["action_type"] == "purchased").astype(int)
                         data["training_base"] = df.groupby(
                             ["customer_id", "product_id"], as_index=False
@@ -158,7 +178,11 @@ def load_reco_data(
                 return data
         except Exception as e:
             logger.warning("DuckDB medallion load failed, falling back to CSV: {}", e)
-    data_dir = cfg["local_data_dir"] if isinstance(cfg["local_data_dir"], Path) else Path(cfg["local_data_dir"])
+    data_dir = (
+        cfg["local_data_dir"]
+        if isinstance(cfg["local_data_dir"], Path)
+        else Path(cfg["local_data_dir"])
+    )
     return _load_from_local(data_dir)
 
 
