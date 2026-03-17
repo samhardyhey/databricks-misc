@@ -1,6 +1,8 @@
 """
-Write-off risk classification: predict whether inventory will expire in the next 30 days.
-Uses LGBMClassifier (or RandomForest) on days_until_expiry, stock level, demand, turnover.
+Core write-off risk classifier utilities.
+
+Moved here from use_cases/inventory_optimization/writeoff_risk_classifier.py so that
+all writeoff-risk-specific code lives under models/writeoff_risk/.
 """
 
 from typing import Optional
@@ -180,3 +182,4 @@ def predict_writeoff_risk(
     if hasattr(model, "predict_proba"):
         return pd.Series(model.predict_proba(X)[:, 1], index=features_df.index)
     return pd.Series(model.predict(X), index=features_df.index)
+

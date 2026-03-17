@@ -1,7 +1,8 @@
 """
-Phase 3: Hybrid ranker (LightGBM LGBMRanker) combining content + collaborative features.
-Requires: pip install lightgbm (or install with [reco] extra).
-Logs model artefact, pyfunc (via LightGBM flavour), and metrics to MLflow when training.
+Core hybrid ranker utilities (LightGBM LGBMRanker).
+
+Moved here from use_cases/recommendation_engine/hybrid_ranker.py so that
+all ranker-specific code lives under models/ranker/.
 """
 
 import lightgbm as lgb
@@ -81,3 +82,4 @@ def rank_candidates(
         .groupby("customer_id", as_index=False)
         .head(top_k)
     )
+

@@ -67,6 +67,21 @@ alwaysApply: true
     - can use a leaner environment focused on reading medallion tables and writing gold outputs.
 - It is acceptable (and often convenient) for retrain and apply jobs to reuse the same Python entrypoints initially; over time, you can split `*_retrain.py` vs `*_apply.py` while keeping the DAB job taxonomy unchanged.
 
+### Per-model modules under `models/`
+- For each model **within a use-case** (e.g. `item_similarity`, `als`, `hybrid_ranker` in `recommendation_engine`; `demand_forecasting`, `writeoff_risk`, `replenishment` in `inventory_optimization`), group **all model-specific code** under `use_cases/<name>/models/<model_name>/`:
+  - `use_cases/<name>/models/<model_name>/core.py` — core model logic (train-time utilities, scoring helpers, wrappers around libraries like LightGBM, implicit, statsmodels, Prophet, XGBoost, etc.).
+  - `use_cases/<name>/models/<model_name>/train.py` — orchestration entrypoint for training / policy recompute:
+    - uses `config.get_config()` and existing data loaders (`data_loading` modules),
+    - calls into `<model_name>.core` functions,
+    - handles MLflow setup and logging when appropriate.
+  - `use_cases/<name>/models/<model_name>/predict.py` — orchestration entrypoint for batch apply / scoring:
+    - loads models from MLflow (or uses pure policy functions in `core.py`),
+    - writes results to local artifacts (DataFrame / CSV) or Unity Catalog tables when running on Databricks.
+- Existing flat model modules at the use-case root (e.g. `use_cases/recommendation_engine/item_similarity.py`, `collaborative_filtering.py`, `hybrid_ranker.py`, `use_cases/inventory_optimization/demand_forecasting.py`, `writeoff_risk_classifier.py`, `replenishment_optimizer.py`) should be **gradually refactored** so that:
+  - Their substantive contents move into the corresponding `models/<model_name>/core.py`.
+  - The original modules become thin shims (re-exporting from `models/<model_name>/core`) to preserve backwards-compatible imports during the transition.
+- New model work should be added under `models/<model_name>/` from the start (core + train/apply), and other modules should import from there using root-based imports.
+
 ### Naming: DAB config vs Python code
 - Reserve the `bundles/**` tree strictly for **DAB configuration** (bundle `databricks.yml` files and their `resources/*.yml` job/endpoint/app definitions).
 - Keep substantive Python entrypoints / job scripts outside `bundles/`, under clear code-centric names such as:

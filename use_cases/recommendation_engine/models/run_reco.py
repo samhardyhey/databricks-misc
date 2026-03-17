@@ -16,13 +16,13 @@ import pandas as pd
 from loguru import logger
 
 from use_cases.recommendation_engine.config import apply_mlflow_config, get_config
-from use_cases.recommendation_engine.data_loading import load_reco_data
-from use_cases.recommendation_engine.evaluation import evaluate_recommendations
-from use_cases.recommendation_engine.feature_engineering import (
+from use_cases.recommendation_engine.models.data_loading import load_reco_data
+from use_cases.recommendation_engine.models.evaluation import evaluate_recommendations
+from use_cases.recommendation_engine.models.feature_engineering import (
     build_interaction_matrix,
     build_product_feature_matrix,
 )
-from use_cases.recommendation_engine.item_similarity import (
+from use_cases.recommendation_engine.models.item_similarity.core import (
     recommend_similar_items,
     train_item_similarity,
 )
@@ -111,9 +111,7 @@ def main(config: dict | None = None, spark=None) -> dict:
         # --- Optional ALS (Phase 2) ---
         als_model = None
         try:
-            from use_cases.recommendation_engine.collaborative_filtering import (
-                train_als,
-            )
+            from use_cases.recommendation_engine.models.als.core import train_als
 
             u, i, w, _, _ = build_interaction_matrix(interactions)
             als_model, _ = train_als(

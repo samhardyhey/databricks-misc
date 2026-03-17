@@ -1,6 +1,8 @@
 """
-Replenishment optimisation: safety-stock reorder points and order quantities.
-ROP = (avg_demand * lead_time) + (z * demand_std * sqrt(lead_time)).
+Core replenishment optimisation utilities (safety-stock ROP and order quantities).
+
+Moved here from use_cases/inventory_optimization/replenishment_optimizer.py so that
+all replenishment-specific code lives under models/replenishment/.
 """
 
 from typing import Optional
@@ -131,3 +133,4 @@ def compute_replenishment_recommendations(
         inv["reorder_qty"] > 0
     ).astype(int)
     return inv
+

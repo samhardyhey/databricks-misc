@@ -13,7 +13,7 @@ resources:
       tasks:
         - task_key: retrain_recommendation_engine
           spark_python_task:
-            python_file: use_cases/recommendation_engine/run_reco.py
+            python_file: use_cases/recommendation_engine/models/run_reco.py
           environment_key: retrain_env
 
       environments:

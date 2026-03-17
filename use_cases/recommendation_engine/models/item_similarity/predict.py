@@ -20,8 +20,10 @@ from loguru import logger
 
 from use_cases.env_utils import is_running_on_databricks
 from use_cases.recommendation_engine.config import apply_mlflow_config, get_config
-from use_cases.recommendation_engine.data_loading import load_reco_data
-from use_cases.recommendation_engine.item_similarity import recommend_similar_items_batch
+from use_cases.recommendation_engine.models.data_loading import load_reco_data
+from use_cases.recommendation_engine.models.item_similarity.core import (
+    recommend_similar_items_batch,
+)
 
 
 def _load_item_similarity_model(model_uri: Optional[str] = None):
@@ -74,7 +76,7 @@ def main(model_uri: Optional[str] = None, k: int = 10) -> pd.DataFrame:
 
     # For now, treat feature matrix as whatever build_product_feature_matrix used in training.
     # In a future iteration we can share the exact feature-engineering path.
-    from use_cases.recommendation_engine.feature_engineering import (
+    from use_cases.recommendation_engine.models.feature_engineering import (
         build_product_feature_matrix,
     )
 

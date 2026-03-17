@@ -9,9 +9,11 @@ Intended for:
 from loguru import logger
 
 from use_cases.recommendation_engine.config import apply_mlflow_config, get_config
-from use_cases.recommendation_engine.data_loading import load_reco_data
-from use_cases.recommendation_engine.feature_engineering import build_interaction_matrix
-from use_cases.recommendation_engine.collaborative_filtering import train_als
+from use_cases.recommendation_engine.models.data_loading import load_reco_data
+from use_cases.recommendation_engine.models.feature_engineering import (
+    build_interaction_matrix,
+)
+from use_cases.recommendation_engine.models.als.core import train_als
 
 
 def main() -> dict:

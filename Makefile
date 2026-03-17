@@ -20,14 +20,15 @@ MEDALLION_DIR := $(REPO_ROOT)/data/healthcare_data_medallion
 DOC_INTEL_PDF_ARGS ?= -n 10
 DOC_INTEL_PDF_OUTPUT := prescription_pdfs
 
-# Marvelous MLOps: separate requirements, use sub-venv (make marvelous_mlops-venv first)
+# Marvelous MLOps: separate requirements, use sub-venv (make marvelous-mlops-venv first)
 MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
 MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
-.PHONY: help cleanup clean-local-data format document_intelligence-generate-pdfs document_intelligence-install document_intelligence-run
+.PHONY: help cleanup clean-local-data format document-intelligence-generate-pdfs document-intelligence-install document-intelligence-run
 .PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
-.PHONY: reco-data reco-run reco-install inventory-data inventory-run inventory-install
-.PHONY: marvelous_mlops-venv marvelous_mlops-fetch-medium marvelous_mlops-fetch-substack marvelous_mlops-fetch-youtube
+.PHONY: reco-data reco-run reco-install reco-item-sim-train reco-item-sim-apply reco-als-train reco-als-apply reco-app-run
+.PHONY: inventory-data inventory-run inventory-install inventory-writeoff-train inventory-writeoff-apply inventory-demand-train inventory-demand-apply inventory-replenishment-train inventory-replenishment-apply
+.PHONY: marvelous-mlops-venv marvelous-mlops-fetch-medium marvelous-mlops-fetch-substack marvelous-mlops-fetch-youtube
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
 
 help:
@@ -51,24 +52,35 @@ help:
 	@echo "  make data-local-dbt-test        - Build medallion (dbt run) then run dbt tests (referential integrity, etc.)"
 	@echo ""
 	@echo "  Recommendation engine (single entrypoint run_reco.py; data source via RECO_DATA_SOURCE):"
-	@echo "  make reco-install             - Install reco deps (implicit, lightgbm, mlflow); then make reco-run"
-	@echo "  make reco-data                 - Generate healthcare CSVs to data/local/ (alias for data-local-generate-quick)"
-	@echo "  make reco-run                 - Run recommendation engine (local CSV or catalog when on Databricks)"
+	@echo "  make reco-install                  - Install reco deps (implicit, lightgbm, mlflow); then make reco-run"
+	@echo "  make reco-data                     - Generate healthcare CSVs to data/local/ (alias for data-local-generate-quick)"
+	@echo "  make reco-run                      - Run recommendation engine (local CSV or catalog when on Databricks)"
+	@echo "  make reco-item-sim-train           - Train item-similarity model (offline)"
+	@echo "  make reco-item-sim-apply           - Apply item-similarity model to generate recommendations"
+	@echo "  make reco-als-train                - Train ALS collaborative filtering model (when implicit installed)"
+	@echo "  make reco-als-apply                - Apply ALS model to generate recommendations"
+	@echo "  make reco-app-run                  - Run recommendation Streamlit app locally"
 	@echo "  Inventory optimisation (single entrypoint run_inventory.py; data source via INVENTORY_DATA_SOURCE):"
-	@echo "  make inventory-install       - Install inventory deps (scipy, lightgbm); then make inventory-run"
-	@echo "  make inventory-data           - Generate healthcare CSVs (alias for data-local-generate-quick)"
-	@echo "  make inventory-run            - Run inventory optimisation (local CSV or catalog when on Databricks)"
+	@echo "  make inventory-install             - Install inventory use-case deps (scipy, lightgbm); then make inventory-run"
+	@echo "  make inventory-data                - Generate healthcare CSVs (alias for data-local-generate-quick)"
+	@echo "  make inventory-run                 - Run inventory optimisation (local CSV or catalog when on Databricks)"
+	@echo "  make inventory-writeoff-train      - Train write-off risk classifier"
+	@echo "  make inventory-writeoff-apply      - Apply write-off risk classifier to latest data"
+	@echo "  make inventory-demand-train        - Train demand forecasting models"
+	@echo "  make inventory-demand-apply        - Apply demand forecasting models to generate forecasts"
+	@echo "  make inventory-replenishment-train - Train/recompute replenishment policy"
+	@echo "  make inventory-replenishment-apply - Apply replenishment policy to generate recommendations"
 	@echo ""
 	@echo "  Document intelligence (single entrypoint run_document_intelligence.py; prescription PDFs):"
-	@echo "  make document_intelligence-install       - Install doc-intel deps (pdfplumber, loguru); then make document_intelligence-run"
-	@echo "  make document_intelligence-generate-pdfs - Generate prescription PDFs (prescription_pdfs/; DOC_INTEL_PDF_ARGS=-n 10)"
-	@echo "  make document_intelligence-run           - Run document intelligence pipeline over local prescription_pdfs/"
+	@echo "  make document-intelligence-install       - Install doc-intel deps (pdfplumber, loguru); then make document-intelligence-run"
+	@echo "  make document-intelligence-generate-pdfs - Generate prescription PDFs (prescription_pdfs/; DOC_INTEL_PDF_ARGS=-n 10)"
+	@echo "  make document-intelligence-run           - Run document intelligence pipeline over local prescription_pdfs/"
 	@echo ""
-	@echo "  Marvelous MLOps (separate venv; run marvelous_mlops-venv first):"
-	@echo "  make marvelous_mlops-venv             - Create .venv and install requirements in marvelous_mlops/"
-	@echo "  make marvelous_mlops-fetch-medium      - Fetch Medium articles"
-	@echo "  make marvelous_mlops-fetch-substack   - Fetch Substack posts"
-	@echo "  make marvelous_mlops-fetch-youtube    - Fetch YouTube transcripts"
+	@echo "  Marvelous MLOps (separate venv; run marvelous-mlops-venv first):"
+	@echo "  make marvelous-mlops-venv             - Create .venv and install requirements in marvelous_mlops/"
+	@echo "  make marvelous-mlops-fetch-medium      - Fetch Medium articles"
+	@echo "  make marvelous-mlops-fetch-substack   - Fetch Substack posts"
+	@echo "  make marvelous-mlops-fetch-youtube    - Fetch YouTube transcripts"
 
 # --- Environment (databricks-misc): use uv if available, else python3/pip ---
 uv-venv:
@@ -158,20 +170,20 @@ data-local-dbt-test: data-local-dbt-run
 	cd $(MEDALLION_DIR) && DBT_PROFILES_DIR=$(MEDALLION_DIR)/dbt_profiles DBT_DUCKDB_PATH=$(REPO_ROOT)/data/local/medallion.duckdb $(DBT_BIN) test --profile duckdb
 	@echo "dbt test (duckdb) done."
 
-document_intelligence-generate-pdfs: data-local-generate-pdfs
+document-intelligence-generate-pdfs: data-local-generate-pdfs
 
 # --- Document intelligence (single entrypoint; DOCINT_BASE_DIR / LOCAL_DATA_PATH) ---
-document_intelligence-install:
+document-intelligence-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
 	@cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra document_intelligence || .venv/bin/pip install -e ".[document_intelligence]") || \
 		(.venv/bin/pip install 'pdfplumber>=0.11.0' 'loguru>=0.7.0')
 	@echo "Document intelligence deps installed."
 
-document_intelligence-run:
+document-intelligence-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
-	@test -d $(DOC_INTEL_PDF_OUTPUT)/documents || (echo "Run: make document_intelligence-generate-pdfs first" && exit 1)
+	@test -d $(DOC_INTEL_PDF_OUTPUT)/documents || (echo "Run: make document-intelligence-generate-pdfs first" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/document_intelligence/run_document_intelligence.py
-	@echo "document_intelligence run done."
+	@echo "document-intelligence run done."
 
 # --- Recommendation engine (single entrypoint; RECO_DATA_SOURCE=local|catalog|auto) ---
 reco-install:
@@ -185,10 +197,10 @@ reco-data: data-local-generate-quick
 reco-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
 	@test -f $(DATA_LOCAL_DIR)/product_interactions.csv || (echo "Run: make reco-data (or make data-local-generate-quick) first" && exit 1)
-	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/run_reco.py
+	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/run_reco.py
 	@echo "reco run done."
 
-# Per-model reco entrypoints (item_similarity)
+# Per-model reco entrypoints (train/apply)
 reco-item-sim-train:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/item_similarity/train.py
@@ -205,6 +217,20 @@ reco-als-apply:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/als/predict.py
 
+reco-lightfm-train:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/lightfm/train.py
+
+reco-lightfm-apply:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/lightfm/predict.py
+
+# Streamlit app for recommendation engine
+reco-app-run:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make reco-install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/recommendation_engine/app/app.py
+	@echo "reco app running (Streamlit)"
+
 # --- Inventory optimisation (single entrypoint; INVENTORY_DATA_SOURCE=local|catalog|auto) ---
 inventory-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
@@ -219,7 +245,7 @@ inventory-run:
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/run_inventory.py
 	@echo "inventory run done."
 
-# Per-model inventory entrypoints (writeoff_risk)
+# Per-model inventory entrypoints (train/apply)
 inventory-writeoff-train:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/writeoff_risk/train.py
@@ -245,21 +271,21 @@ inventory-replenishment-apply:
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/replenishment/predict.py
 
 # --- Marvelous MLOps (sub-usecase: own venv and requirements.txt) ---
-marvelous_mlops-venv:
+marvelous-mlops-venv:
 	cd $(MARVELOUS_MLOPS_DIR) && (command -v uv >/dev/null 2>&1 && uv venv || python3 -m venv .venv) && .venv/bin/pip install -r requirements.txt
-	@echo "marvelous_mlops .venv ready. Run: make marvelous_mlops-fetch-medium|fetch-substack|fetch-youtube"
+	@echo "marvelous-mlops .venv ready. Run: make marvelous-mlops-fetch-medium|fetch-substack|fetch-youtube"
 
-marvelous_mlops-fetch-medium:
-	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous_mlops-venv" && exit 1)
+marvelous-mlops-fetch-medium:
+	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous-mlops-venv" && exit 1)
 	cd $(MARVELOUS_MLOPS_DIR) && $(MARVELOUS_PY) fetch_medium.py
 	@echo "Medium fetch done."
 
-marvelous_mlops-fetch-substack:
-	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous_mlops-venv" && exit 1)
+marvelous-mlops-fetch-substack:
+	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous-mlops-venv" && exit 1)
 	cd $(MARVELOUS_MLOPS_DIR) && $(MARVELOUS_PY) fetch_substack.py
 	@echo "Substack fetch done."
 
-marvelous_mlops-fetch-youtube:
-	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous_mlops-venv" && exit 1)
+marvelous-mlops-fetch-youtube:
+	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous-mlops-venv" && exit 1)
 	cd $(MARVELOUS_MLOPS_DIR) && $(MARVELOUS_PY) fetch_youtube.py
 	@echo "YouTube fetch done."

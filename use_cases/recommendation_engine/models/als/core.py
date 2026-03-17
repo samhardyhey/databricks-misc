@@ -1,7 +1,8 @@
 """
-Phase 2: Collaborative filtering (implicit ALS).
-Requires: pip install implicit (or install with [reco] extra).
-Logs model artefact, pyfunc wrapper, and metrics to MLflow when training.
+Core ALS collaborative filtering utilities.
+
+Moved here from use_cases/recommendation_engine/collaborative_filtering.py so that
+all ALS-specific code lives under models/als/.
 """
 
 import tempfile
@@ -128,3 +129,4 @@ def recommend_als(
         filter_already_liked=filter_already_liked,
     )
     return list(zip(item_ids, scores.astype(float)))
+

@@ -23,7 +23,7 @@ from loguru import logger
 
 from use_cases.inventory_optimization.config import get_config
 from use_cases.inventory_optimization.data_loading import load_inventory_data
-from use_cases.inventory_optimization.writeoff_risk_classifier import (
+from use_cases.inventory_optimization.models.writeoff_risk.core import (
     build_writeoff_risk_features,
     predict_writeoff_risk,
 )

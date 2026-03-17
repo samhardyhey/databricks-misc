@@ -1,5 +1,8 @@
 """
-Phase 1: Item-to-item similarity (sklearn NearestNeighbors, cosine).
+Core item-to-item similarity utilities (sklearn NearestNeighbors, cosine).
+
+Moved here from use_cases/recommendation_engine/item_similarity.py so that
+all model-specific code for item_similarity lives under models/item_similarity/.
 """
 
 import numpy as np
@@ -42,7 +45,7 @@ def recommend_similar_items(
         X_scaled[idx : idx + 1], n_neighbors=min(k + 1, len(product_ids))
     )
     out = []
-    for i, (dist, ind) in enumerate(zip(distances[0], indices[0])):
+    for dist, ind in zip(distances[0], indices[0]):
         if ind != idx:
             out.append((product_ids[ind], float(dist)))
     return out[:k]
@@ -63,3 +66,4 @@ def recommend_similar_items_batch(
         )
         for pid in query_product_ids
     }
+
