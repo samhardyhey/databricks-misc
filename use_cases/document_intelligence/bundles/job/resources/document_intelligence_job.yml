@@ -1,0 +1,32 @@
+# Document intelligence job: runs run_document_intelligence.py over prescription PDFs.
+resources:
+  jobs:
+    document_intelligence_job:
+      name: document_intelligence_job
+      description: "Run document intelligence pipeline for prescription PDFs (OCR + field extraction)"
+
+      schedule:
+        quartz_cron_expression: "0 0 5 * * ?"  # daily 5am
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: run_document_intelligence
+          spark_python_task:
+            python_file: use_cases/document_intelligence/run_document_intelligence.py
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "2"
+            env_vars:
+              DOCINT_BASE_DIR: /Workspace/Users/samhardyhey@gmail.com/prescription_pdfs
+              PYTHONPATH: ${var.workspace_root}
+            dependencies:
+              - pandas>=2.0
+              - loguru>=0.7
+              - pdfplumber>=0.11
+              # Optional: add pytesseract and OCR engine deps when available in the workspace
+              # - pytesseract
+
