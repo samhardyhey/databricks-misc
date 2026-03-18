@@ -19,12 +19,12 @@ from use_cases.inventory_optimization.config import (
     ensure_experiment_artifact_root,
     get_config,
 )
-from utils.mlflow.registry import set_latest_version_alias
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.writeoff_risk.core import (
     build_writeoff_risk_features,
     train_writeoff_risk_classifier,
 )
+from utils.mlflow.registry import set_latest_version_alias
 
 
 def main() -> dict:

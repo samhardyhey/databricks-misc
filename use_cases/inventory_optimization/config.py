@@ -9,7 +9,9 @@ from typing import Literal
 
 from utils.env_utils import is_running_on_databricks
 from utils.use_case_utils import apply_mlflow_config as _apply_mlflow_config
-from utils.use_case_utils import ensure_experiment_artifact_root as _ensure_experiment_artifact_root
+from utils.use_case_utils import (
+    ensure_experiment_artifact_root as _ensure_experiment_artifact_root,
+)
 from utils.use_case_utils import get_catalog_schema as _get_catalog_schema
 from utils.use_case_utils import (
     get_duckdb_medallion_schema as _get_duckdb_medallion_schema,

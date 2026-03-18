@@ -155,7 +155,9 @@ def _start_or_continue_conversation(
     raise last_exc  # type: ignore[misc]
 
 
-def _render_genie_attachments(w: WorkspaceClient, response: Any, domain_key: str) -> None:
+def _render_genie_attachments(
+    w: WorkspaceClient, response: Any, domain_key: str
+) -> None:
     for attachment in getattr(response, "attachments", []) or []:
         if getattr(attachment, "text", None) is not None:
             st.markdown(attachment.text.content)
@@ -186,10 +188,17 @@ def _render_genie_attachments(w: WorkspaceClient, response: Any, domain_key: str
             # Cookbook mapping is 1 -> POSITIVE, 0 -> NEGATIVE
             # We guard in case SDK enum differs.
             try:
-                from databricks.sdk.service.dashboards import GenieFeedbackRating  # type: ignore
+                from databricks.sdk.service.dashboards import (
+                    GenieFeedbackRating,
+                )  # type: ignore
 
-                mapping = {1: GenieFeedbackRating.POSITIVE, 0: GenieFeedbackRating.NEGATIVE}
-                genie_space_id = _get_env_trim(_get_domain_spec(domain_key).genie_space_env_var)
+                mapping = {
+                    1: GenieFeedbackRating.POSITIVE,
+                    0: GenieFeedbackRating.NEGATIVE,
+                }
+                genie_space_id = _get_env_trim(
+                    _get_domain_spec(domain_key).genie_space_env_var
+                )
                 w.genie.send_message_feedback(
                     genie_space_id,
                     st.session_state.conversation_ids.get(domain_key),
@@ -201,7 +210,9 @@ def _render_genie_attachments(w: WorkspaceClient, response: Any, domain_key: str
 
 
 def main() -> None:
-    st.set_page_config(page_title="AI Powered Insights (Genie + Dashboards)", layout="wide")
+    st.set_page_config(
+        page_title="AI Powered Insights (Genie + Dashboards)", layout="wide"
+    )
     st.title("AI Powered Insights")
 
     _init_session_state()
@@ -210,9 +221,11 @@ def main() -> None:
     active_domain = st.selectbox(
         "Domain",
         options=domain_keys,
-        index=domain_keys.index(st.session_state.active_domain)
-        if st.session_state.active_domain in domain_keys
-        else 0,
+        index=(
+            domain_keys.index(st.session_state.active_domain)
+            if st.session_state.active_domain in domain_keys
+            else 0
+        ),
     )
     st.session_state.active_domain = active_domain
     domain_spec = _get_domain_spec(active_domain)
@@ -250,16 +263,22 @@ def main() -> None:
     st.session_state.messages.append({"role": "user", "content": user_prompt})
     st.chat_message("user").markdown(user_prompt)
 
-    guarded_prompt = _build_active_domain_prompt_prefix(active_domain) + "\n\n" + user_prompt
+    guarded_prompt = (
+        _build_active_domain_prompt_prefix(active_domain) + "\n\n" + user_prompt
+    )
 
     on_db = is_running_on_databricks()
-    if not on_db and not (_get_env_trim("DATABRICKS_HOST") and _get_env_trim("DATABRICKS_TOKEN")):
+    if not on_db and not (
+        _get_env_trim("DATABRICKS_HOST") and _get_env_trim("DATABRICKS_TOKEN")
+    ):
         st.error("Missing `DATABRICKS_HOST` / `DATABRICKS_TOKEN` for local execution.")
         return
 
     w = WorkspaceClient()
 
-    with st.status("Starting Genie conversation and generating answer...", expanded=True) as status:
+    with st.status(
+        "Starting Genie conversation and generating answer...", expanded=True
+    ) as status:
         try:
             with st.spinner("Contacting Genie (may take 10–30 seconds)..."):
                 response = _start_or_continue_conversation(
@@ -289,4 +308,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

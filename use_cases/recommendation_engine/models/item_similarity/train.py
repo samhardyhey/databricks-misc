@@ -21,7 +21,6 @@ from use_cases.recommendation_engine.config import (
     ensure_experiment_artifact_root,
     get_config,
 )
-from utils.mlflow.registry import set_latest_version_alias
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
 from use_cases.recommendation_engine.models.evaluation import evaluate_recommendations
 from use_cases.recommendation_engine.models.feature_engineering import (
@@ -32,6 +31,7 @@ from use_cases.recommendation_engine.models.item_similarity.core import (
     recommend_similar_items,
     train_item_similarity,
 )
+from utils.mlflow.registry import set_latest_version_alias
 
 
 def _log_item_similarity_mlflow(
@@ -65,7 +65,9 @@ def _log_item_similarity_mlflow(
             artifacts={"item_similarity": str(payload_path)},
             registered_model_name="recommendation_engine-item_similarity",
         )
-        set_latest_version_alias("recommendation_engine-item_similarity", alias="Champion")
+        set_latest_version_alias(
+            "recommendation_engine-item_similarity", alias="Champion"
+        )
     logger.info("Logged item_similarity model and params to MLflow")
 
 

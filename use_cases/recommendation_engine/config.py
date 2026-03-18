@@ -9,6 +9,9 @@ from typing import Literal
 
 from utils.env_utils import is_running_on_databricks
 from utils.use_case_utils import apply_mlflow_config as _apply_mlflow_config
+from utils.use_case_utils import (
+    ensure_experiment_artifact_root as _ensure_experiment_artifact_root,
+)
 from utils.use_case_utils import get_catalog_schema as _get_catalog_schema
 from utils.use_case_utils import (
     get_duckdb_medallion_schema as _get_duckdb_medallion_schema,
@@ -16,7 +19,6 @@ from utils.use_case_utils import (
 from utils.use_case_utils import get_duckdb_path as _get_duckdb_path
 from utils.use_case_utils import get_local_data_dir as _get_local_data_dir
 from utils.use_case_utils import get_local_data_source as _get_local_data_source
-from utils.use_case_utils import ensure_experiment_artifact_root as _ensure_experiment_artifact_root
 from utils.use_case_utils import get_mlflow_registry_uri as _get_mlflow_registry_uri
 from utils.use_case_utils import get_mlflow_tracking_uri, resolve_data_source
 

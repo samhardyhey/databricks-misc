@@ -22,11 +22,19 @@ from loguru import logger
 from use_cases.document_intelligence.config import get_config
 
 
-def _run_python(script_path: Path, env: dict[str, str], timeout_s: int | None = None) -> None:
+def _run_python(
+    script_path: Path, env: dict[str, str], timeout_s: int | None = None
+) -> None:
     """Run a python script and fail fast on non-zero exit."""
     cmd = [sys.executable, str(script_path)]
     logger.info("smoke: running {}", " ".join(cmd))
-    subprocess.run(cmd, cwd=str(Path(__file__).resolve().parents[2]), env=env, check=True, timeout=timeout_s)
+    subprocess.run(
+        cmd,
+        cwd=str(Path(__file__).resolve().parents[2]),
+        env=env,
+        check=True,
+        timeout=timeout_s,
+    )
 
 
 def _run_streamlit(env: dict[str, str], app_path: Path) -> None:
@@ -78,7 +86,9 @@ def main() -> dict:
 
     fields_dir = base_dir / "predictions" / "fields"
     if not fields_dir.exists():
-        raise RuntimeError(f"Smoke failed: expected fields output at {fields_dir} but it does not exist.")
+        raise RuntimeError(
+            f"Smoke failed: expected fields output at {fields_dir} but it does not exist."
+        )
 
     # Start the annotator app (headless). Keep it running as requested.
     app_path = Path(__file__).resolve().parent / "annotator" / "app.py"
@@ -91,4 +101,3 @@ def main() -> dict:
 if __name__ == "__main__":
     result = main()
     logger.info("document-intelligence smoke result: {}", result)
-

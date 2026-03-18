@@ -109,9 +109,7 @@ def train_als(
                 artifacts={"als_model": str(art_path)},
                 registered_model_name="recommendation_engine-als",
             )
-            set_latest_version_alias(
-                "recommendation_engine-als", alias="Champion"
-            )
+            set_latest_version_alias("recommendation_engine-als", alias="Champion")
         logger.info("Logged ALS model and metrics to MLflow")
 
     return model, M

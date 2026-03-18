@@ -15,12 +15,12 @@ from use_cases.recommendation_engine.config import (
     ensure_experiment_artifact_root,
     get_config,
 )
-from utils.mlflow.registry import set_latest_version_alias
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
 from use_cases.recommendation_engine.models.lightfm.core import (
     LightFMRecoWrapper,
     train_lightfm,
 )
+from utils.mlflow.registry import set_latest_version_alias
 
 
 def main() -> dict:
