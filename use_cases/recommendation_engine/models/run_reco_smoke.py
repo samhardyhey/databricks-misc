@@ -22,7 +22,9 @@ from use_cases.recommendation_engine.models.item_similarity.predict import (
 from use_cases.recommendation_engine.models.item_similarity.train import (
     main as item_similarity_train,
 )
-from use_cases.recommendation_engine.models.lightfm.predict import main as lightfm_predict
+from use_cases.recommendation_engine.models.lightfm.predict import (
+    main as lightfm_predict,
+)
 from use_cases.recommendation_engine.models.lightfm.train import main as lightfm_train
 
 
@@ -74,4 +76,3 @@ def main(k: int = 10, max_als_users: int = 5) -> dict:
 if __name__ == "__main__":
     result = main()
     logger.info("reco smoke done: {}", result)
-

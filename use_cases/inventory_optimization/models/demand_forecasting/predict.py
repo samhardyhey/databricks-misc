@@ -13,12 +13,12 @@ Intended for:
 
 from loguru import logger
 
-from utils.env_utils import is_running_on_databricks
 from use_cases.inventory_optimization.config import get_config
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.demand_forecasting.core import (
     compare_forecasting_models,
 )
+from utils.env_utils import is_running_on_databricks
 
 
 def main():

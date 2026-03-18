@@ -52,18 +52,14 @@ def main() -> dict:
         if "action_type" in df.columns:
             df["weight"] = (
                 df["action_type"]
-                .map(
-                    {"purchased": 1.0, "added": 0.5, "viewed": 0.2, "searched": 0.1}
-                )
+                .map({"purchased": 1.0, "added": 0.5, "viewed": 0.2, "searched": 0.1})
                 .fillna(0.1)
                 .astype(float)
             )
         else:
             df["weight"] = 1.0
 
-        interactions_df = df[
-            ["customer_id", "product_id", "weight"]
-        ].copy()
+        interactions_df = df[["customer_id", "product_id", "weight"]].copy()
         # LightFM core assumes string ids for mapping consistency.
         interactions_df["customer_id"] = interactions_df["customer_id"].astype(str)
         interactions_df["product_id"] = interactions_df["product_id"].astype(str)

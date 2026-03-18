@@ -15,9 +15,9 @@ import mlflow
 import pandas as pd
 from loguru import logger
 
-from utils.env_utils import is_running_on_databricks
 from use_cases.recommendation_engine.config import apply_mlflow_config, get_config
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
+from utils.env_utils import is_running_on_databricks
 
 
 def _load_item_similarity_model(model_uri: Optional[str] = None):

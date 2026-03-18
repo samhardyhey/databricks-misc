@@ -7,12 +7,11 @@ All model-specific code for item_similarity lives under models/item_similarity/.
 from __future__ import annotations
 
 import joblib
+import mlflow.pyfunc
 import numpy as np
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
-
-import mlflow.pyfunc
 
 
 def train_item_similarity(

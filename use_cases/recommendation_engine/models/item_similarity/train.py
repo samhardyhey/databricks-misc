@@ -27,8 +27,8 @@ from use_cases.recommendation_engine.models.feature_engineering import (
     build_product_feature_matrix,
 )
 from use_cases.recommendation_engine.models.item_similarity.core import (
-    recommend_similar_items,
     ItemSimilarityRecoWrapper,
+    recommend_similar_items,
     train_item_similarity,
 )
 

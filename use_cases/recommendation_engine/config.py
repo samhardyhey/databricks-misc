@@ -4,25 +4,20 @@ Switch via RECO_DATA_SOURCE and environment; same code path for train/eval.
 MLflow: see utils.mlflow.config (local SQLite vs Databricks workspace).
 """
 
-import os
 from pathlib import Path
 from typing import Literal
 
-from utils.use_case_utils import (
-    get_catalog_schema as _get_catalog_schema,
-    get_duckdb_medallion_schema as _get_duckdb_medallion_schema,
-    get_duckdb_path as _get_duckdb_path,
-    get_local_data_dir as _get_local_data_dir,
-    get_local_data_source as _get_local_data_source,
-    resolve_data_source,
-)
 from utils.env_utils import is_running_on_databricks
+from utils.use_case_utils import apply_mlflow_config as _apply_mlflow_config
+from utils.use_case_utils import get_catalog_schema as _get_catalog_schema
 from utils.use_case_utils import (
-    apply_mlflow_config as _apply_mlflow_config,
-    ensure_experiment_artifact_root,
-    get_mlflow_registry_uri as _get_mlflow_registry_uri,
-    get_mlflow_tracking_uri,
+    get_duckdb_medallion_schema as _get_duckdb_medallion_schema,
 )
+from utils.use_case_utils import get_duckdb_path as _get_duckdb_path
+from utils.use_case_utils import get_local_data_dir as _get_local_data_dir
+from utils.use_case_utils import get_local_data_source as _get_local_data_source
+from utils.use_case_utils import get_mlflow_registry_uri as _get_mlflow_registry_uri
+from utils.use_case_utils import get_mlflow_tracking_uri, resolve_data_source
 
 DataSource = Literal["local", "catalog", "auto"]
 
@@ -56,9 +51,7 @@ def get_duckdb_medallion_schema() -> str:
     Base schema name for DuckDB medallion (dbt builds e.g. {base}_silver, {base}_gold).
     Override with DBT_DUCKDB_MEDALLION_SCHEMA. Default matches dbt duckdb profile local.
     """
-    return _get_duckdb_medallion_schema(
-        env_var_name="DBT_DUCKDB_MEDALLION_SCHEMA"
-    )
+    return _get_duckdb_medallion_schema(env_var_name="DBT_DUCKDB_MEDALLION_SCHEMA")
 
 
 def get_local_data_source() -> Literal["duckdb", "csv"]:

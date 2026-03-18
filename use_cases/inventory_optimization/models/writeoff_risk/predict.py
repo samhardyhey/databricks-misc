@@ -21,13 +21,13 @@ from typing import Optional
 import pandas as pd
 from loguru import logger
 
-from utils.env_utils import is_running_on_databricks
 from use_cases.inventory_optimization.config import get_config
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.writeoff_risk.core import (
     build_writeoff_risk_features,
     predict_writeoff_risk,
 )
+from utils.env_utils import is_running_on_databricks
 
 
 def _load_model(model_uri: Optional[str] = None):
@@ -50,6 +50,7 @@ def _load_model(model_uri: Optional[str] = None):
     logger.info("Loading write-off risk model from {}", uri)
     import mlflow
     import mlflow.sklearn  # noqa: F401
+
     return mlflow.sklearn.load_model(uri)
 
 

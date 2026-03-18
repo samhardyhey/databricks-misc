@@ -12,9 +12,9 @@ from dataclasses import dataclass
 from typing import Optional
 
 import joblib
+import mlflow.pyfunc
 import numpy as np
 import pandas as pd
-import mlflow.pyfunc
 from lightfm import LightFM
 from lightfm.data import Dataset
 from loguru import logger

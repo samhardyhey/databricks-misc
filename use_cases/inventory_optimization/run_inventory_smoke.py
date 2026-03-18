@@ -29,9 +29,7 @@ from use_cases.inventory_optimization.models.writeoff_risk.train import (
 def main() -> dict:
     writeoff_res = writeoff_train()
     if not writeoff_res.get("writeoff_risk_trained"):
-        raise RuntimeError(
-            f"writeoff_train did not produce a model: {writeoff_res}"
-        )
+        raise RuntimeError(f"writeoff_train did not produce a model: {writeoff_res}")
 
     model_uri = writeoff_res["model_uri"]
     os.environ["WRITEOFF_RISK_MODEL_URI"] = model_uri
@@ -51,4 +49,3 @@ def main() -> dict:
 if __name__ == "__main__":
     result = main()
     logger.info("inventory smoke done: {}", result)
-

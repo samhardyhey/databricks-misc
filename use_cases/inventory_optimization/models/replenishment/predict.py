@@ -10,13 +10,13 @@ import os
 
 from loguru import logger
 
-from utils.env_utils import is_running_on_databricks
 from use_cases.inventory_optimization.config import get_config
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.evaluation import replenishment_summary
 from use_cases.inventory_optimization.models.replenishment.core import (
     compute_replenishment_recommendations,
 )
+from utils.env_utils import is_running_on_databricks
 
 
 def main():
