@@ -27,6 +27,7 @@ inventory = [
 ]
 document_intelligence = [
     "pdfplumber>=0.11.0",
+    "streamlit>=1.30.0",
 ]
 dev = [
     "autoflake>=2.0.0",

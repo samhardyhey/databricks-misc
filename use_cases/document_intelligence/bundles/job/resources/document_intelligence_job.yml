@@ -1,12 +1,12 @@
 # Document intelligence: two separate jobs.
-# 1. Data generation — generate prescription PDFs + labels.
-# 2. Pipeline — OCR extraction then field extraction (two-phase).
+# Local: DOCINT_DATA_SOURCE=local → documents/ and predictions/ under DOCINT_BASE_DIR.
+# Remote (Databricks): DOCINT_DATA_SOURCE=catalog → documents on UC volume, predictions in UC tables.
 
 resources:
   jobs:
     document_intelligence_generate_job:
       name: document_intelligence_generate_job
-      description: "Generate prescription PDFs and JSON labels (documents/ and labels/)"
+      description: "Generate prescription PDFs. Local: write to base_dir/documents. Catalog: upload to UC volume."
 
       schedule:
         quartz_cron_expression: "0 0 4 * * ?"  # daily 4am (before pipeline)
@@ -24,7 +24,9 @@ resources:
           spec:
             client: "2"
             env_vars:
+              DOCINT_DATA_SOURCE: ${var.docint_data_source}
               DOCINT_BASE_DIR: ${var.docint_base_dir}
+              DOCINT_DOCUMENTS_VOLUME: ${var.docint_documents_volume}
               DOCINT_NUM_PDFS: ${var.docint_num_pdfs}
               PYTHONPATH: ${var.workspace_root}
             dependencies:
@@ -34,7 +36,7 @@ resources:
 
     document_intelligence_pipeline_job:
       name: document_intelligence_pipeline_job
-      description: "OCR extraction then field extraction (two-phase pipeline)"
+      description: "OCR then field extraction. Local: read/write under base_dir. Catalog: volume + UC tables."
 
       schedule:
         quartz_cron_expression: "0 0 5 * * ?"  # daily 5am (after generate)
@@ -59,7 +61,10 @@ resources:
           spec:
             client: "2"
             env_vars:
+              DOCINT_DATA_SOURCE: ${var.docint_data_source}
               DOCINT_BASE_DIR: ${var.docint_base_dir}
+              DOCINT_CATALOG_SCHEMA: ${var.docint_catalog_schema}
+              DOCINT_DOCUMENTS_VOLUME: ${var.docint_documents_volume}
               PYTHONPATH: ${var.workspace_root}
             dependencies:
               - pandas>=2.0

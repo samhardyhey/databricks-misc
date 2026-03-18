@@ -22,11 +22,20 @@ variables:
     description: Workspace path where bundle is deployed (for PYTHONPATH)
     default: ""
   docint_base_dir:
-    description: Base directory for prescription PDFs (documents/, labels/, predictions/, annotated/)
+    description: Local base dir (documents/, predictions/, annotated/). Used when DOCINT_DATA_SOURCE=local.
     default: /Workspace/Users/samhardyhey@gmail.com/prescription_pdfs
   docint_num_pdfs:
     description: Number of prescription PDFs to generate (DOCINT_NUM_PDFS)
     default: "10"
+  docint_data_source:
+    description: "local (files) or catalog (UC volume + tables). Remote jobs use catalog."
+    default: catalog
+  docint_catalog_schema:
+    description: Unity Catalog schema for doc intelligence tables (e.g. silver_doc_pages, silver_doc_fields_extracted)
+    default: workspace.document_intelligence_medallion_dev
+  docint_documents_volume:
+    description: UC managed volume path for prescription PDFs (e.g. /Volumes/workspace/document_intelligence/prescription_documents)
+    default: /Volumes/workspace/document_intelligence/prescription_documents
 
 targets:
   dev-sp:
@@ -41,6 +50,9 @@ targets:
       workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
       docint_base_dir: /Workspace/Users/samhardyhey@gmail.com/prescription_pdfs
       docint_num_pdfs: "10"
+      docint_data_source: catalog
+      docint_catalog_schema: workspace.document_intelligence_medallion_dev
+      docint_documents_volume: /Volumes/workspace/document_intelligence/prescription_documents
 
   test-sp:
     mode: development
@@ -53,6 +65,9 @@ targets:
       workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
       docint_base_dir: /Workspace/Users/samhardyhey@gmail.com/prescription_pdfs
       docint_num_pdfs: "10"
+      docint_data_source: catalog
+      docint_catalog_schema: workspace.document_intelligence_medallion_test
+      docint_documents_volume: /Volumes/workspace/document_intelligence/prescription_documents
 
   prod-sp:
     mode: production
@@ -65,3 +80,6 @@ targets:
       workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
       docint_base_dir: /Workspace/Users/samhardyhey@gmail.com/prescription_pdfs
       docint_num_pdfs: "10"
+      docint_data_source: catalog
+      docint_catalog_schema: workspace.document_intelligence_medallion_prod
+      docint_documents_volume: /Volumes/workspace/document_intelligence/prescription_documents

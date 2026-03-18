@@ -115,18 +115,17 @@ data/healthcare_data_medallion/
 ```
 use_cases/recommendation_engine/
 ├── config.py
-├── databricks.yml
 ├── bundles/
-│   ├── job/resources/          # retrain_jobs.yml, batch_apply_jobs.yml (per model)
-│   ├── serving/resources/      # reco_endpoints.yml
-│   └── app/                    # Streamlit app (optional)
+│   ├── job/                    # databricks.yml; resources/retrain_jobs.yml, batch_apply_jobs.yml
+│   ├── serving/                # databricks.yml; resources/reco_endpoints.yml
+│   └── app/                    # databricks.yml; Streamlit app bundle
 ├── models/                     # Per-model: core + train + predict
-│   ├── run_reco.py             # Optional full-pipeline entrypoint
+│   ├── run_reco.py             # Full-pipeline entrypoint (used by DAB retrain job for item_sim + ALS + ranker)
 │   ├── data_loading.py, evaluation.py, feature_engineering.py
 │   ├── item_similarity/        # core.py, train.py, predict.py
-│   ├── als/
-│   ├── lightfm/
-│   └── ranker/
+│   ├── als/                    # core.py, train.py, predict.py
+│   ├── lightfm/                # core.py, train.py, predict.py
+│   └── ranker/                 # core.py (train/predict via run_reco or per-model TBD)
 └── app/                        # Databricks App (Streamlit)
 ```
 
@@ -177,7 +176,7 @@ use_cases/recommendation_engine/
 
 ### Databricks Architecture
 
-**Training Workflow** (scheduled weekly; DAB bundle under use-case): Jobs in `use_cases/inventory_optimization/bundles/job/resources/`. Entrypoints: `models/demand_forecasting/`, `models/writeoff_risk/`, `models/replenishment/` (each with core.py, train.py, predict.py).
+**Training Workflow** (scheduled weekly; DAB bundle under use-case): Jobs in `use_cases/inventory_optimization/bundles/job/resources/` (retrain_jobs.yml, batch_apply_jobs.yml). DAB tasks invoke `jobs/1_demand_forecasting.py`, `jobs/2_writeoff_risk_model.py`, `jobs/3_replenishment_optimization.py`, which use code under `models/demand_forecasting/`, `models/writeoff_risk/`, `models/replenishment/` (each with core.py, train.py, predict.py). Single entrypoint for local/scripted run: `run_inventory.py`.
 
 **Serving/Application**:
 - Batch scoring output to dashboard (Databricks SQL) for inventory planners
@@ -205,12 +204,16 @@ data/healthcare_data_medallion/
 ```
 use_cases/inventory_optimization/
 ├── config.py
-├── databricks.yml
-├── bundles/job/resources/     # retrain/batch-apply jobs per model
-└── models/                     # Per-model: core + train + predict
+├── run_inventory.py           # Single entrypoint (local or scripted: load → train/apply components)
+├── jobs/                      # DAB entrypoints: 1_demand_forecasting.py, 2_writeoff_risk_model.py, 3_replenishment_optimization.py
+├── data_loading.py           # Root-level data loading (used by run_inventory / jobs)
+├── bundles/job/               # databricks.yml; resources/retrain_jobs.yml, batch_apply_jobs.yml
+└── models/                    # Per-model: core + train + predict
     ├── demand_forecasting/
     ├── writeoff_risk/
-    └── replenishment/
+    ├── replenishment/
+    ├── data_loading.py
+    └── evaluation.py
 ```
 
 ---
@@ -421,15 +424,17 @@ Ground-truth labels (`labels/`) are used for **evaluation and optional NER train
 **Batch jobs** (bundle under use-case; each job runnable locally or as DAB task):
 ```
 use_cases/document_intelligence/
-├── config.py                 # get_config(), DOCINT_BASE_DIR, DOCINT_DATA_SOURCE, predictions_dir
-├── data_loading.py           # load_document_data(); discover PDFs and prediction paths from config
-├── run_document_intelligence.py   # Single entrypoint: load data, run OCR, run field extraction, save predictions
+├── config.py                     # get_config(), DOCINT_BASE_DIR, DOCINT_DATA_SOURCE, predictions_dir
+├── data_loading.py               # load_document_data(); discover PDFs and prediction paths from config
+├── run_document_intelligence.py  # Single entrypoint: load data, run OCR, run field extraction, save predictions
+├── ocr_pipeline.py               # run_ocr(); read PDFs, write OCR text to predictions store
+├── ner_field_extraction.py       # run_field_extraction(); read OCR/labels, write fields to predictions store
+├── predictions_io.py             # Save/load predictions (OCR and fields) to predictions_dir
 ├── jobs/
-│   ├── 1_generate_data.py    # Generate prescription PDFs + labels (documents/, labels/)
-│   ├── 2_ocr_extraction.py   # OCR only; read PDFs from config, write predictions (OCR text) to predictions store
-│   └── 3_field_extraction.py # Field extraction only; read OCR from predictions store, write extracted fields to predictions store
-├── resources/                # DAB job definitions
-└── bundles/job/databricks.yml
+│   ├── 1_generate_data.py        # Generate prescription PDFs + labels (documents/, labels/)
+│   ├── 2_ocr_extraction.py       # OCR only; write predictions to predictions store
+│   └── 3_field_extraction.py     # Field extraction only; write extracted fields to predictions store
+└── bundles/job/                  # databricks.yml; resources/document_intelligence_job.yml
 ```
 
 Jobs write to a **predictions store** (local dir or catalog) so that the annotator and downstream steps consume the same outputs.
@@ -440,31 +445,27 @@ Jobs write to a **predictions store** (local dir or catalog) so that the annotat
 - **Usage**: Point app at base dir (or config): it reads `documents/` and **predictions/fields/** (or equivalent); user reviews and corrects; app writes to `annotated/labels/`. Optional: show confidence or exception status when available.
 - **Integration**: Corrected data in `annotated/` can feed gold_doc_labels for evaluation and optional future NER training; approved records can trigger downstream ordering integration.
 
-**Data / predictions storage** (local today; catalog when medallion exists):
-- **Local**: Under DOCINT_BASE_DIR: `documents/`, `predictions/ocr/`, `predictions/fields/`, `labels/` (optional ground truth), `annotated/` (reviewer output).
-- **Remote (future)**: dbt medallion or direct table writes — bronze_documents, silver_doc_pages (OCR output), silver_doc_fields_extracted (predictions), gold_doc_labels (from annotator), gold_doc_posting_ready.
+**Data / predictions storage** (location switched by DOCINT_DATA_SOURCE):
+- **Local** (DOCINT_DATA_SOURCE=local): Under DOCINT_BASE_DIR: `documents/` (PDFs), `predictions/ocr/`, `predictions/fields/` (JSON per doc), `annotated/` (reviewer output). Generate job writes to base_dir; OCR and field extraction read/write under base_dir.
+- **Remote** (DOCINT_DATA_SOURCE=catalog, typical on Databricks): **Documents** on a UC managed volume (DOCINT_DOCUMENTS_VOLUME, e.g. `/Volumes/workspace/document_intelligence/prescription_documents`). **Predictions** in Unity Catalog tables: DOCINT_CATALOG_SCHEMA (e.g. `workspace.document_intelligence_medallion_dev`), tables `silver_doc_pages` (OCR output), `silver_doc_fields_extracted` (field extraction). Generate job uploads PDFs to the volume; OCR and field extraction jobs read from volume and write to tables (implement in jobs when using catalog).
 
 **File structure** (current):
 ```
-databricks-misc/
-├── data/
-│   └── prescription_pdf_generator/      # EXISTS - prescription PDF generation
-│
-└── use_cases/
-    └── document_intelligence/
-        ├── config.py                     # get_config(); base_dir, predictions_dir, data_source, on_databricks
-        ├── data_loading.py               # load_document_data(); discover PDFs and prediction paths
-        ├── ocr_pipeline.py               # run_ocr(); read PDFs, return/write OCR text to predictions
-        ├── ner_field_extraction.py      # run_field_extraction(); read OCR/labels, return/write fields to predictions
-        ├── run_document_intelligence.py  # Single entrypoint: load → OCR → extract → save predictions
-        ├── jobs/
-        │   ├── 1_generate_data.py        # Job: generate prescription PDFs + labels
-        │   ├── 2_ocr_extraction.py       # Job: OCR only, write predictions
-        │   └── 3_field_extraction.py     # Job: field extraction only, write predictions
-        ├── annotator/                    # Streamlit app: read predictions + PDFs, review, write annotated/
-        ├── resources/                    # DAB job YAML
-        └── bundles/job/databricks.yml
+use_cases/document_intelligence/
+├── config.py                     # get_config(); base_dir, predictions_dir, data_source, on_databricks
+├── data_loading.py               # load_document_data(); discover PDFs and prediction paths
+├── ocr_pipeline.py               # run_ocr(); read PDFs, write OCR text to predictions
+├── ner_field_extraction.py       # run_field_extraction(); read OCR/labels, write fields to predictions
+├── predictions_io.py             # Save/load predictions (OCR, fields) to predictions_dir
+├── run_document_intelligence.py  # Single entrypoint: load → OCR → extract → save predictions
+├── jobs/
+│   ├── 1_generate_data.py        # Job: generate prescription PDFs + labels
+│   ├── 2_ocr_extraction.py       # Job: OCR only, write predictions
+│   └── 3_field_extraction.py     # Job: field extraction only, write predictions
+├── annotator/                    # Streamlit app: read predictions + PDFs, review, write annotated/
+└── bundles/job/                  # databricks.yml; resources/document_intelligence_job.yml
 ```
+Data: prescription PDFs from `data/prescription_pdf_generator/`.
 
 ### Implementation plan (align with inventory / recommendation_engine)
 

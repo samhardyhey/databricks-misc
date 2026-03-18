@@ -14,7 +14,7 @@ Behaviour:
 
 from loguru import logger
 
-from use_cases.inventory_optimization.config import get_config
+from use_cases.inventory_optimization.config import apply_mlflow_config, get_config
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.writeoff_risk.core import (
     build_writeoff_risk_features,
@@ -65,11 +65,11 @@ def main() -> None:
         import mlflow
         import mlflow.sklearn
 
-        from use_cases.inventory_optimization.config import ensure_experiment_artifact_root
+        from use_cases.inventory_optimization.config import (
+            ensure_experiment_artifact_root,
+        )
 
-        tracking_uri = cfg.get("mlflow_tracking_uri")
-        if tracking_uri is not None:
-            mlflow.set_tracking_uri(tracking_uri)
+        apply_mlflow_config()
         ensure_experiment_artifact_root("inventory_writeoff_risk")
         mlflow.set_experiment("inventory_writeoff_risk")
         with mlflow.start_run(run_name="writeoff_risk_classifier"):

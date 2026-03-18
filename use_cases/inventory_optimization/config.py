@@ -1,6 +1,7 @@
 """
 Inventory optimisation run config: data source (local CSV vs Unity Catalog) and paths.
 Switch via INVENTORY_DATA_SOURCE and environment; same code path for train/eval.
+MLflow: see use_cases.mlflow.config (local SQLite vs Databricks workspace).
 """
 
 import os
@@ -8,6 +9,13 @@ from pathlib import Path
 from typing import Literal
 
 from use_cases.env_utils import is_running_on_databricks
+from use_cases.mlflow.config import (
+    apply_mlflow_config,
+    ensure_experiment_artifact_root,
+    get_mlflow_artifact_root,
+    get_mlflow_registry_uri,
+    get_mlflow_tracking_uri,
+)
 
 # Defaults (overridable by env)
 _DEFAULT_LOCAL_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "local"
@@ -77,47 +85,8 @@ def get_catalog_schema() -> str:
     return os.environ.get("INVENTORY_CATALOG_SCHEMA", _DEFAULT_CATALOG_SCHEMA)
 
 
-def get_mlflow_tracking_uri() -> str | None:
-    """
-    MLflow tracking URI when running locally; None on Databricks (use workspace default).
-    Override with MLFLOW_TRACKING_URI. Default when local: sqlite:///.../data/local/mlflow.db
-    so that make mlflow-ui shows the same runs.
-    """
-    if os.environ.get("MLFLOW_TRACKING_URI"):
-        return os.environ["MLFLOW_TRACKING_URI"]
-    if is_running_on_databricks():
-        return None
-    db_path = (get_local_data_dir() / "mlflow.db").resolve()
-    return f"sqlite:///{db_path}"
-
-
-def get_mlflow_artifact_root() -> str | None:
-    """
-    Default artifact root when local (SQLite). Same as make mlflow-ui --default-artifact-root.
-    None on Databricks.
-    """
-    if is_running_on_databricks():
-        return None
-    tracking = get_mlflow_tracking_uri()
-    if not tracking or not tracking.startswith("sqlite:"):
-        return None
-    return f"file://{(get_local_data_dir() / 'mlruns').resolve()}"
-
-
-def ensure_experiment_artifact_root(experiment_name: str) -> None:
-    """
-    If tracking is local SQLite, ensure the experiment exists with artifact_location in data/local/mlruns.
-    No-op on Databricks or if experiment already exists.
-    """
-    artifact_root = get_mlflow_artifact_root()
-    if artifact_root is None:
-        return
-    from mlflow import MlflowClient
-
-    client = MlflowClient()
-    exp = client.get_experiment_by_name(experiment_name)
-    if exp is None:
-        client.create_experiment(experiment_name, artifact_location=artifact_root)
+# MLflow tracking/artifact/experiment: delegated to use_cases.mlflow.config (local vs Databricks)
+# get_mlflow_tracking_uri, get_mlflow_artifact_root, ensure_experiment_artifact_root imported above
 
 
 def get_config() -> dict:
@@ -142,4 +111,5 @@ def get_config() -> dict:
         "catalog_schema": get_catalog_schema(),
         "on_databricks": is_running_on_databricks(),
         "mlflow_tracking_uri": get_mlflow_tracking_uri(),
+        "mlflow_registry_uri": get_mlflow_registry_uri(),
     }

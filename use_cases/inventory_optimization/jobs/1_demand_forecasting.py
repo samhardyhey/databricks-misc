@@ -8,7 +8,7 @@ Loads data via config: Unity Catalog on Databricks; locally prefers DuckDB medal
 from loguru import logger
 
 from use_cases.env_utils import is_running_on_databricks
-from use_cases.inventory_optimization.config import get_config
+from use_cases.inventory_optimization.config import apply_mlflow_config, get_config
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.demand_forecasting.core import (
     compare_forecasting_models,
@@ -33,6 +33,7 @@ def main():
                 "Local: make inventory-data. Catalog: ensure silver_orders exists."
             )
 
+        apply_mlflow_config()
         compare_forecasting_models(
             orders,
             target_column="quantity",

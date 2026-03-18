@@ -5,7 +5,11 @@ Loads data via config: locally prefers DuckDB medallion (DBT_DUCKDB_PATH), else 
 
 from loguru import logger
 
-from use_cases.inventory_optimization.config import get_config
+from use_cases.inventory_optimization.config import (
+    apply_mlflow_config,
+    ensure_experiment_artifact_root,
+    get_config,
+)
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.writeoff_risk.core import (
     build_writeoff_risk_features,
@@ -47,22 +51,25 @@ def main():
     model, feature_cols, metrics = train_writeoff_risk_classifier(features_df)
     logger.info("Write-off risk model trained: {}", metrics)
 
-    if cfg["on_databricks"]:
-        try:
-            import mlflow
-            import mlflow.sklearn
+    try:
+        import mlflow
+        import mlflow.sklearn
 
-            with mlflow.start_run(run_name="writeoff_risk_classifier"):
-                mlflow.log_params(
-                    {
-                        "n_features": len(feature_cols),
-                        "features": ",".join(feature_cols),
-                    }
-                )
-                mlflow.log_metrics(metrics)
-                mlflow.sklearn.log_model(model, "model")
-        except Exception as e:
-            logger.debug("MLflow logging skipped: {}", e)
+        apply_mlflow_config()
+        ensure_experiment_artifact_root("inventory_writeoff_risk")
+        mlflow.set_experiment("inventory_writeoff_risk")
+        with mlflow.start_run(run_name="writeoff_risk_classifier"):
+            mlflow.log_params(
+                {
+                    "n_features": len(feature_cols),
+                    "features": ",".join(feature_cols),
+                }
+            )
+            mlflow.log_metrics(metrics)
+            mlflow.sklearn.log_model(model, "model")
+        logger.info("Logged write-off risk model to MLflow")
+    except Exception as e:
+        logger.debug("MLflow logging skipped: {}", e)
 
     if spark is not None:
         spark.stop()

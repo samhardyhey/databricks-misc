@@ -15,24 +15,25 @@ DBT_BIN := $(REPO_ROOT)/.venv/bin/dbt
 # Local data: output dirs (data/local is gitignored)
 DATA_LOCAL_DIR := $(REPO_ROOT)/data/local
 MEDALLION_DIR := $(REPO_ROOT)/data/healthcare_data_medallion
-# Local MLflow: SQLite backend in data/local (avoids FileStore deprecation and trace/metrics 500s)
-MLFLOW_DB := $(REPO_ROOT)/data/local/mlflow.db
-MLRUNS_DIR ?= $(REPO_ROOT)/data/local/mlruns
-export MLFLOW_TRACKING_URI ?= sqlite:///$(MLFLOW_DB)
+# MLflow: backend/artifact from use_cases.mlflow (local vs Databricks); no Makefile override
 
-# Prescription PDF generation: sensible defaults (override: make data-local-generate-pdfs DOC_INTEL_PDF_ARGS="-n 5 -s 42")
+# Document intelligence (prescription PDFs): base dir and generation args
+# Override: make document-intelligence-generate-data DOCINT_NUM_PDFS=20 DOC_INTEL_SEED=42
 DOC_INTEL_PDF_ARGS ?= -n 10
 DOC_INTEL_PDF_OUTPUT := prescription_pdfs
+DOCINT_NUM_PDFS ?= 10
+DOCINT_BASE_DIR := $(REPO_ROOT)/$(DOC_INTEL_PDF_OUTPUT)
 
 # Marvelous MLOps: separate requirements, use sub-venv (make marvelous-mlops-venv first)
 MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
 MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
-.PHONY: help cleanup clean-local-data format document-intelligence-generate-pdfs document-intelligence-install document-intelligence-run
+.PHONY: help cleanup clean-local-data format
+.PHONY: document-intelligence-install document-intelligence-generate-pdfs document-intelligence-generate-data document-intelligence-ocr document-intelligence-field-extraction document-intelligence-run document-intelligence-app-run
 .PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
 .PHONY: reco-data reco-run reco-install reco-item-sim-train reco-item-sim-apply reco-als-train reco-als-apply reco-app-run
 .PHONY: inventory-data inventory-run inventory-install inventory-writeoff-train inventory-writeoff-apply inventory-demand-train inventory-demand-apply inventory-replenishment-train inventory-replenishment-apply
-.PHONY: mlflow-ui
+.PHONY: mlflow-ui mlflow-wipe
 .PHONY: marvelous-mlops-venv marvelous-mlops-fetch-medium marvelous-mlops-fetch-substack marvelous-mlops-fetch-youtube
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
 
@@ -46,7 +47,8 @@ help:
 	@echo "  make uv-activate          - Print activate command for .venv"
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
 	@echo "  make format [FMT_ARGS=.]  - Run autoflake, isort, black"
-	@echo "  make mlflow-ui            - Start MLflow UI (SQLite data/local/mlflow.db, artifacts data/local/mlruns); http://localhost:5001"
+	@echo "  make mlflow-ui            - Start MLflow UI (use_cases.mlflow, local only); http://localhost:5001"
+	@echo "  make mlflow-wipe          - Remove local MLflow DB and artifacts (experiments, runs, registry)"
 	@echo ""
 	@echo "  Local (data generation / medallion):"
 	@echo "  make clean-local-data           - Remove data/local/, test_output/, prescription_pdfs, medallion target/logs (start again)"
@@ -57,19 +59,19 @@ help:
 	@echo "  make data-local-dbt-run         - Load data/local into DuckDB then run medallion dbt (run data-local-generate-quick first if no CSVs)"
 	@echo "  make data-local-dbt-test        - Build medallion (dbt run) then run dbt tests (referential integrity, etc.)"
 	@echo ""
-	@echo "  Recommendation engine (single entrypoint run_reco.py; data source via RECO_DATA_SOURCE):"
-	@echo "  make reco-install                  - Install reco deps (implicit, lightgbm, mlflow); then make reco-run"
+	@echo "  Recommendation engine (full sequence: data → train/log → apply; RECO_DATA_SOURCE=local|catalog|auto):"
+	@echo "  make reco-install                  - Install reco deps (implicit, lightgbm, mlflow)"
 	@echo "  make reco-data                     - Generate healthcare CSVs to data/local/ (alias for data-local-generate-quick)"
-	@echo "  make reco-run                      - Run recommendation engine (local CSV or catalog when on Databricks)"
-	@echo "  make reco-item-sim-train           - Train item-similarity model (offline)"
-	@echo "  make reco-item-sim-apply           - Apply item-similarity model to generate recommendations"
-	@echo "  make reco-als-train                - Train ALS collaborative filtering model (when implicit installed)"
-	@echo "  make reco-als-apply                - Apply ALS model to generate recommendations"
+	@echo "  make reco-run                      - Full sequence: reco-data → train+log (run_reco.py) → batch apply (item_sim + ALS)"
+	@echo "  make reco-item-sim-train           - Train item-similarity model only"
+	@echo "  make reco-item-sim-apply           - Apply item-similarity model (set ITEM_SIMILARITY_MODEL_URI for runs:/<run_id>/model)"
+	@echo "  make reco-als-train                - Train ALS model only"
+	@echo "  make reco-als-apply                - Apply ALS model (set ALS_MODEL_URI for runs:/<run_id>/model)"
 	@echo "  make reco-app-run                  - Run recommendation Streamlit app locally"
-	@echo "  Inventory optimisation (single entrypoint run_inventory.py; data source via INVENTORY_DATA_SOURCE):"
-	@echo "  make inventory-install             - Install inventory use-case deps (scipy, lightgbm); then make inventory-run"
+	@echo "  Inventory optimisation (full sequence: data → train+apply; INVENTORY_DATA_SOURCE=local|catalog|auto):"
+	@echo "  make inventory-install             - Install inventory use-case deps (scipy, lightgbm)"
 	@echo "  make inventory-data                - Generate healthcare CSVs (alias for data-local-generate-quick)"
-	@echo "  make inventory-run                 - Run inventory optimisation (local CSV or catalog when on Databricks)"
+	@echo "  make inventory-run                 - Full sequence: inventory-data → run_inventory.py (train write-off + replenishment, apply)"
 	@echo "  make inventory-writeoff-train      - Train write-off risk classifier"
 	@echo "  make inventory-writeoff-apply      - Apply write-off risk classifier to latest data"
 	@echo "  make inventory-demand-train        - Train demand forecasting models"
@@ -77,10 +79,14 @@ help:
 	@echo "  make inventory-replenishment-train - Train/recompute replenishment policy"
 	@echo "  make inventory-replenishment-apply - Apply replenishment policy to generate recommendations"
 	@echo ""
-	@echo "  Document intelligence (single entrypoint run_document_intelligence.py; prescription PDFs):"
-	@echo "  make document-intelligence-install       - Install doc-intel deps (pdfplumber, loguru); then make document-intelligence-run"
-	@echo "  make document-intelligence-generate-pdfs - Generate prescription PDFs (prescription_pdfs/; DOC_INTEL_PDF_ARGS=-n 10)"
-	@echo "  make document-intelligence-run           - Run document intelligence pipeline over local prescription_pdfs/"
+	@echo "  Document intelligence (prescription PDFs; jobs map to DAB 1/2/3):"
+	@echo "  make document-intelligence-install             - Install doc-intel deps (pdfplumber, loguru, faker, reportlab)"
+	@echo "  make document-intelligence-generate-data      - Job 1: generate PDFs + labels (DOCINT_BASE_DIR, DOCINT_NUM_PDFS)"
+	@echo "  make document-intelligence-ocr                 - Job 2: OCR extraction → predictions/ocr/"
+	@echo "  make document-intelligence-field-extraction    - Job 3: field extraction → predictions/fields/"
+	@echo "  make document-intelligence-run                 - Full pipeline (OCR + field extraction) over local prescription_pdfs/"
+	@echo "  make document-intelligence-app-run             - Run Streamlit annotator (review predictions) locally"
+	@echo "  make document-intelligence-generate-pdfs       - Alias: generate PDFs via raw script (DOC_INTEL_PDF_ARGS=-n 10)"
 	@echo ""
 	@echo "  Marvelous MLOps (separate venv; run marvelous-mlops-venv first):"
 	@echo "  make marvelous-mlops-venv                 - Create .venv and install requirements in marvelous_mlops/"
@@ -108,12 +114,15 @@ uv-dev:
 uv-activate:
 	@echo "Run: source $(REPO_ROOT)/.venv/bin/activate"
 
-# --- Local MLflow UI (SQLite backend data/local/mlflow.db; artifacts in data/local/mlruns) ---
+# --- MLflow UI (use_cases.mlflow; local env only) ---
 mlflow-ui:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
-	@mkdir -p $(DATA_LOCAL_DIR) $(MLRUNS_DIR)
-	@echo "MLflow UI: http://localhost:5001 (Ctrl+C to stop)"
-	cd $(REPO_ROOT) && $(PY) -m mlflow ui --backend-store-uri sqlite:///$(MLFLOW_DB) --default-artifact-root file://$(MLRUNS_DIR) --host 0.0.0.0 --port 5001
+	cd $(REPO_ROOT) && $(PY) -m use_cases.mlflow.run_ui
+
+# --- Wipe local MLflow (use_cases.mlflow) ---
+mlflow-wipe:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) -m use_cases.mlflow.wipe
 
 # --- Cleanup ---
 cleanup:
@@ -183,19 +192,48 @@ data-local-dbt-test: data-local-dbt-run
 	cd $(MEDALLION_DIR) && DBT_PROFILES_DIR=$(MEDALLION_DIR)/dbt_profiles DBT_DUCKDB_PATH=$(REPO_ROOT)/data/local/medallion.duckdb $(DBT_BIN) test --profile duckdb
 	@echo "dbt test (duckdb) done."
 
-document-intelligence-generate-pdfs: data-local-generate-pdfs
-
-# --- Document intelligence (single entrypoint; DOCINT_BASE_DIR / LOCAL_DATA_PATH) ---
+# --- Document intelligence (jobs 1/2/3 + full pipeline + Streamlit app; DOCINT_BASE_DIR) ---
 document-intelligence-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
 	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra document_intelligence || .venv/bin/pip install -e ".[document_intelligence]")
-	@echo "Document intelligence deps (pdfplumber) installed."
+	@echo "Document intelligence deps (pdfplumber, loguru, faker, reportlab) installed."
 
+# Job 1: generate prescription PDFs + labels (same entrypoint as DAB document_intelligence_generate_job)
+document-intelligence-generate-data:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
+	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local DOCINT_BASE_DIR=$(DOCINT_BASE_DIR) DOCINT_NUM_PDFS=$(DOCINT_NUM_PDFS) $(PY) use_cases/document_intelligence/jobs/1_generate_data.py
+	@echo "document-intelligence generate-data done → $(DOC_INTEL_PDF_OUTPUT)/documents and $(DOC_INTEL_PDF_OUTPUT)/labels"
+
+# Job 2: OCR extraction → predictions/ocr/
+document-intelligence-ocr:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
+	@test -d $(DOCINT_BASE_DIR)/documents || (echo "Run: make document-intelligence-generate-data first" && exit 1)
+	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local DOCINT_BASE_DIR=$(DOCINT_BASE_DIR) $(PY) use_cases/document_intelligence/jobs/2_ocr_extraction.py
+	@echo "document-intelligence OCR done → $(DOC_INTEL_PDF_OUTPUT)/predictions/ocr/"
+
+# Job 3: field extraction → predictions/fields/
+document-intelligence-field-extraction:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
+	@test -d $(DOCINT_BASE_DIR)/documents || (echo "Run: make document-intelligence-generate-data first" && exit 1)
+	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local DOCINT_BASE_DIR=$(DOCINT_BASE_DIR) $(PY) use_cases/document_intelligence/jobs/3_field_extraction.py
+	@echo "document-intelligence field-extraction done → $(DOC_INTEL_PDF_OUTPUT)/predictions/fields/"
+
+# Full pipeline (OCR + field extraction in one run; same as job 2 then job 3)
 document-intelligence-run:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
-	@test -d $(DOC_INTEL_PDF_OUTPUT)/documents || (echo "Run: make document-intelligence-generate-pdfs first" && exit 1)
-	cd $(REPO_ROOT) && $(PY) use_cases/document_intelligence/run_document_intelligence.py
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
+	@test -d $(DOCINT_BASE_DIR)/documents || (echo "Run: make document-intelligence-generate-data first" && exit 1)
+	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local DOCINT_BASE_DIR=$(DOCINT_BASE_DIR) $(PY) use_cases/document_intelligence/run_document_intelligence.py
 	@echo "document-intelligence run done."
+
+# Streamlit annotator app (review predictions from predictions/fields/)
+document-intelligence-app-run:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
+	@test -d $(DOCINT_BASE_DIR)/predictions/fields || (echo "Run: make document-intelligence-run (or generate-data + ocr + field-extraction) first so predictions/fields/ exists" && exit 1)
+	cd $(REPO_ROOT) && DOCINT_BASE_DIR=$(DOCINT_BASE_DIR) $(PY) -m streamlit run use_cases/document_intelligence/annotator/app.py
+	@echo "document-intelligence annotator app (Streamlit)"
+
+# Alias: generate PDFs via raw generator script (alternative to job 1)
+document-intelligence-generate-pdfs: data-local-generate-pdfs
 
 # --- Recommendation engine (single entrypoint; RECO_DATA_SOURCE=local|catalog|auto) ---
 reco-install:
@@ -205,11 +243,15 @@ reco-install:
 
 reco-data: data-local-generate-quick
 
-reco-run:
+# Full sequence: generate data → train and log models → batch apply (item_sim + ALS; apply steps need model URIs or skip)
+reco-run: reco-data
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
-	@test -f $(DATA_LOCAL_DIR)/product_interactions.csv || (echo "Run: make reco-data (or make data-local-generate-quick) first" && exit 1)
+	@echo "[reco] 1/3 data ready (reco-data). 2/3 training and logging models..."
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/run_reco.py
-	@echo "reco run done."
+	@echo "[reco] 3/3 batch apply (set ITEM_SIMILARITY_MODEL_URI/ALS_MODEL_URI to runs:/<run_id>/model to load trained models)..."
+	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/item_similarity/predict.py
+	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/als/predict.py
+	@echo "reco run done (data + train/log + apply)."
 
 # Per-model reco entrypoints (train/apply)
 reco-item-sim-train:
@@ -250,11 +292,22 @@ inventory-install:
 
 inventory-data: data-local-generate-quick
 
-inventory-run:
+# Full sequence: generate data → train/log models (write-off + demand) → batch apply
+inventory-run: inventory-data
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
-	@test -f $(DATA_LOCAL_DIR)/inventory.csv -o -f $(DATA_LOCAL_DIR)/medallion.duckdb || (echo "Run: make inventory-data (or make data-local-generate-quick) and/or make data-local-dbt-run for DuckDB medallion" && exit 1)
-	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/run_inventory.py
-	@echo "inventory run done."
+	@test -f $(DATA_LOCAL_DIR)/inventory.csv -o -f $(DATA_LOCAL_DIR)/medallion.duckdb || (echo "Run: make data-local-dbt-run for DuckDB medallion, or ensure inventory CSVs exist" && exit 1)
+	@echo "[inventory] data ready (inventory-data). Installing inventory deps..."
+	@$(MAKE) inventory-install
+	@echo "[inventory] 1/4 training+logging: write-off risk"
+	@$(MAKE) inventory-writeoff-train
+	@echo "[inventory] 2/4 training+logging: demand forecasting"
+	@$(MAKE) inventory-demand-train
+	@echo "[inventory] 3/4 batch apply: write-off risk (skips if WRITEOFF_RISK_MODEL_URI unset)"
+	@$(MAKE) inventory-writeoff-apply
+	@echo "[inventory] 4/4 batch apply: demand forecasting + replenishment"
+	@$(MAKE) inventory-demand-apply
+	@$(MAKE) inventory-replenishment-apply
+	@echo "inventory run done (data + train/log + apply)."
 
 # Per-model inventory entrypoints (train/apply)
 inventory-writeoff-train:
