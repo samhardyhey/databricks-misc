@@ -1,0 +1,13 @@
+resources:
+  apps:
+    document_intelligence_annotator_app:
+      name: document-intelligence-annotator-app
+      description: "Document intelligence: Streamlit annotator app (review OCR+NER predictions)"
+      source_code_path: use_cases/document_intelligence/annotator
+      environment:
+        spec:
+          env_vars:
+            DOCINT_BASE_DIR: ${var.docint_base_dir}
+          dependencies:
+            - -r use_cases/document_intelligence/annotator/requirements.txt
+

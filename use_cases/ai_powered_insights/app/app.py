@@ -170,7 +170,16 @@ def _render_genie_attachments(
                 if getattr(query, "query", None):
                     st.code(query.query, language="sql")
             with st.spinner("Running SQL to fetch results..."):
-                df = _extract_statement_to_df(w, statement_id)
+                try:
+                    df = _extract_statement_to_df(w, statement_id)
+                except Exception as exc:  # noqa: BLE001
+                    st.error(
+                        "Failed to fetch statement results. "
+                        "This can happen if the statement link expired. "
+                        "Try asking again."
+                    )
+                    logger.warning("Statement fetch failed: {}", exc)
+                    continue
                 st.dataframe(df)
                 csv = df.to_csv(index=False).encode("utf-8")
                 st.download_button(

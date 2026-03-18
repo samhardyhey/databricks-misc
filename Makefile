@@ -287,7 +287,8 @@ reco-app-run:
 
 # Streamlit app for AI Powered Insights (Genie + domain router)
 ai-insights-app-run:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && (pip install -r use_cases/ai_powered_insights/app/requirements.txt if needed)" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@$(PY) -m pip install -r use_cases/ai_powered_insights/app/requirements.txt >/dev/null 2>&1 || true
 	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/ai_powered_insights/app/app.py
 	@echo "ai-powered-insights app running (Streamlit)"
 
