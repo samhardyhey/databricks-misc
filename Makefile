@@ -17,6 +17,9 @@ DATA_LOCAL_DIR := $(REPO_ROOT)/data/local
 MEDALLION_DIR := $(REPO_ROOT)/data/healthcare_data_medallion
 # MLflow: backend/artifact from utils.mlflow (local vs Databricks); no Makefile override
 
+# UC foundation (Unity Catalog schemas/volumes) deploy settings
+UC_FOUNDATION_TARGET ?= dev-sp
+
 # Document intelligence (prescription PDFs): local base dir
 DOC_INTEL_PDF_OUTPUT := data/local/prescription_pdfs
 
@@ -24,7 +27,12 @@ DOC_INTEL_PDF_OUTPUT := data/local/prescription_pdfs
 MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
 MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
-.PHONY: help cleanup clean-local-data format
+.PHONY: help cleanup clean-local-data format uc-foundation-deploy
+.PHONY: dab-list dab-validate dab-deploy dab-run
+.PHONY: dab-validate-recommendation_engine dab-deploy-recommendation_engine dab-run-recommendation_engine
+.PHONY: dab-validate-inventory_optimization dab-deploy-inventory_optimization dab-run-inventory_optimization
+.PHONY: dab-validate-document_intelligence dab-deploy-document_intelligence dab-run-document_intelligence
+.PHONY: dab-validate-ai_powered_insights dab-deploy-ai_powered_insights
 .PHONY: document-intelligence-install document-intelligence-generate-pdfs document-intelligence-generate-data document-intelligence-ocr document-intelligence-field-extraction document-intelligence-run document-intelligence-app-run
 .PHONY: document-intelligence-smoke
 .PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
@@ -78,6 +86,34 @@ help:
 	@echo "  make inventory-replenishment-train - Train/recompute replenishment policy"
 	@echo "  make inventory-replenishment-apply - Apply replenishment policy to generate recommendations"
 	@echo ""
+	@echo "UC foundation (Unity Catalog schemas/volumes):"
+	@echo "  make uc-foundation-deploy        - Deploy bundles/uc_foundation to $(UC_FOUNDATION_TARGET)"
+	@echo ""
+	@echo "Databricks Asset Bundles (DAB):"
+	@echo "  make dab-list                   - List available DAB bundle names"
+	@echo "  make dab-validate BUNDLE=<name> DAB_TARGET=<dev-sp|test-sp|prod-sp>"
+	@echo "  make dab-deploy   BUNDLE=<name> DAB_TARGET=<dev-sp|test-sp|prod-sp>"
+	@echo "  make dab-run      BUNDLE=<name> RUN_JOB=<job-name> DAB_TARGET=<dev-sp|test-sp|prod-sp> (strict)"
+	@echo ""
+	@echo "Use-case DAB (bundle sets):"
+	@echo "  Recommendation engine:"
+	@echo "    make dab-validate-recommendation_engine"
+	@echo "    make dab-deploy-recommendation_engine"
+	@echo "    make dab-run-recommendation_engine RUN_JOB=<job-name>"
+	@echo "      allowed RUN_JOB: recommendation_engine_retrain recommendation_engine_lightfm_retrain recommendation_engine_apply recommendation_engine_lightfm_apply"
+	@echo "  Inventory optimisation:"
+	@echo "    make dab-validate-inventory_optimization"
+	@echo "    make dab-deploy-inventory_optimization"
+	@echo "    make dab-run-inventory_optimization RUN_JOB=<job-name>"
+	@echo "      allowed RUN_JOB: inventory_demand_forecasting_retrain inventory_writeoff_risk_retrain inventory_replenishment_retrain inventory_demand_forecasting_apply inventory_writeoff_risk_apply inventory_replenishment_apply"
+	@echo "  Document intelligence:"
+	@echo "    make dab-validate-document_intelligence"
+	@echo "    make dab-deploy-document_intelligence"
+	@echo "    make dab-run-document_intelligence RUN_JOB=<job-name>"
+	@echo "      allowed RUN_JOB: document_intelligence_generate_job document_intelligence_pipeline_job"
+	@echo "  AI Powered Insights:"
+	@echo "    make dab-validate-ai_powered_insights"
+	@echo "    make dab-deploy-ai_powered_insights"
 	@echo "  Document intelligence (prescription PDFs; jobs map to DAB 1/2/3):"
 	@echo "  make document-intelligence-install             - Install doc-intel deps (pdfplumber, loguru, faker, reportlab)"
 	@echo "  make document-intelligence-generate-data      - Job 1: generate PDFs + labels (defaults; override DOCINT_NUM_PDFS and DOCINT_SEED via env)"
@@ -154,6 +190,11 @@ format:
 	cd $(REPO_ROOT) && $(PY) -m isort $(FMT_ARGS)
 	cd $(REPO_ROOT) && $(PY) -m black $(FMT_ARGS)
 	@echo "Format done."
+
+uc-foundation-deploy:
+	@test -f $(REPO_ROOT)/bundles/uc_foundation/databricks.yml || (echo "Missing: bundles/uc_foundation/databricks.yml" && exit 1)
+	@echo "Deploying UC foundation to target '$(UC_FOUNDATION_TARGET)'..."
+	@$(MAKE) dab-deploy BUNDLE=uc_foundation DAB_TARGET=$(UC_FOUNDATION_TARGET) DAB_PROFILE=$(UC_FOUNDATION_TARGET)
 
 # --- Local: data generation and medallion (repo root = source root) ---
 data-local-generate:
@@ -353,3 +394,210 @@ marvelous-mlops-fetch-youtube:
 	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous-mlops-venv" && exit 1)
 	cd $(MARVELOUS_MLOPS_DIR) && $(MARVELOUS_PY) fetch_youtube.py
 	@echo "YouTube fetch done."
+
+# --- Databricks Asset Bundles (DAB) ---
+# Bundle-centric commands so CI/local dev can validate/deploy/run consistently.
+#
+# Usage:
+#   make dab-validate BUNDLE=recommendation_engine DAB_TARGET=dev-sp
+#   make dab-deploy   BUNDLE=inventory_optimization DAB_TARGET=test-sp
+#   make dab-run      BUNDLE=document_intelligence RUN_JOB=document_intelligence_pipeline_job DAB_TARGET=prod-sp
+
+DAB_TARGET ?= dev-sp
+DAB_PROFILE ?= $(DAB_TARGET)
+BUNDLE ?=
+RUN_JOB ?=
+
+define dab_bundle_dir
+# Deprecated: BUNDLE_DIR mapping is handled directly in dab-validate/dab-deploy/dab-run.
+endef
+
+# Bundle "kind": job_multi | job_single | deploy_only
+define dab_bundle_kind
+$(if $(filter recommendation_engine,$(1)),job_multi,\
+$(if $(filter inventory_optimization,$(1)),job_multi,\
+$(if $(filter document_intelligence,$(1)),job_multi,\
+$(if $(filter healthcare_data_generator,$(1)),job_single,\
+$(if $(filter healthcare_data_medallion,$(1)),job_single,\
+deploy_only\
+)))))
+endef
+
+# Multi-job bundles: allowed RUN_JOB values (strict).
+define dab_allowed_jobs
+$(if $(filter recommendation_engine,$(1)),recommendation_engine_retrain recommendation_engine_lightfm_retrain recommendation_engine_apply recommendation_engine_lightfm_apply,\
+$(if $(filter inventory_optimization,$(1)),inventory_demand_forecasting_retrain inventory_writeoff_risk_retrain inventory_replenishment_retrain inventory_demand_forecasting_apply inventory_writeoff_risk_apply inventory_replenishment_apply,\
+$(if $(filter document_intelligence,$(1)),document_intelligence_generate_job document_intelligence_pipeline_job,\
+)))
+endef
+
+# Some resources (Genie spaces and UC foundation) require direct deploy engine.
+define dab_requires_direct_engine
+$(if $(filter uc_foundation ai_powered_insights_genie_spaces,$(1)),1,)
+endef
+
+dab-list:
+	@echo "Available DAB bundles:"
+	@echo "  uc_foundation"
+	@echo "  healthcare_data_generator"
+	@echo "  healthcare_data_medallion"
+	@echo "  recommendation_engine (job)"
+	@echo "  recommendation_engine_serving (endpoints)"
+	@echo "  recommendation_engine_app (databricks app)"
+	@echo "  inventory_optimization (job)"
+	@echo "  document_intelligence (job)"
+	@echo "  document_intelligence_annotator_app (databricks app)"
+	@echo "  ai_powered_insights_app (databricks app)"
+	@echo "  ai_powered_insights_dashboards (dashboards)"
+	@echo "  ai_powered_insights_genie_spaces (genie spaces)"
+
+dab-validate:
+	@test -n "$(strip $(BUNDLE))" || (echo "Usage: make dab-validate BUNDLE=<bundle-name> [DAB_TARGET=...]" && exit 1)
+	@BUNDLE_DIR=""; \
+	if [ "$(BUNDLE)" = "uc_foundation" ]; then BUNDLE_DIR="$(REPO_ROOT)/bundles/uc_foundation"; \
+	elif [ "$(BUNDLE)" = "healthcare_data_generator" ]; then BUNDLE_DIR="$(REPO_ROOT)/data/healthcare_data_generator/bundles"; \
+	elif [ "$(BUNDLE)" = "healthcare_data_medallion" ]; then BUNDLE_DIR="$(REPO_ROOT)/data/healthcare_data_medallion/bundles"; \
+	elif [ "$(BUNDLE)" = "recommendation_engine" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/recommendation_engine/bundles/job"; \
+	elif [ "$(BUNDLE)" = "recommendation_engine_serving" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/recommendation_engine/bundles/serving"; \
+	elif [ "$(BUNDLE)" = "recommendation_engine_app" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/recommendation_engine/bundles/app"; \
+	elif [ "$(BUNDLE)" = "inventory_optimization" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/inventory_optimization/bundles/job"; \
+	elif [ "$(BUNDLE)" = "document_intelligence" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/document_intelligence/bundles/job"; \
+	elif [ "$(BUNDLE)" = "document_intelligence_annotator_app" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/document_intelligence/bundles/app"; \
+	elif [ "$(BUNDLE)" = "ai_powered_insights_app" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/ai_powered_insights/bundles/app"; \
+	elif [ "$(BUNDLE)" = "ai_powered_insights_dashboards" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/ai_powered_insights/bundles/dashboards"; \
+	elif [ "$(BUNDLE)" = "ai_powered_insights_genie_spaces" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/ai_powered_insights/bundles/genie_spaces"; \
+	else BUNDLE_DIR=""; \
+	fi; \
+	if [ -z "$$BUNDLE_DIR" ] || [ ! -f "$$BUNDLE_DIR/databricks.yml" ]; then \
+	  echo "Unknown/invalid bundle '$(BUNDLE)'. Try: make dab-list"; exit 1; \
+	fi; \
+	echo "[dab-validate] bundle=$(BUNDLE) dir=$$BUNDLE_DIR target=$(DAB_TARGET) profile=$(DAB_PROFILE)"; \
+	if [ "$(call dab_requires_direct_engine,$(BUNDLE))" = "1" ]; then \
+	  cd "$$BUNDLE_DIR" && DATABRICKS_BUNDLE_ENGINE=direct databricks bundle validate --target $(DAB_TARGET) --profile $(DAB_PROFILE); \
+	else \
+	  cd "$$BUNDLE_DIR" && databricks bundle validate --target $(DAB_TARGET) --profile $(DAB_PROFILE); \
+	fi
+
+dab-deploy:
+	@test -n "$(strip $(BUNDLE))" || (echo "Usage: make dab-deploy BUNDLE=<bundle-name> [DAB_TARGET=...]" && exit 1)
+	@BUNDLE_DIR=""; \
+	if [ "$(BUNDLE)" = "uc_foundation" ]; then BUNDLE_DIR="$(REPO_ROOT)/bundles/uc_foundation"; \
+	elif [ "$(BUNDLE)" = "healthcare_data_generator" ]; then BUNDLE_DIR="$(REPO_ROOT)/data/healthcare_data_generator/bundles"; \
+	elif [ "$(BUNDLE)" = "healthcare_data_medallion" ]; then BUNDLE_DIR="$(REPO_ROOT)/data/healthcare_data_medallion/bundles"; \
+	elif [ "$(BUNDLE)" = "recommendation_engine" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/recommendation_engine/bundles/job"; \
+	elif [ "$(BUNDLE)" = "recommendation_engine_serving" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/recommendation_engine/bundles/serving"; \
+	elif [ "$(BUNDLE)" = "recommendation_engine_app" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/recommendation_engine/bundles/app"; \
+	elif [ "$(BUNDLE)" = "inventory_optimization" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/inventory_optimization/bundles/job"; \
+	elif [ "$(BUNDLE)" = "document_intelligence" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/document_intelligence/bundles/job"; \
+	elif [ "$(BUNDLE)" = "document_intelligence_annotator_app" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/document_intelligence/bundles/app"; \
+	elif [ "$(BUNDLE)" = "ai_powered_insights_app" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/ai_powered_insights/bundles/app"; \
+	elif [ "$(BUNDLE)" = "ai_powered_insights_dashboards" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/ai_powered_insights/bundles/dashboards"; \
+	elif [ "$(BUNDLE)" = "ai_powered_insights_genie_spaces" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/ai_powered_insights/bundles/genie_spaces"; \
+	else BUNDLE_DIR=""; \
+	fi; \
+	if [ -z "$$BUNDLE_DIR" ] || [ ! -f "$$BUNDLE_DIR/databricks.yml" ]; then \
+	  echo "Unknown/invalid bundle '$(BUNDLE)'. Try: make dab-list"; exit 1; \
+	fi; \
+	echo "[dab-deploy] bundle=$(BUNDLE) dir=$$BUNDLE_DIR target=$(DAB_TARGET) profile=$(DAB_PROFILE)"; \
+	if [ "$(call dab_requires_direct_engine,$(BUNDLE))" = "1" ]; then \
+	  cd "$$BUNDLE_DIR" && DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy --target $(DAB_TARGET) --profile $(DAB_PROFILE); \
+	else \
+	  cd "$$BUNDLE_DIR" && databricks bundle deploy --target $(DAB_TARGET) --profile $(DAB_PROFILE); \
+	fi
+
+dab-run:
+	@test -n "$(strip $(BUNDLE))" || (echo "Usage: make dab-run BUNDLE=<bundle-name> RUN_JOB=<job-name> [DAB_TARGET=...]" && exit 1)
+	@BUNDLE_KIND="$(call dab_bundle_kind,$(BUNDLE))"; \
+	BUNDLE_DIR=""; \
+	if [ "$(BUNDLE)" = "uc_foundation" ]; then BUNDLE_DIR="$(REPO_ROOT)/bundles/uc_foundation"; \
+	elif [ "$(BUNDLE)" = "healthcare_data_generator" ]; then BUNDLE_DIR="$(REPO_ROOT)/data/healthcare_data_generator/bundles"; \
+	elif [ "$(BUNDLE)" = "healthcare_data_medallion" ]; then BUNDLE_DIR="$(REPO_ROOT)/data/healthcare_data_medallion/bundles"; \
+	elif [ "$(BUNDLE)" = "recommendation_engine" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/recommendation_engine/bundles/job"; \
+	elif [ "$(BUNDLE)" = "recommendation_engine_serving" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/recommendation_engine/bundles/serving"; \
+	elif [ "$(BUNDLE)" = "recommendation_engine_app" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/recommendation_engine/bundles/app"; \
+	elif [ "$(BUNDLE)" = "inventory_optimization" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/inventory_optimization/bundles/job"; \
+	elif [ "$(BUNDLE)" = "document_intelligence" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/document_intelligence/bundles/job"; \
+	elif [ "$(BUNDLE)" = "document_intelligence_annotator_app" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/document_intelligence/bundles/app"; \
+	elif [ "$(BUNDLE)" = "ai_powered_insights_app" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/ai_powered_insights/bundles/app"; \
+	elif [ "$(BUNDLE)" = "ai_powered_insights_dashboards" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/ai_powered_insights/bundles/dashboards"; \
+	elif [ "$(BUNDLE)" = "ai_powered_insights_genie_spaces" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/ai_powered_insights/bundles/genie_spaces"; \
+	else BUNDLE_DIR=""; \
+	fi; \
+	ALLOWED_JOBS="$(call dab_allowed_jobs,$(BUNDLE))"; \
+	if [ -z "$$BUNDLE_DIR" ] || [ ! -f "$$BUNDLE_DIR/databricks.yml" ]; then \
+	  echo "Unknown/invalid bundle '$(BUNDLE)'. Try: make dab-list"; exit 1; \
+	fi; \
+	if [ "$$BUNDLE_KIND" = "deploy_only" ]; then \
+	  echo "dab-run not supported for deploy-only bundle '$(BUNDLE)'. Use dab-deploy instead."; exit 1; \
+	fi; \
+	if [ "$$BUNDLE_KIND" = "job_single" ]; then \
+	  if [ -n "$(strip $(RUN_JOB))" ]; then \
+	    echo "RUN_JOB must be empty for single-job bundle '$(BUNDLE)'."; exit 1; \
+	  fi; \
+	  echo "[dab-run] bundle=$(BUNDLE) (single-job) dir=$$BUNDLE_DIR target=$(DAB_TARGET) profile=$(DAB_PROFILE)"; \
+	  cd "$$BUNDLE_DIR" && databricks bundle run --target $(DAB_TARGET) --profile $(DAB_PROFILE); \
+	else \
+	  if [ -z "$(strip $(RUN_JOB))" ]; then \
+	    echo "RUN_JOB is required for multi-job bundle '$(BUNDLE)'." ; \
+	    echo "Allowed jobs: $$ALLOWED_JOBS"; exit 1; \
+	  fi; \
+	  case " $$ALLOWED_JOBS " in \
+	    *" $(RUN_JOB) "*) ;; \
+	    *) echo "Invalid RUN_JOB='$(RUN_JOB)' for bundle '$(BUNDLE)'. Allowed: $$ALLOWED_JOBS"; exit 1 ;; \
+	  esac; \
+	  echo "[dab-run] bundle=$(BUNDLE) job=$(RUN_JOB) dir=$$BUNDLE_DIR target=$(DAB_TARGET) profile=$(DAB_PROFILE)"; \
+	  cd "$$BUNDLE_DIR" && databricks bundle run $(RUN_JOB) --target $(DAB_TARGET) --profile $(DAB_PROFILE); \
+	fi
+
+# --- Use-case DAB wrappers (readable use-case-specific commands) ---
+
+dab-validate-recommendation_engine:
+	@$(MAKE) dab-validate BUNDLE=recommendation_engine DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-validate BUNDLE=recommendation_engine_serving DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-validate BUNDLE=recommendation_engine_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-deploy-recommendation_engine:
+	@$(MAKE) dab-deploy BUNDLE=recommendation_engine DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-deploy BUNDLE=recommendation_engine_serving DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-deploy BUNDLE=recommendation_engine_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-run-recommendation_engine:
+	@test -n "$(strip $(RUN_JOB))" || (echo "Usage: make dab-run-recommendation_engine RUN_JOB=<job-name> [DAB_TARGET=...]" && exit 1)
+	@$(MAKE) dab-run BUNDLE=recommendation_engine RUN_JOB=$(RUN_JOB) DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-validate-inventory_optimization:
+	@$(MAKE) dab-validate BUNDLE=inventory_optimization DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-deploy-inventory_optimization:
+	@$(MAKE) dab-deploy BUNDLE=inventory_optimization DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-run-inventory_optimization:
+	@test -n "$(strip $(RUN_JOB))" || (echo "Usage: make dab-run-inventory_optimization RUN_JOB=<job-name> [DAB_TARGET=...]" && exit 1)
+	@$(MAKE) dab-run BUNDLE=inventory_optimization RUN_JOB=$(RUN_JOB) DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-validate-document_intelligence:
+	@$(MAKE) dab-validate BUNDLE=document_intelligence DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-validate BUNDLE=document_intelligence_annotator_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-deploy-document_intelligence:
+	@$(MAKE) dab-deploy BUNDLE=document_intelligence DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-deploy BUNDLE=document_intelligence_annotator_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-run-document_intelligence:
+	@test -n "$(strip $(RUN_JOB))" || (echo "Usage: make dab-run-document_intelligence RUN_JOB=<job-name> [DAB_TARGET=...]" && exit 1)
+	@$(MAKE) dab-run BUNDLE=document_intelligence RUN_JOB=$(RUN_JOB) DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-validate-ai_powered_insights:
+	@$(MAKE) dab-validate BUNDLE=ai_powered_insights_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-validate BUNDLE=ai_powered_insights_dashboards DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-validate BUNDLE=ai_powered_insights_genie_spaces DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-deploy-ai_powered_insights:
+	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_dashboards DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_genie_spaces DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+# Optional convenience: keep your old UC foundation deploy target name,
+# but route it through dab-deploy to reuse the bundle framework.
+uc-foundation-deploy-dab-wrapper:
+	@$(MAKE) dab-deploy BUNDLE=uc_foundation DAB_TARGET=$(UC_FOUNDATION_TARGET) DAB_PROFILE=$(UC_FOUNDATION_TARGET)
