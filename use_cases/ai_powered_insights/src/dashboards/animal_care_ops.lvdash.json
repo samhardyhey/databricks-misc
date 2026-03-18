@@ -1,4 +1,85 @@
 {
-  "placeholder": true
+  "datasets": [
+    {
+      "displayName": "competitor_price_history rows",
+      "name": "d_competitor_price_rows",
+      "query": "SELECT competitor_id FROM `${var.catalog}`.`${var.medallion_schema}`.`bronze_competitor_price_history`"
+    },
+    {
+      "displayName": "avg competitor price by week",
+      "name": "d_competitor_price_week",
+      "query": "SELECT DATE_TRUNC(\\\"WEEK\\\", date) as week_start, AVG(price) as avg_price FROM `${var.catalog}`.`${var.medallion_schema}`.`bronze_competitor_price_history` GROUP BY 1 ORDER BY 1"
+    }
+  ],
+  "pages": [
+    {
+      "displayName": "Summary",
+      "layout": [
+        {
+          "position": { "height": 2, "width": 2, "x": 0, "y": 0 },
+          "widget": {
+            "name": "w_competitor_price_history_count",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d_competitor_price_rows",
+                  "disaggregated": false,
+                  "fields": [{ "expression": "COUNT(`*`)", "name": "count(*)" }]
+                }
+              }
+            ],
+            "spec": {
+              "encodings": {
+                "value": { "displayName": "Competitor Price History Rows", "fieldName": "count(*)" }
+              },
+              "frame": { "showTitle": true, "title": "Competitor Price History Rows" },
+              "version": 2,
+              "widgetType": "counter"
+            }
+          }
+        },
+        {
+          "position": { "height": 4, "width": 6, "x": 2, "y": 0 },
+          "widget": {
+            "name": "w_avg_competitor_price_by_week",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d_competitor_price_week",
+                  "disaggregated": false,
+                  "fields": [
+                    { "expression": "`week_start`", "name": "week_start" },
+                    { "expression": "`avg_price`", "name": "avg_price" }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "encodings": {
+                "x": {
+                  "axis": { "title": "Week" },
+                  "displayName": "Week",
+                  "fieldName": "week_start",
+                  "scale": { "type": "temporal" }
+                },
+                "y": {
+                  "axis": { "title": "Avg Price" },
+                  "displayName": "Avg Price",
+                  "fieldName": "avg_price",
+                  "scale": { "type": "quantitative" }
+                }
+              },
+              "frame": { "showTitle": true, "title": "Avg Competitor Price by Week" },
+              "mark": { "colors": ["#077A9D", "#FFAB00", "#00A972", "#FF3621", "#8BCAE7", "#AB4057"] },
+              "version": 3,
+              "widgetType": "bar"
+            }
+          }
+        }
+      ]
+    }
+  ]
 }
 

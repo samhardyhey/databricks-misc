@@ -23,9 +23,9 @@ Domain-scoped Databricks Genie Spaces (Healthcare, Animal Care, TWC) and a singl
   - Conversation APIs + attachment rendering
   - Optional deep-links to domain dashboards
 - Databricks SQL dashboards:
-  - Healthcare dashboard (reads relevant `gold_*` outputs)
-  - Animal Care dashboard (reads relevant `gold_*` outputs)
-  - TWC dashboard (reads relevant `gold_*` outputs)
+  - Healthcare dashboard (reads `silver_orders` and derives weekly revenue / volume KPIs)
+  - Animal Care dashboard (reads `bronze_competitor_price_history` and derives weekly avg price KPIs)
+  - TWC dashboard (reads `bronze_store_sales`, `bronze_store_attributes`, and `bronze_promotions` for revenue and promo KPIs)
 
 Dashboard integration requirement:
 - The Streamlit router should provide deep-links into these traditional Databricks SQL dashboards so users can switch from conversational answers to full-page visual analytics.

@@ -562,9 +562,9 @@ use_cases/ai_powered_insights/
 ```
 
 **Domain dashboards (Databricks SQL)**:
-- Healthcare dashboard: reads from `gold_range_recommendations`
-- Animal Care dashboard: reads from `gold_competitor_price_history`
-- TWC dashboard: reads from `gold_promo_impact` and `gold_store_product_recs`
+- Healthcare dashboard: reads from `silver_orders` (inventory + order performance derived)
+- Animal Care dashboard: reads from `bronze_competitor_price_history`
+- TWC dashboard: reads from `bronze_store_sales`, `bronze_store_attributes`, and `bronze_promotions`
 
 ### ⚠️ Technical Limits & Considerations
 

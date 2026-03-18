@@ -1,4 +1,85 @@
 {
-  "placeholder": true
+  "datasets": [
+    {
+      "displayName": "promotions rows",
+      "name": "d_promotions_rows",
+      "query": "SELECT promo_id FROM `${var.catalog}`.`${var.medallion_schema}`.`bronze_promotions`"
+    },
+    {
+      "displayName": "revenue by week",
+      "name": "d_twc_revenue_week",
+      "query": "SELECT DATE_TRUNC(\\\"WEEK\\\", s.date) as week_start, SUM(s.revenue) as revenue FROM `${var.catalog}`.`${var.medallion_schema}`.`bronze_store_sales` s JOIN `${var.catalog}`.`${var.medallion_schema}`.`bronze_store_attributes` a ON s.store_id = a.store_id GROUP BY 1 ORDER BY 1"
+    }
+  ],
+  "pages": [
+    {
+      "displayName": "Summary",
+      "layout": [
+        {
+          "position": { "height": 2, "width": 2, "x": 0, "y": 0 },
+          "widget": {
+            "name": "w_promotions_count",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d_promotions_rows",
+                  "disaggregated": false,
+                  "fields": [{ "expression": "COUNT(`*`)", "name": "count(*)" }]
+                }
+              }
+            ],
+            "spec": {
+              "encodings": {
+                "value": { "displayName": "Promotions", "fieldName": "count(*)" }
+              },
+              "frame": { "showTitle": true, "title": "Promotions" },
+              "version": 2,
+              "widgetType": "counter"
+            }
+          }
+        },
+        {
+          "position": { "height": 4, "width": 6, "x": 2, "y": 0 },
+          "widget": {
+            "name": "w_revenue_by_week",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "d_twc_revenue_week",
+                  "disaggregated": false,
+                  "fields": [
+                    { "expression": "`week_start`", "name": "week_start" },
+                    { "expression": "`revenue`", "name": "revenue" }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "encodings": {
+                "x": {
+                  "axis": { "title": "Week" },
+                  "displayName": "Week",
+                  "fieldName": "week_start",
+                  "scale": { "type": "temporal" }
+                },
+                "y": {
+                  "axis": { "title": "Revenue" },
+                  "displayName": "Revenue",
+                  "fieldName": "revenue",
+                  "scale": { "type": "quantitative" }
+                }
+              },
+              "frame": { "showTitle": true, "title": "Revenue by Week" },
+              "mark": { "colors": ["#077A9D", "#FFAB00", "#00A972", "#FF3621", "#8BCAE7", "#AB4057"] },
+              "version": 3,
+              "widgetType": "bar"
+            }
+          }
+        }
+      ]
+    }
+  ]
 }
 
