@@ -1,0 +1,60 @@
+bundle:
+  name: uc_foundation
+  uuid: 8c4a6a2d-6c3d-4e7f-9f3f-0a3e7a0d4a2b
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog_name:
+    description: Unity Catalog name used across the repo
+    default: workspace
+
+  healthcare_raw_schema_name:
+    description: Unity Catalog schema for raw generator outputs
+    default: healthcare_dev_raw
+
+  healthcare_medallion_schema_name:
+    description: Base Unity Catalog schema for medallion outputs (environment-specific)
+    default: healthcare_medallion_dev
+
+  docint_volume_schema_name:
+    description: Unity Catalog schema used as the parent namespace for document-intelligence volumes
+    default: document_intelligence
+
+  docint_medallion_schema_name:
+    description: Unity Catalog schema used for document-intelligence prediction tables
+    default: document_intelligence_medallion_dev
+
+targets:
+  dev-sp:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      healthcare_raw_schema_name: healthcare_dev_raw
+      healthcare_medallion_schema_name: healthcare_medallion_dev
+      docint_medallion_schema_name: document_intelligence_medallion_dev
+
+  test-sp:
+    mode: development
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      healthcare_raw_schema_name: healthcare_test_raw
+      healthcare_medallion_schema_name: healthcare_medallion_test
+      docint_medallion_schema_name: document_intelligence_medallion_test
+
+  prod-sp:
+    mode: production
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      healthcare_raw_schema_name: healthcare_prod_raw
+      healthcare_medallion_schema_name: healthcare_medallion_prod
+      docint_medallion_schema_name: document_intelligence_medallion_prod
+

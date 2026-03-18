@@ -1,0 +1,48 @@
+resources:
+  schemas:
+    healthcare_raw:
+      name: ${var.healthcare_raw_schema_name}
+      catalog_name: ${var.catalog_name}
+      comment: Raw healthcare generator outputs
+
+    healthcare_medallion_base:
+      name: ${var.healthcare_medallion_schema_name}
+      catalog_name: ${var.catalog_name}
+      comment: Base namespace for medallion outputs
+
+    # These layer schemas are created to support either:
+    #  - dbt configurations that materialize into {base}_{layer} schemas, or
+    #  - local/dev experiments that expect the layer-separated namespaces.
+    healthcare_medallion_bronze:
+      name: ${var.healthcare_medallion_schema_name}_bronze
+      catalog_name: ${var.catalog_name}
+      comment: Medallion bronze layer namespace
+
+    healthcare_medallion_silver:
+      name: ${var.healthcare_medallion_schema_name}_silver
+      catalog_name: ${var.catalog_name}
+      comment: Medallion silver layer namespace
+
+    healthcare_medallion_gold:
+      name: ${var.healthcare_medallion_schema_name}_gold
+      catalog_name: ${var.catalog_name}
+      comment: Medallion gold layer namespace
+
+    document_intelligence_volume_namespace:
+      name: ${var.docint_volume_schema_name}
+      catalog_name: ${var.catalog_name}
+      comment: Parent schema for document-intelligence managed volumes
+
+    document_intelligence_medallion:
+      name: ${var.docint_medallion_schema_name}
+      catalog_name: ${var.catalog_name}
+      comment: Document-intelligence prediction tables namespace
+
+  volumes:
+    prescription_documents:
+      catalog_name: ${var.catalog_name}
+      schema_name: ${var.docint_volume_schema_name}
+      name: prescription_documents
+      volume_type: MANAGED
+      comment: Managed volume for document-intelligence prescription PDFs
+

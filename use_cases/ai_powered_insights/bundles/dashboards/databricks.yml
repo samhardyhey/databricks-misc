@@ -16,8 +16,8 @@ variables:
   medallion_schema:
     description: Medallion schema containing silver/gold outputs (UC schema)
     default: healthcare_medallion_dev
-  sql_warehouse_id:
-    description: Warehouse ID used to run dashboard queries
+  warehouse_id:
+    description: SQL warehouse ID used to run dashboard queries
     default: ""
   service_principal_name:
     description: Service principal used for run_as
@@ -33,7 +33,7 @@ targets:
     variables:
       catalog: workspace
       medallion_schema: healthcare_medallion_dev
-      sql_warehouse_id: ""
+      warehouse_id: ""
       service_principal_name: <TBD-AI-INSIGHTS-DEV-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
@@ -46,7 +46,7 @@ targets:
     variables:
       catalog: workspace
       medallion_schema: healthcare_medallion_test
-      sql_warehouse_id: ""
+      warehouse_id: ""
       service_principal_name: <TBD-AI-INSIGHTS-TEST-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
@@ -59,7 +59,7 @@ targets:
     variables:
       catalog: workspace
       medallion_schema: healthcare_medallion_prod
-      sql_warehouse_id: ""
+      warehouse_id: ""
       service_principal_name: <TBD-AI-INSIGHTS-PROD-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}

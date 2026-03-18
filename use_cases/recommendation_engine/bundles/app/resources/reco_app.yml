@@ -8,6 +8,9 @@ resources:
         spec:
           env_vars:
             RECO_ENDPOINT_URL: ${var.reco_endpoint_url}
+            RECO_ENDPOINT_URL_ITEM_SIMILARITY: ${var.reco_endpoint_url_item_similarity}
+            RECO_ENDPOINT_URL_ALS: ${var.reco_endpoint_url_als}
+            RECO_ENDPOINT_URL_LIGHTFM: ${var.reco_endpoint_url_lightfm}
           dependencies:
             - -r use_cases/recommendation_engine/app/requirements.txt
 
