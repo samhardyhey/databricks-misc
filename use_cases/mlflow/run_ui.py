@@ -22,7 +22,10 @@ def main() -> int:
 
     tracking_uri = get_mlflow_tracking_uri()
     if tracking_uri is None:
-        print("MLflow UI is for local use only (Databricks uses workspace MLflow).", file=sys.stderr)
+        print(
+            "MLflow UI is for local use only (Databricks uses workspace MLflow).",
+            file=sys.stderr,
+        )
         return 1
 
     artifact_root = get_mlflow_artifact_root()

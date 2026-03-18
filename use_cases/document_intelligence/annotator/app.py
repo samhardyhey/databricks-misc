@@ -118,7 +118,9 @@ def main():
             f"📁 Predictions (fields): `{PREDICTIONS_FIELDS_DIR}`\n"
             f"📁 Annotated (output): `{ANNOTATED_DIR}`"
         )
-        st.caption("Set DOCINT_BASE_DIR to match the pipeline base dir. Run OCR + field extraction first.")
+        st.caption(
+            "Set DOCINT_BASE_DIR to match the pipeline base dir. Run OCR + field extraction first."
+        )
 
         if st.button("Load Documents"):
             if not DOCUMENTS_DIR.exists():

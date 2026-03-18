@@ -9,13 +9,7 @@ from pathlib import Path
 from typing import Literal
 
 from use_cases.env_utils import is_running_on_databricks
-from use_cases.mlflow.config import (
-    apply_mlflow_config,
-    ensure_experiment_artifact_root,
-    get_mlflow_artifact_root,
-    get_mlflow_registry_uri,
-    get_mlflow_tracking_uri,
-)
+from use_cases.mlflow.config import get_mlflow_registry_uri, get_mlflow_tracking_uri
 
 # Defaults (overridable by env)
 _DEFAULT_LOCAL_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "local"

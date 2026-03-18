@@ -16,13 +16,13 @@ import mlflow.prophet  # type: ignore[import-untyped]
 import mlflow.sklearn  # type: ignore[import-untyped]
 import mlflow.xgboost  # type: ignore[import-untyped]
 import numpy as np
+import pandas as pd
+from loguru import logger
 
 from use_cases.inventory_optimization.config import (
     apply_mlflow_config,
     ensure_experiment_artifact_root,
 )
-import pandas as pd
-from loguru import logger
 
 
 def compare_forecasting_models(

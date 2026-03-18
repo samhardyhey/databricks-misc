@@ -13,7 +13,10 @@ def main() -> int:
     from use_cases.mlflow.config import get_local_data_dir, get_mlflow_tracking_uri
 
     if get_mlflow_tracking_uri() is None:
-        print("Wipe is for local MLflow only (Databricks uses workspace MLflow).", file=sys.stderr)
+        print(
+            "Wipe is for local MLflow only (Databricks uses workspace MLflow).",
+            file=sys.stderr,
+        )
         return 1
 
     root = get_local_data_dir()

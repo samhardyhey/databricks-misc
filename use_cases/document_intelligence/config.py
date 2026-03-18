@@ -15,7 +15,9 @@ from use_cases.env_utils import is_running_on_databricks
 
 _DEFAULT_LOCAL_BASE_DIR = Path(__file__).resolve().parents[2] / "prescription_pdfs"
 _DEFAULT_CATALOG_SCHEMA = "workspace.document_intelligence_medallion"
-_DEFAULT_DOCUMENTS_VOLUME_PATH = "/Volumes/workspace/document_intelligence/prescription_documents"
+_DEFAULT_DOCUMENTS_VOLUME_PATH = (
+    "/Volumes/workspace/document_intelligence/prescription_documents"
+)
 
 DataSource = Literal["local", "catalog", "auto"]
 
@@ -55,9 +57,11 @@ def get_documents_volume_path() -> str:
     UC managed volume path for prescription PDFs (remote only).
     Override with DOCINT_DOCUMENTS_VOLUME.
     """
-    return os.environ.get(
-        "DOCINT_DOCUMENTS_VOLUME", _DEFAULT_DOCUMENTS_VOLUME_PATH
-    ).strip().rstrip("/")
+    return (
+        os.environ.get("DOCINT_DOCUMENTS_VOLUME", _DEFAULT_DOCUMENTS_VOLUME_PATH)
+        .strip()
+        .rstrip("/")
+    )
 
 
 def get_table_doc_pages() -> str:
