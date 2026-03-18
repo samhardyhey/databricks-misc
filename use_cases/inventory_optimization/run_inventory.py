@@ -1,9 +1,7 @@
 """
 Single entrypoint for inventory optimisation: runs locally or on Databricks.
-Data source is switched via config (config.get_config()): local CSV vs Unity Catalog.
-- Local: INVENTORY_DATA_SOURCE=local (default when not on Databricks); data from LOCAL_DATA_PATH / data/local.
-- Databricks: INVENTORY_DATA_SOURCE=auto (default) -> catalog when DATABRICKS_RUNTIME_VERSION is set; Spark loads from catalog.
-Override with INVENTORY_DATA_SOURCE=local|catalog|auto and INVENTORY_CATALOG_SCHEMA, LOCAL_DATA_PATH as needed.
+Data source via config (get_config()): local = DuckDB medallion (preferred) or CSV;
+catalog = Unity Catalog. Local uses DBT_DUCKDB_PATH when present (make data-local-dbt-run).
 Run: make inventory-run (local)  or  deploy as Databricks job with this script.
 """
 
@@ -16,7 +14,7 @@ from use_cases.inventory_optimization.models.evaluation import replenishment_sum
 from use_cases.inventory_optimization.models.replenishment.core import (
     compute_replenishment_recommendations,
 )
-from use_cases.inventory_optimization.writeoff_risk_classifier import (
+from use_cases.inventory_optimization.models.writeoff_risk.core import (
     build_writeoff_risk_features,
     predict_writeoff_risk,
     train_writeoff_risk_classifier,

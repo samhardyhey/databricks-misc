@@ -1,18 +1,16 @@
 """
 Job 1: Demand forecasting for inventory optimisation.
 
-This job wires the shared demand forecasting components into the
-inventory use-case. On Databricks it loads from Unity Catalog;
-locally it loads from CSV or sample data.
+Loads data via config: Unity Catalog on Databricks; locally prefers DuckDB medallion
+(DBT_DUCKDB_PATH) with CSV fallback. Uses the same medallion we create (make data-local-dbt-run).
 """
-
-from pathlib import Path
 
 from loguru import logger
 
 from use_cases.env_utils import is_running_on_databricks
-from use_cases.inventory_optimization.data_loading import load_inventory_data
-from use_cases.inventory_optimization.demand_forecasting import (
+from use_cases.inventory_optimization.config import get_config
+from use_cases.inventory_optimization.models.data_loading import load_inventory_data
+from use_cases.inventory_optimization.models.demand_forecasting.core import (
     compare_forecasting_models,
 )
 
@@ -26,10 +24,6 @@ def main():
         spark = SparkSession.builder.appName("InventoryDemandForecasting").getOrCreate()
 
     try:
-        # Reuse inventory data-loading: we need orders aggregated per product × warehouse.
-        Path(__file__).resolve().parents[2]
-        from use_cases.inventory_optimization.config import get_config
-
         cfg = get_config()
         data = load_inventory_data(config=cfg, spark=spark)
         orders = data.get("orders")

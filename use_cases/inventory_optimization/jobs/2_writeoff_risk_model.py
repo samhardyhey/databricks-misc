@@ -1,13 +1,13 @@
 """
 Job 2: Train write-off risk classifier; optionally log to MLflow and register model.
-Uses config (INVENTORY_DATA_SOURCE / auto) for local vs catalog; same as run_inventory.py.
+Loads data via config: locally prefers DuckDB medallion (DBT_DUCKDB_PATH), else CSV.
 """
 
 from loguru import logger
 
 from use_cases.inventory_optimization.config import get_config
-from use_cases.inventory_optimization.data_loading import load_inventory_data
-from use_cases.inventory_optimization.writeoff_risk_classifier import (
+from use_cases.inventory_optimization.models.data_loading import load_inventory_data
+from use_cases.inventory_optimization.models.writeoff_risk.core import (
     build_writeoff_risk_features,
     train_writeoff_risk_classifier,
 )

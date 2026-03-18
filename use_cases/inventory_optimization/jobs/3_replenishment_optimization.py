@@ -1,14 +1,14 @@
 """
 Job 3: Compute replenishment recommendations (ROP, order qty); write to gold or local output.
-Uses config (INVENTORY_DATA_SOURCE / auto) for local vs catalog; same as run_inventory.py.
+Loads data via config: locally prefers DuckDB medallion (DBT_DUCKDB_PATH), else CSV.
 """
 
 from loguru import logger
 
 from use_cases.inventory_optimization.config import get_config
-from use_cases.inventory_optimization.data_loading import load_inventory_data
-from use_cases.inventory_optimization.evaluation import replenishment_summary
-from use_cases.inventory_optimization.replenishment_optimizer import (
+from use_cases.inventory_optimization.models.data_loading import load_inventory_data
+from use_cases.inventory_optimization.models.evaluation import replenishment_summary
+from use_cases.inventory_optimization.models.replenishment.core import (
     compute_replenishment_recommendations,
 )
 

@@ -60,23 +60,27 @@ def main() -> None:
     model, feature_cols, metrics = train_writeoff_risk_classifier(features_df)
     logger.info("Write-off risk model trained: {}", metrics)
 
-    # MLflow logging (when available); keep lightweight on local
-    if cfg["on_databricks"]:
-        try:
-            import mlflow
-            import mlflow.sklearn
+    # MLflow logging (local and Databricks) so make mlflow-ui shows all models
+    try:
+        import mlflow
+        import mlflow.sklearn
 
-            with mlflow.start_run(run_name="writeoff_risk_classifier"):
-                mlflow.log_params(
-                    {
-                        "n_features": len(feature_cols),
-                        "features": ",".join(feature_cols),
-                    }
-                )
-                mlflow.log_metrics(metrics)
-                mlflow.sklearn.log_model(model, "model")
-        except Exception as e:
-            logger.debug("MLflow logging skipped: {}", e)
+        tracking_uri = cfg.get("mlflow_tracking_uri")
+        if tracking_uri is not None:
+            mlflow.set_tracking_uri(tracking_uri)
+        mlflow.set_experiment("inventory_writeoff_risk")
+        with mlflow.start_run(run_name="writeoff_risk_classifier"):
+            mlflow.log_params(
+                {
+                    "n_features": len(feature_cols),
+                    "features": ",".join(feature_cols),
+                }
+            )
+            mlflow.log_metrics(metrics)
+            mlflow.sklearn.log_model(model, "model")
+        logger.info("Logged write-off risk model to MLflow")
+    except Exception as e:
+        logger.debug("MLflow logging skipped: {}", e)
 
     if spark is not None:
         spark.stop()

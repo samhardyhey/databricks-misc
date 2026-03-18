@@ -369,158 +369,111 @@ databricks-misc/
 
 **Business Value**: Manual labour reduction | High ROI for prescription processing and order validation
 **Use Case**: Reduce manual processing of prescription PDFs using AI to interpret, validate, and integrate into downstream ordering systems
-**Current Status**: ✅ **Partial** - Prescription PDF generator and annotation app exist, needs end-to-end pipeline implementation
-**Local dev**: Can be developed locally for most part (PDF generation, OCR, annotator). Use common open-source PDF OCR + layout/NLP libraries (e.g. Tesseract, `pytesseract`, `pdfplumber`, transformer-based NER) that run without Spark.
+**Current Status**: ✅ **Partial** - Prescription PDF generator and annotation app exist; pipeline (generate → predict → save → review) in progress
+**Local dev**: Same patterns as recommendation_engine and inventory_optimization — config-driven local vs remote (DOCINT_BASE_DIR / DOCINT_DATA_SOURCE), modular jobs, single entrypoint; PDF generation, OCR, and annotator run locally with open-source libs (no Spark).
+
+### Pipeline flow (generate → predict → save → review)
+
+Document intelligence is **not** a classic train-then-batch-score modelling use case. The flow is:
+
+1. **Generate documents** — Produce synthetic prescription PDFs (and optional ground-truth JSON for evaluation only) via `data/prescription_pdf_generator/`. Output: `documents/`, optionally `labels/` (ground truth).
+2. **Generate predictions** — Run OCR and NER/field extraction on those documents. Output is **model predictions** (OCR text per page, extracted prescription fields per document), not training labels.
+3. **Save predictions** — Persist predictions in a known location so the next step and the annotator can consume them.
+   - **Local**: e.g. `predictions/ocr/` (per-doc or combined) and `predictions/fields/` (extracted fields as JSON or table).
+   - **Remote**: e.g. Unity Catalog tables (silver_doc_pages, silver_doc_fields_extracted) or blob/volume paths; config switches via DOCINT_DATA_SOURCE.
+4. **Review predictions (annotator)** — The annotator is an **application** that loads **saved predictions** (and the original PDFs), displays them side-by-side for human review, and allows corrections. Corrected data is saved (e.g. `annotated/` or gold_doc_labels) for downstream use and optionally for future model training.
+
+Ground-truth labels (`labels/`) are used for **evaluation and optional NER training**, not as the primary input to the annotator in the main flow; the annotator’s primary input is **predictions** produced by the pipeline.
 
 ### Data Requirements
 
-**New / extended data pipeline** (synthetic prescription PDFs):
-- **Reuse and extend** existing `/data/prescription_pdf_generator/` for prescription document generation (no separate finance document generator)
-- Generate synthetic prescription PDFs covering key real-world patterns: handwritten vs typed, different templates, multiple pages, varied pharmacies/doctors
-- Add `bronze_documents` table: `doc_id`, `file_path`, `doc_type`, `upload_timestamp`, `source_system`
-- Add labeled ground truth: `gold_doc_labels` with extracted fields (patient, prescriber, product, strength, dose, frequency, repeats, quantity, directions, dates)
+**Document generation** (synthetic prescription PDFs):
+- **Reuse** `data/prescription_pdf_generator/` — no separate finance document generator
+- Output: `documents/` (PDFs), optional `labels/` (ground-truth JSON for eval/training)
+- Document types: community prescriptions, hospital discharge, repeat prescriptions (same schema as today)
 
-**Document types** (all within prescription workflows):
-1. **Community prescriptions**: typical GP to pharmacy scripts
-2. **Hospital discharge prescriptions**: longer medication lists with changing regimens
-3. **Repeat prescriptions / renewals**: focus on refills, validity dates, remaining repeats
-
-**Expected volume**: ~1k documents/month (synthetic)
+**Predictions storage** (pipeline output):
+- **Local**: Under base dir (e.g. `predictions/ocr/`, `predictions/fields/` or single `predictions/fields.parquet`); config exposes `predictions_dir` (or equivalent).
+- **Remote**: When DOCINT_DATA_SOURCE=catalog, write to Unity Catalog (e.g. silver_doc_pages, silver_doc_fields_extracted) or a configured volume path.
 
 **Existing assets**:
-- Prescription PDF generator under `data/prescription_pdf_generator/`
-- Prescription annotation / labeling app under `use_cases/document_intelligence/annotator/`
+- Prescription PDF generator: `data/prescription_pdf_generator/`
+- Annotator app (review predictions): `use_cases/document_intelligence/annotator/` — to be wired to read **predictions** and write corrected output to `annotated/` (or catalog).
 
-### Modelling Approach
+### Modelling / extraction approach
 
-**Pipeline**:
-1. **OCR** - open-source OCR engine for PDF → text and layout extraction (e.g. Tesseract via `pytesseract`, `pdfplumber` for text/coordinates)
-2. **Layout Analysis** - Identify prescription structure (header with prescriber/pharmacy, patient block, medication lines, footer/notes)
-3. **Field Extraction** - NER / structured extraction models fine-tuned for prescriptions
-   - Start with general transformer-based NER (e.g. Hugging Face models) and fine-tune on labeled prescription dataset (500-1000 docs)
-   - Extract entities: patient, prescriber, product, strength, form, dose, frequency, quantity, repeats, directions, dates
-4. **Post-processing** - Validation rules, entity matching to master data (`silver_products`, `silver_pharmacies`, `silver_hospitals`)
-   - Normalise drug names and strengths, resolve ambiguous abbreviations, basic safety checks (e.g. maximum dose heuristics)
-5. **Confidence Scoring** - Route low-confidence extractions, conflicts, or potential safety issues to a human review queue
+**Pipeline (generate predictions, not “training” in the same sense as reco/inventory)**:
+1. **OCR** — Open-source OCR (e.g. `pdfplumber`, Tesseract) for PDF → text/layout. Write results to predictions store (per-doc or table).
+2. **Field extraction (NER)** — Extract prescription fields from OCR text (or from structured generator labels as a proxy until NER model is in place). Output: one record per document with patient, prescriber, medication, etc. Write to predictions store.
+3. **Validation / confidence** (optional) — Apply rules, match to master data; flag low-confidence or safety-critical items for review. Exceptions can be written to the same store with a status (e.g. `review` vs `approved`).
 
-**Libraries**: OCR (`pytesseract`, `pdfplumber`), layout/vision (`layoutparser`, `opencv-python` optional), NLP (`transformers`, `spacy` or similar)
+**Libraries**: OCR (`pdfplumber`, `pytesseract`), NLP (`transformers`, `spacy` or similar for NER when added)
 
-**Evaluation**: Field-level F1 score, end-to-end document accuracy, exception rate
+**Evaluation**: When ground-truth `labels/` exist, compute field-level F1, document accuracy, exception rate. Evaluation is separate from the “save predictions” path; it reads predictions + labels and reports metrics.
 
 ### Databricks Architecture
 
-**Batch Processing Pipeline** (bundle under use-case):
+**Config and environment switching** (same pattern as inventory_optimization / recommendation_engine):
+- **DOCINT_DATA_SOURCE**: `local` | `catalog` | `auto` — where to read documents and where to write predictions.
+- **Local**: DOCINT_BASE_DIR (default e.g. `prescription_pdfs/`) holds `documents/`, `predictions/` (and optional `labels/`, `annotated/`). All I/O is file-based.
+- **Remote (Databricks)**: When DOCINT_DATA_SOURCE=catalog (or auto on Databricks), read document listing from catalog/volume and write predictions to Unity Catalog tables or configured volume path. Same Python code paths; config switches behaviour.
+
+**Batch jobs** (bundle under use-case; each job runnable locally or as DAB task):
 ```
 use_cases/document_intelligence/
+├── config.py                 # get_config(), DOCINT_BASE_DIR, DOCINT_DATA_SOURCE, predictions_dir
+├── data_loading.py           # load_document_data(); discover PDFs and prediction paths from config
+├── run_document_intelligence.py   # Single entrypoint: load data, run OCR, run field extraction, save predictions
 ├── jobs/
-│   ├── 1_ingest_documents.py            # Auto Loader
-│   │   └── Monitor blob storage/volume for new prescription PDFs
-│   │   └── Load to bronze_documents (binary + metadata)
-│   │
-│   ├── 2_ocr_extraction.py              # OCR + layout
-│   │   └── Convert PDF → text and layout, extract line regions
-│   │   └── Write to silver_doc_pages
-│   │
-│   ├── 3_field_extraction.py           # NER / structured extraction
-│   │   └── Apply fine-tuned prescription NER / parsing models
-│   │   └── Extract: patient, prescriber, drugs, strengths, dose, frequency, repeats, quantity, dates
-│   │   └── Write to silver_doc_fields_extracted
-│   │
-│   ├── 4_validation_matching.py        # Post-processing
-│   │   └── Validate extracted fields (date formats, product existence, dose sanity checks)
-│   │   └── Match products and prescribers to reference tables
-│   │   └── Route exceptions to gold_doc_exceptions_queue
-│   │   └── Route approved to gold_doc_posting_ready (ready for ordering system integration)
-│   │
-│   └── train_ner_model.py              # Fine-tune prescription NER
-│       └── Load labeled documents from gold_doc_labels
-│       └── Fine-tune transformer-based NER / sequence models
-│       └── Evaluate on test set
-│       └── Register model to Unity Catalog
-├── resources/
-└── databricks.yml
+│   ├── 1_ocr_extraction.py   # OCR only; read PDFs from config, write predictions (OCR text) to predictions store
+│   └── 2_field_extraction.py # Field extraction only; read OCR from predictions store, write extracted fields to predictions store
+├── resources/                # DAB job definitions
+└── bundles/job/databricks.yml
 ```
 
-**Application**:
-- Pharmacy / operations dashboard shows exceptions queue
-- Approved prescriptions trigger downstream integration (ordering / dispensing systems)
+Jobs write to a **predictions store** (local dir or catalog) so that the annotator and downstream steps consume the same outputs.
 
-**Databricks App** (Streamlit):
-- **Purpose**: Human-in-the-loop document review and exception handling
-- **Features**:
-  - **Exception Queue**: Documents flagged for manual review with confidence scores
-  - **Side-by-Side Viewer**: Original PDF displayed alongside extracted fields
-  - **Field Correction Interface**: Edit extracted values, mark as correct/incorrect
-  - **Bulk Approval**: Approve multiple high-confidence documents at once
-  - **Extraction Analytics**: Success rates by document type, common error patterns
-  - **Feedback Loop**: Corrections feed back into model retraining dataset
-- **Tech Stack**: Streamlit with PDF viewer component + Databricks SQL connector
-- **Deployment**: Databricks App via DAB bundle
-- **Users**: Finance team, AP clerks, document processing team
+**Annotator application** (review predictions):
+- **Reuse**: Streamlit app at `use_cases/document_intelligence/annotator/`
+- **Purpose**: **Review model predictions** — load saved predictions (and PDFs), show PDF alongside extracted fields, allow corrections, save to `annotated/` (or catalog).
+- **Usage**: Point app at base dir (or config): it reads `documents/` and **predictions/fields/** (or equivalent); user reviews and corrects; app writes to `annotated/labels/`. Optional: show confidence or exception status when available.
+- **Integration**: Corrected data in `annotated/` can feed gold_doc_labels for evaluation and optional future NER training; approved records can trigger downstream ordering integration.
 
-**Annotation & Review Tool** (Existing Asset):
-- **Reuse**: Existing prescription PDF annotation app at `use_cases/document_intelligence/annotator/`
-- **Purpose**: Create and curate labeled training data for prescription NER model fine-tuning
-- **Usage Pattern**:
-  - Use the app to annotate synthetic prescription PDFs generated by `data/prescription_pdf_generator/`
-  - Periodically sample low-confidence real/synthetic documents from the exception queue for additional labeling
-- **Integration**: Labeled data feeds into `gold_doc_labels` table for model training and retraining
+**Data / predictions storage** (local today; catalog when medallion exists):
+- **Local**: Under DOCINT_BASE_DIR: `documents/`, `predictions/ocr/`, `predictions/fields/`, `labels/` (optional ground truth), `annotated/` (reviewer output).
+- **Remote (future)**: dbt medallion or direct table writes — bronze_documents, silver_doc_pages (OCR output), silver_doc_fields_extracted (predictions), gold_doc_labels (from annotator), gold_doc_posting_ready.
 
-**Data Pipeline** (dbt medallion - separate project):
-```
-data/document_intelligence_medallion/          # NEW dbt project
-├── bronze/
-│   └── bronze_documents.sql                   # NEW: Raw documents from Auto Loader
-│
-├── silver/
-│   ├── silver_doc_pages.sql                   # NEW: OCR text extraction results
-│   └── silver_doc_fields_extracted.sql        # NEW: NER extracted fields
-│
-└── gold/
-    ├── gold_doc_labels.sql                    # NEW: Ground truth annotations for prescriptions
-    ├── gold_doc_exceptions_queue.sql          # NEW: Low-confidence or safety-critical extractions
-    └── gold_doc_posting_ready.sql             # NEW: Approved prescription records for downstream systems
-```
-
-**File Structure**:
+**File structure** (current):
 ```
 databricks-misc/
 ├── data/
-│   ├── prescription_pdf_generator/      # EXISTS (data/) - prescription PDF generation (reused)
-│   │   └── ...
-│   │
-│   └── document_intelligence_medallion/ # NEW dbt project (or extend healthcare_data_medallion)
-│       └── src/models/
-│           ├── bronze/
-│           │   └── bronze_documents.sql
-│           ├── silver/
-│           │   ├── silver_doc_pages.sql
-│           │   └── silver_doc_fields_extracted.sql
-│           └── gold/
-│               ├── gold_doc_labels.sql
-│               ├── gold_doc_exceptions_queue.sql
-│               └── gold_doc_posting_ready.sql
+│   └── prescription_pdf_generator/      # EXISTS - prescription PDF generation
 │
 └── use_cases/
-    └── document_intelligence/           # EXISTS - extend
-        ├── annotator/                   # EXISTS - prescription PDF annotation app
-        ├── README.md                    # NEW
-        ├── databricks.yml
-        ├── resources/
-        ├── ocr_pipeline.py              # NEW: OCR + layout using non-Spark libraries
-        ├── ner_field_extraction.py      # NEW: transformer-based NER / parsing
-        ├── train_ner.py                 # NEW
-        ├── evaluation.py                # NEW
+    └── document_intelligence/
+        ├── config.py                     # get_config(); base_dir, predictions_dir, data_source, on_databricks
+        ├── data_loading.py               # load_document_data(); discover PDFs and prediction paths
+        ├── ocr_pipeline.py               # run_ocr(); read PDFs, return/write OCR text to predictions
+        ├── ner_field_extraction.py      # run_field_extraction(); read OCR/labels, return/write fields to predictions
+        ├── run_document_intelligence.py  # Single entrypoint: load → OCR → extract → save predictions
         ├── jobs/
-        │   ├── 1_ingest_documents.py
-        │   ├── 2_ocr_extraction.py
-        │   ├── 3_field_extraction.py
-        │   ├── 4_validation_matching.py
-        │   └── train_ner_model.py
-        └── app/                         # NEW: Databricks App
-            ├── doc_review_dashboard.py  # Streamlit app for exception review
-            └── requirements.txt         # streamlit, databricks-sql-connector
+        │   ├── 1_ocr_extraction.py       # Job: OCR only, write predictions
+        │   └── 2_field_extraction.py     # Job: field extraction only, write predictions
+        ├── annotator/                    # Streamlit app: read predictions + PDFs, review, write annotated/
+        ├── resources/                    # DAB job YAML
+        └── bundles/job/databricks.yml
 ```
+
+### Implementation plan (align with inventory / recommendation_engine)
+
+1. **Config** — Extend `config.py` with `predictions_dir` (e.g. `base_dir / "predictions"`), overridable via env. Optional `DOCINT_DATA_SOURCE` = `local` | `catalog` | `auto` for future catalog reads/writes.
+2. **Save predictions** — In OCR and field-extraction modules (or a small `predictions_io` helper): after each step, write results to `predictions_dir/ocr/` and `predictions_dir/fields/` (e.g. JSON per doc or single table), using the same schema the annotator expects (nested patient/doctor/facility/medication).
+3. **Pipeline entrypoint** — Ensure `run_document_intelligence.py` and job scripts **save** OCR and field-extraction outputs to the predictions dir so the annotator reads from predictions, not from ground-truth labels.
+4. **Field extraction input** — Until a NER model exists: either (a) derive fields from OCR with heuristics, or (b) for MVP, copy generator `labels/` into `predictions/fields/` so the annotator has something to review. Later: NER consumes OCR from predictions and writes real extractions.
+5. **Annotator** — Point annotator at **predictions**: prefer `predictions/fields/` as the source to display and edit; fall back to `labels/` if predictions missing. Continue writing corrections to `annotated/labels/`.
+6. **Data loading** — In `data_loading.py`, discover prediction paths (OCR and field files under `predictions_dir`) and expose them in the returned dict.
+7. **Local vs remote** — When adding DOCINT_DATA_SOURCE, branch in data_loading and save logic on `config["data_source"]` to read/write catalog or volume (same pattern as inventory's catalog vs CSV).
+8. **Make / README** — Document `make document_intelligence-generate-pdfs`, `make document_intelligence-run`; annotator run with same DOCINT_BASE_DIR so it sees documents + predictions + annotated.
 
 ---
 

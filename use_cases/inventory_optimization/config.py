@@ -77,6 +77,19 @@ def get_catalog_schema() -> str:
     return os.environ.get("INVENTORY_CATALOG_SCHEMA", _DEFAULT_CATALOG_SCHEMA)
 
 
+def get_mlflow_tracking_uri() -> str | None:
+    """
+    MLflow tracking URI when running locally; None on Databricks (use workspace default).
+    Override with MLFLOW_TRACKING_URI. Default when local: file://<repo>/data/local/mlruns
+    so that make mlflow-ui shows the same runs.
+    """
+    if os.environ.get("MLFLOW_TRACKING_URI"):
+        return os.environ["MLFLOW_TRACKING_URI"]
+    if is_running_on_databricks():
+        return None
+    return str(get_local_data_dir() / "mlruns")
+
+
 def get_config() -> dict:
     """
     Single config dict for the inventory pipeline.
@@ -98,4 +111,5 @@ def get_config() -> dict:
         "duckdb_medallion_schema": get_duckdb_medallion_schema(),
         "catalog_schema": get_catalog_schema(),
         "on_databricks": is_running_on_databricks(),
+        "mlflow_tracking_uri": get_mlflow_tracking_uri(),
     }

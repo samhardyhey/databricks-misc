@@ -26,6 +26,26 @@ def get_local_base_dir() -> Path:
     return Path(p).resolve()
 
 
+def get_generate_num_pdfs() -> int:
+    """Number of prescription PDFs to generate. Override with DOCINT_NUM_PDFS."""
+    raw = os.environ.get("DOCINT_NUM_PDFS", "10").strip()
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return 10
+
+
+def get_generate_seed() -> int | None:
+    """Random seed for reproducible generation. Override with DOCINT_SEED (empty = None)."""
+    raw = os.environ.get("DOCINT_SEED", "").strip()
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
+
+
 def get_config() -> dict:
     """
     Single config dict for the document intelligence pipeline.

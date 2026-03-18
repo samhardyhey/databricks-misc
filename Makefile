@@ -15,6 +15,9 @@ DBT_BIN := $(REPO_ROOT)/.venv/bin/dbt
 # Local data: output dirs (data/local is gitignored)
 DATA_LOCAL_DIR := $(REPO_ROOT)/data/local
 MEDALLION_DIR := $(REPO_ROOT)/data/healthcare_data_medallion
+# Local MLflow: same path as reco/inventory config so make mlflow-ui shows all logged models
+MLRUNS_DIR ?= $(REPO_ROOT)/data/local/mlruns
+export MLFLOW_TRACKING_URI ?= file://$(MLRUNS_DIR)
 
 # Prescription PDF generation: sensible defaults (override: make data-local-generate-pdfs DOC_INTEL_PDF_ARGS="-n 5 -s 42")
 DOC_INTEL_PDF_ARGS ?= -n 10
@@ -28,6 +31,7 @@ MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 .PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
 .PHONY: reco-data reco-run reco-install reco-item-sim-train reco-item-sim-apply reco-als-train reco-als-apply reco-app-run
 .PHONY: inventory-data inventory-run inventory-install inventory-writeoff-train inventory-writeoff-apply inventory-demand-train inventory-demand-apply inventory-replenishment-train inventory-replenishment-apply
+.PHONY: mlflow-ui
 .PHONY: marvelous-mlops-venv marvelous-mlops-fetch-medium marvelous-mlops-fetch-substack marvelous-mlops-fetch-youtube
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
 
@@ -41,6 +45,7 @@ help:
 	@echo "  make uv-activate          - Print activate command for .venv"
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
 	@echo "  make format [FMT_ARGS=.]  - Run autoflake, isort, black"
+	@echo "  make mlflow-ui            - Start MLflow UI (backend data/local/mlruns); open http://localhost:5000"
 	@echo ""
 	@echo "  Local (data generation / medallion):"
 	@echo "  make clean-local-data           - Remove data/local/, test_output/, prescription_pdfs, medallion target/logs (start again)"
@@ -77,10 +82,10 @@ help:
 	@echo "  make document-intelligence-run           - Run document intelligence pipeline over local prescription_pdfs/"
 	@echo ""
 	@echo "  Marvelous MLOps (separate venv; run marvelous-mlops-venv first):"
-	@echo "  make marvelous-mlops-venv             - Create .venv and install requirements in marvelous_mlops/"
-	@echo "  make marvelous-mlops-fetch-medium      - Fetch Medium articles"
-	@echo "  make marvelous-mlops-fetch-substack   - Fetch Substack posts"
-	@echo "  make marvelous-mlops-fetch-youtube    - Fetch YouTube transcripts"
+	@echo "  make marvelous-mlops-venv                 - Create .venv and install requirements in marvelous_mlops/"
+	@echo "  make marvelous-mlops-fetch-medium         - Fetch Medium articles"
+	@echo "  make marvelous-mlops-fetch-substack       - Fetch Substack posts"
+	@echo "  make marvelous-mlops-fetch-youtube        - Fetch YouTube transcripts"
 
 # --- Environment (databricks-misc): use uv if available, else python3/pip ---
 uv-venv:
@@ -101,6 +106,13 @@ uv-dev:
 
 uv-activate:
 	@echo "Run: source $(REPO_ROOT)/.venv/bin/activate"
+
+# --- Local MLflow UI (reco + inventory models logged to data/local/mlruns when MLFLOW_TRACKING_URI not set) ---
+mlflow-ui:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@mkdir -p $(MLRUNS_DIR)
+	cd $(REPO_ROOT) && $(PY) -m mlflow ui --backend-store-uri file://$(REPO_ROOT)/data/local/mlruns --host 0.0.0.0
+	@echo "MLflow UI: http://localhost:5000 (Ctrl+C to stop)"
 
 # --- Cleanup ---
 cleanup:
@@ -239,7 +251,7 @@ inventory-data: data-local-generate-quick
 
 inventory-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
-	@test -f $(DATA_LOCAL_DIR)/inventory.csv || (echo "Run: make inventory-data (or make data-local-generate-quick) first" && exit 1)
+	@test -f $(DATA_LOCAL_DIR)/inventory.csv -o -f $(DATA_LOCAL_DIR)/medallion.duckdb || (echo "Run: make inventory-data (or make data-local-generate-quick) and/or make data-local-dbt-run for DuckDB medallion" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/run_inventory.py
 	@echo "inventory run done."
 
