@@ -16,6 +16,7 @@ from utils.use_case_utils import (
 from utils.use_case_utils import get_duckdb_path as _get_duckdb_path
 from utils.use_case_utils import get_local_data_dir as _get_local_data_dir
 from utils.use_case_utils import get_local_data_source as _get_local_data_source
+from utils.use_case_utils import ensure_experiment_artifact_root as _ensure_experiment_artifact_root
 from utils.use_case_utils import get_mlflow_registry_uri as _get_mlflow_registry_uri
 from utils.use_case_utils import get_mlflow_tracking_uri, resolve_data_source
 
@@ -88,6 +89,15 @@ def apply_mlflow_config(config: dict | None = None) -> None:
     config: ignored (kept for API compatibility).
     """
     _apply_mlflow_config(config)
+
+
+def ensure_experiment_artifact_root(experiment_name: str) -> None:
+    """
+    Back-compat re-export for older training scripts that import from
+    `use_cases.recommendation_engine.config`.
+    """
+
+    _ensure_experiment_artifact_root(experiment_name)
 
 
 def get_config() -> dict:

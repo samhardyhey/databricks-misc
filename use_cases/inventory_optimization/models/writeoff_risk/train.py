@@ -19,6 +19,7 @@ from use_cases.inventory_optimization.config import (
     ensure_experiment_artifact_root,
     get_config,
 )
+from utils.mlflow.registry import set_latest_version_alias
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.writeoff_risk.core import (
     build_writeoff_risk_features,
@@ -86,7 +87,14 @@ def main() -> dict:
             }
         )
         mlflow.log_metrics(metrics)
-        mlflow.sklearn.log_model(model, "model")
+        mlflow.sklearn.log_model(
+            model,
+            "model",
+            registered_model_name="inventory_optimization-writeoff_risk",
+        )
+        set_latest_version_alias(
+            "inventory_optimization-writeoff_risk", alias="Champion"
+        )
     finally:
         mlflow.end_run()
 

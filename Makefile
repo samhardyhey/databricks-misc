@@ -26,6 +26,7 @@ MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
 .PHONY: help cleanup clean-local-data format
 .PHONY: document-intelligence-install document-intelligence-generate-pdfs document-intelligence-generate-data document-intelligence-ocr document-intelligence-field-extraction document-intelligence-run document-intelligence-app-run
+.PHONY: document-intelligence-smoke
 .PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
 .PHONY: reco-data reco-run reco-install reco-item-sim-train reco-item-sim-apply reco-als-train reco-als-apply reco-app-run
 .PHONY: inventory-data inventory-run inventory-install inventory-writeoff-train inventory-writeoff-apply inventory-demand-train inventory-demand-apply inventory-replenishment-train inventory-replenishment-apply
@@ -82,6 +83,7 @@ help:
 	@echo "  make document-intelligence-field-extraction    - Job 3: field extraction → predictions/fields/"
 	@echo "  make document-intelligence-run                 - Full pipeline (OCR + field extraction) over local data/local/prescription_pdfs/"
 	@echo "  make document-intelligence-app-run             - Run Streamlit annotator (review predictions) locally"
+	@echo "  make document-intelligence-smoke             - Local smoke: generate → ocr → fields → start Streamlit briefly"
 	@echo "  make document-intelligence-generate-pdfs       - Alias: generate PDFs via raw script (uses generator defaults)"
 	@echo ""
 	@echo "  Marvelous MLOps (separate venv; run marvelous-mlops-venv first):"
@@ -225,6 +227,11 @@ document-intelligence-app-run:
 	@test -d $(REPO_ROOT)/$(DOC_INTEL_PDF_OUTPUT)/predictions/fields || (echo "Run: make document-intelligence-run (or generate-data + ocr + field-extraction) first so predictions/fields/ exists" && exit 1)
 	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/document_intelligence/annotator/app.py
 	@echo "document-intelligence annotator app (Streamlit)"
+
+document-intelligence-smoke:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
+	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local $(PY) use_cases/document_intelligence/run_document_intelligence_smoke.py
+	@echo "document-intelligence smoke done"
 
 # Alias: generate PDFs via raw generator script (alternative to job 1)
 document-intelligence-generate-pdfs: data-local-generate-pdfs

@@ -17,6 +17,8 @@ from implicit.als import AlternatingLeastSquares  # type: ignore[import-untyped]
 from loguru import logger
 from scipy.sparse import csr_matrix
 
+from utils.mlflow.registry import set_latest_version_alias
+
 
 class ALSRecoWrapper(mlflow.pyfunc.PythonModel):
     """MLflow pyfunc wrapper: predict expects DataFrame with user_code (and optional n_items); returns recommendations."""
@@ -105,7 +107,10 @@ def train_als(
                 artifact_path=artifact_path,
                 python_model=ALSRecoWrapper(),
                 artifacts={"als_model": str(art_path)},
-                registered_model_name=None,
+                registered_model_name="recommendation_engine-als",
+            )
+            set_latest_version_alias(
+                "recommendation_engine-als", alias="Champion"
             )
         logger.info("Logged ALS model and metrics to MLflow")
 

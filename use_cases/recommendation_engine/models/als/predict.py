@@ -1,8 +1,8 @@
 """
 Batch apply ALS collaborative filtering model for a set of users.
 
-Uses the ALSRecoWrapper pyfunc logged by train_als. Expects MLflow model URI
-(env ALS_MODEL_URI, default models:/RECO_als/Production). Requires [reco] extra. Run: make reco-install.
+Uses the ALSRecoWrapper pyfunc logged by train_als.
+If `ALS_MODEL_URI` is not set, defaults to `models:/recommendation_engine-als@Champion`.
 """
 
 import os
@@ -22,11 +22,15 @@ def _load_als_model(model_uri: Optional[str] = None):
     on Databricks jobs can set ALS_MODEL_URI to a registry URI (e.g. models:/RECO_als/Production).
     Returns None if the URI is not set or load fails.
     """
-    uri = model_uri or os.environ.get("ALS_MODEL_URI")
+    uri = (
+        model_uri
+        or os.environ.get("ALS_MODEL_URI")
+        or "models:/recommendation_engine-als@Champion"
+    )
     if not uri:
         logger.info(
             "ALS predict skipped: ALS_MODEL_URI is not set; set it to a model URI "
-            "(e.g. runs:/<run_id>/model locally or models:/RECO_als/Production on Databricks)."
+            "(e.g. runs:/<run_id>/model locally or models:/recommendation_engine-als@Champion on Databricks)."
         )
         return None
     logger.info("Loading ALS model from {}", uri)

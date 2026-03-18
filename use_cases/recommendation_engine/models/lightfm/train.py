@@ -15,6 +15,7 @@ from use_cases.recommendation_engine.config import (
     ensure_experiment_artifact_root,
     get_config,
 )
+from utils.mlflow.registry import set_latest_version_alias
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
 from use_cases.recommendation_engine.models.lightfm.core import (
     LightFMRecoWrapper,
@@ -81,8 +82,9 @@ def main() -> dict:
         )
         # Log MLflow pyfunc so apply can load via `runs:/...`.
         apply_mlflow_config(cfg)
-        ensure_experiment_artifact_root("recommendation_engine")
-        mlflow.set_experiment("recommendation_engine")
+        experiment = "recommendation_engine-lightfm"
+        ensure_experiment_artifact_root(experiment)
+        mlflow.set_experiment(experiment)
 
         run = mlflow.start_run(run_name="lightfm_train")
         run_id = run.info.run_id
@@ -111,7 +113,10 @@ def main() -> dict:
                     artifact_path="lightfm_model",
                     python_model=LightFMRecoWrapper(),
                     artifacts={"lightfm_artifacts": payload_path},
-                    registered_model_name=None,
+                    registered_model_name="recommendation_engine-lightfm",
+                )
+                set_latest_version_alias(
+                    "recommendation_engine-lightfm", alias="Champion"
                 )
         finally:
             mlflow.end_run()

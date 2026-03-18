@@ -59,7 +59,8 @@ def main():
             )
 
             apply_mlflow_config()
-            experiment = "inventory_optimization-replenishment_policy_apply"
+            # Apply step metrics are still for the same replenishment policy model.
+            experiment = "inventory_optimization-replenishment_policy"
             ensure_experiment_artifact_root(experiment)
             mlflow.set_experiment(experiment)
             with mlflow.start_run(run_name="replenishment_policy_apply"):

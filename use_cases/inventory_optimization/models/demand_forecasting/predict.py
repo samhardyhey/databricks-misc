@@ -47,7 +47,7 @@ def main():
             target_column="quantity",
             time_column="order_date",
             group_by=None,
-            experiment_name="inventory_optimization-demand_forecast_apply",
+            experiment_name="inventory_optimization-demand_forecast",
         )
         logger.info(
             "Demand forecasting apply completed; comparison summary keys: {}",

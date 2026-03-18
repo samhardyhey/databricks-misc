@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Literal
 
 from utils.env_utils import is_running_on_databricks
+from utils.use_case_utils import apply_mlflow_config as _apply_mlflow_config
+from utils.use_case_utils import ensure_experiment_artifact_root as _ensure_experiment_artifact_root
 from utils.use_case_utils import get_catalog_schema as _get_catalog_schema
 from utils.use_case_utils import (
     get_duckdb_medallion_schema as _get_duckdb_medallion_schema,
@@ -97,3 +99,21 @@ def get_config() -> dict:
         "mlflow_tracking_uri": get_mlflow_tracking_uri(),
         "mlflow_registry_uri": get_mlflow_registry_uri(),
     }
+
+
+def apply_mlflow_config(config: dict | None = None) -> None:
+    """
+    Back-compat wrapper for older callers importing from
+    `use_cases.inventory_optimization.config`.
+    """
+
+    _apply_mlflow_config(config)
+
+
+def ensure_experiment_artifact_root(experiment_name: str) -> None:
+    """
+    Back-compat wrapper for older callers importing from
+    `use_cases.inventory_optimization.config`.
+    """
+
+    _ensure_experiment_artifact_root(experiment_name)

@@ -541,162 +541,6 @@ In practice, each domain-scoped Genie Space should only be configured with the s
   - tabular results (retrieved by statement/statement_id) displayed as a DataFrame
 - Optionally collect feedback with `st.feedback` and send it back to Genie (`w.genie.send_message_feedback`).
 
-<!--
-### Databricks Architecture
-
-**Each sub-project gets own use-case** (bundle under use-case):
-
-```
-use_cases/ranging_consolidation/
-├── jobs/
-│   └── ranging_optimizer.py            # Optimization or clustering
-│       └── Output: gold_range_recommendations (SKU, DC, action, cost_impact)
-├── resources/
-└── databricks.yml
-```
-
-```
-use_cases/market_intelligence/
-├── jobs/
-│   ├── 1_scrape_competitors.py          # Web scraping
-│   │   └── Scrape competitor sites daily
-│   │   └── Write to bronze_competitor_data
-│   ├── 2_price_tracking.py             # Change detection
-│   │   └── Compare today vs yesterday
-│   │   └── Identify significant price changes
-│   └── 3_weekly_summary.py             # LLM summarization
-│       └── Generate weekly brief with key insights
-│       └── Store in gold_market_intelligence_reports
-├── resources/
-└── databricks.yml
-```
-
-```
-use_cases/franchise_analytics/
-├── jobs/
-│   ├── 1_store_clustering.py           # K-means clustering
-│   │   └── Group stores by similarity
-│   │   └── Output: gold_store_clusters
-│   ├── 2_promo_impact.py               # Uplift modeling
-│   │   └── Measure promo effectiveness per cluster
-│   │   └── Output: gold_promo_impact
-│   └── 3_recommendations.py            # Product recommendations
-│       └── Reuse recommendation engine models
-│       └── Output: gold_store_product_recs
-├── resources/
-└── databricks.yml
-```
-
-**Genie + Streamlit layer** (UI / orchestration):
-```
-use_cases/genie_insights_chat/
-├── app/
-│   └── app.py                               # Streamlit chat UI (select domain -> use domain Genie Space)
-├── app/requirements.txt
-└── bundles/app/databricks.yml              # Databricks Apps bundle for hosting
-```
-
-**Notes**:
-- Genie Spaces are configured in Databricks (Knowledge Store: curated tables, KPIs, synonyms, and trusted SQL expressions).
-- The Streamlit app is the “glue” code: it switches spaces by domain and renders attachments + tabular results.
-
-**Application**:
-- Databricks SQL dashboards for each sub-project (built on the shared silver/gold model outputs)
-- Optional: embed dashboard deep-links inside the Streamlit chat experience
-- Genie chat (Streamlit + domain-specific Genie Spaces) for ad-hoc questions and explainability
-- Weekly automated reports (email/Slack integration)
-
-**Data Pipeline** (dbt medallion):
-```
-data/healthcare_data_medallion/                # EXTEND existing dbt project
-├── bronze/
-│   ├── bronze_warehouse_costs.sql             # NEW: DC/SKU costs
-│   ├── bronze_competitor_products.sql         # NEW: Scraped competitor data
-│   └── bronze_store_sales.sql                 # NEW: Store/franchise sales
-│
-├── silver/
-│   ├── silver_warehouse_costs.sql             # NEW: Validated cost data
-│   ├── silver_competitor_products.sql         # NEW: Cleansed competitor data
-│   └── silver_store_sales.sql                 # NEW: Validated store sales
-│
-└── gold/
-    ├── gold_range_recommendations.sql         # NEW: SKU ranging recommendations
-    ├── gold_competitor_price_history.sql      # NEW: Competitor pricing trends
-    ├── gold_store_clusters.sql                # NEW: Store similarity clusters
-    ├── gold_promo_impact.sql                  # NEW: Promotion effectiveness
-    └── gold_store_product_recs.sql            # NEW: Store-level recommendations
-```
-
-**File Structure**:
-```
-databricks-misc/
-├── data/
-│   ├── healthcare_data_generator/
-│   │   └── src/
-│   │       ├── generate_ranging_data.py        # NEW
-│   │       └── generate_franchise_data.py      # NEW
-│   │
-│   └── healthcare_data_medallion/              # EXTEND existing dbt project
-│       └── src/models/
-│           ├── bronze/
-│           │   ├── bronze_warehouse_costs.sql  # NEW
-│           │   ├── bronze_competitor_products.sql # NEW
-│           │   └── bronze_store_sales.sql     # NEW
-│           ├── silver/
-│           │   ├── silver_warehouse_costs.sql  # NEW
-│           │   ├── silver_competitor_products.sql # NEW
-│           │   └── silver_store_sales.sql     # NEW
-│           └── gold/
-│               ├── gold_range_recommendations.sql # NEW
-│               ├── gold_competitor_price_history.sql # NEW
-│               ├── gold_store_clusters.sql    # NEW
-│               ├── gold_promo_impact.sql      # NEW
-│               └── gold_store_product_recs.sql # NEW
-│
-└── use_cases/
-    ├── ranging_consolidation/                  # NEW MODULE
-    │   ├── README.md
-    │   ├── databricks.yml
-    │   ├── resources/
-    │   ├── requirements.txt                   # scipy, sklearn
-    │   ├── ranging_optimizer.py
-    │   └── jobs/
-    │       └── ranging_optimizer.py
-    │
-    ├── market_intelligence/                    # NEW MODULE
-    │   ├── README.md
-    │   ├── databricks.yml
-    │   ├── resources/
-    │   ├── requirements.txt                   # beautifulsoup4, scrapy, openai
-    │   ├── competitor_scraper.py
-    │   ├── summarizer.py
-    │   └── jobs/
-    │       ├── 1_scrape_competitors.py
-    │       ├── 2_price_tracking.py
-    │       └── 3_weekly_summary.py
-    │
-    ├── franchise_analytics/                    # NEW MODULE
-        ├── README.md
-        ├── databricks.yml
-        ├── resources/
-        ├── requirements.txt                   # sklearn, causalml
-        ├── store_clustering.py
-        ├── promo_impact.py
-        ├── evaluation.py
-        └── jobs/
-            ├── 1_store_clustering.py
-            ├── 2_promo_impact.py
-            └── 3_recommendations.py
-    └── genie_insights_chat/                   # Databricks App: Streamlit Genie chat UI
-        ├── app/
-        │   └── app.py
-        ├── app/requirements.txt
-        └── bundles/app/databricks.yml        # hosts the Streamlit app on Databricks
-```
--->
-
-### Databricks Architecture (Genie Spaces + BI dashboards)
-
 **Target “product shape”** (as requested):
 - 3x domain Genie Spaces (`healthcare_insights`, `animal_care_insights`, `twc_franchise_insights`)
 - 1x Streamlit router app (hosted as a Databricks App) that switches which Genie Space is used based on domain
@@ -712,7 +556,7 @@ databricks-misc/
 
 **Example logical structure**:
 ```
-use_cases/genie_insights_router/
+use_cases/ai_powered_insights/
 ├── app/
 │   └── app.py                               # router: select domain -> call selected Genie Space
 ├── app/requirements.txt
@@ -723,6 +567,41 @@ use_cases/genie_insights_router/
 - Healthcare dashboard: reads from `gold_range_recommendations`
 - Animal Care dashboard: reads from `gold_competitor_price_history`
 - TWC dashboard: reads from `gold_promo_impact` and `gold_store_product_recs`
+
+### ⚠️ Technical Limits & Considerations
+
+**The "Cross-Domain" Gap**:
+- If a user in the Healthcare space asks a question about Animal Care, the app may fail or return an irrelevant answer.
+- Recommendation (Streamlit UI): include a clear “Capabilities” list for the active domain so users know the boundaries.
+  - Add a capabilities list for each selected domain.
+  - Ensure the current domain is actively flagged/state-maintained (persist the `active_domain` in `st.session_state` across reruns).
+
+**Latency**:
+- `start_conversation_and_wait_for_answer` is synchronous and can take ~10–30 seconds.
+- Recommendation: show a spinner/status (e.g. `st.status` during conversation start and SQL generation) to manage user expectations.
+
+**API Rate Limits**:
+- Genie currently has a concurrency limit (often ~5–10 requests per minute depending on workspace tier).
+- Recommendation: handle 429s gracefully (retry with backoff + friendly error message).
+
+**Statement Execution Logic**:
+- When rendering tabular results, `statement_execution` results can expire.
+- Recommendation: do not rely on long-lived “download later” links; render immediate downloads from the retrieved DataFrame, and provide a “try again” fallback if needed.
+
+### 🛠 Suggested Enhancements
+
+**Thread Persistence**:
+- Use `conversation_id` (or `thread_id`) mapped to the Streamlit session (`st.session_state`) so users can ask follow-ups without losing context (e.g. “Now show me that by region”).
+
+**Hybrid UI (Deep Linking)**:
+- After Genie identifies a high-level analytics intent, provide a “View full dashboard” deep-link for a full-screen BI experience.
+
+**Supervisor / Auto-routing (optional)**:
+- Replace manual domain selection with a lightweight supervisor classifier:
+  - Use a Databricks-hosted foundational model (Model Serving) to predict domain from the user prompt.
+  - If confidence is low, fall back to the manual domain selector.
+
+Implementation details live in `use_cases/ai_powered_insights/technical_design.md`.
 
 ---
 

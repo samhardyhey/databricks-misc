@@ -25,11 +25,15 @@ def _load_item_similarity_model(model_uri: Optional[str] = None):
     Load item_similarity model from MLflow. Locally set ITEM_SIMILARITY_MODEL_URI to
     a runs:/ or file:// URI; on Databricks jobs can use a registry URI. Returns None if not set.
     """
-    uri = model_uri or os.environ.get("ITEM_SIMILARITY_MODEL_URI")
+    uri = (
+        model_uri
+        or os.environ.get("ITEM_SIMILARITY_MODEL_URI")
+        or "models:/recommendation_engine-item_similarity@Champion"
+    )
     if not uri:
         logger.info(
             "Item_similarity predict skipped: ITEM_SIMILARITY_MODEL_URI is not set; set it to a model URI "
-            "(e.g. runs:/<run_id>/model locally or models:/RECO_item_similarity/Production on Databricks)."
+            "(e.g. runs:/<run_id>/model locally or models:/recommendation_engine-item_similarity@Champion on Databricks)."
         )
         return None
     logger.info("Loading item_similarity model from {}", uri)
