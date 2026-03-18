@@ -11,7 +11,11 @@ Intended for:
 
 from loguru import logger
 
-from use_cases.inventory_optimization.config import get_config
+from use_cases.inventory_optimization.config import (
+    apply_mlflow_config,
+    ensure_experiment_artifact_root,
+    get_config,
+)
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.evaluation import replenishment_summary
 from use_cases.inventory_optimization.models.replenishment.core import (
@@ -50,6 +54,20 @@ def main():
         )
         summary = replenishment_summary(recommendations)
         logger.info("Replenishment train summary: {}", summary)
+
+        # MLflow logging so the policy computation shows up in the UI.
+        try:
+            import mlflow
+
+            apply_mlflow_config()
+            experiment = "inventory_optimization-replenishment_policy"
+            ensure_experiment_artifact_root(experiment)
+            mlflow.set_experiment(experiment)
+            with mlflow.start_run(run_name="replenishment_policy_train"):
+                mlflow.log_params({"lead_time_days": 7.0, "service_level": 0.95})
+                mlflow.log_metrics(summary)
+        except Exception as e:
+            logger.debug("MLflow logging skipped: {}", e)
     finally:
         if spark is not None:
             spark.stop()

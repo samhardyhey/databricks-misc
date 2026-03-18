@@ -5,7 +5,7 @@ import pandas as pd
 import requests
 import streamlit as st
 
-from use_cases.env_utils import is_running_on_databricks
+from utils.env_utils import is_running_on_databricks
 
 
 def _call_reco_endpoint(

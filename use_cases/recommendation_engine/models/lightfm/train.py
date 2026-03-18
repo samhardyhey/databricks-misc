@@ -4,14 +4,22 @@ Train LightFM-based recommender for the recommendation engine.
 Uses interactions from the existing loader and logs metrics / params via loguru.
 """
 
+import tempfile
+
+import joblib
+import mlflow
 from loguru import logger
 
-from use_cases.recommendation_engine.config import get_config
-from use_cases.recommendation_engine.models.data_loading import load_reco_data
-from use_cases.recommendation_engine.models.feature_engineering import (
-    build_interaction_matrix,
+from use_cases.recommendation_engine.config import (
+    apply_mlflow_config,
+    ensure_experiment_artifact_root,
+    get_config,
 )
-from use_cases.recommendation_engine.models.lightfm.core import train_lightfm
+from use_cases.recommendation_engine.models.data_loading import load_reco_data
+from use_cases.recommendation_engine.models.lightfm.core import (
+    LightFMRecoWrapper,
+    train_lightfm,
+)
 
 
 def main() -> dict:
@@ -38,22 +46,27 @@ def main() -> dict:
             )
             return {}
 
-        # Use the same encoded user/item codes as ALS for consistency
-        u, i, w, user_map, item_map = build_interaction_matrix(interactions)
-        # Reconstruct a DataFrame in (customer_id, product_id) space for LightFM helpers
-        inv_user = {v: k for k, v in user_map.items()}
-        inv_item = {v: k for k, v in item_map.items()}
-        df = (
-            {
-                "customer_id": inv_user[int(uu)],
-                "product_id": inv_item[int(ii)],
-                "weight": float(ww),
-            }
-            for uu, ii, ww in zip(u, i, w)
-        )
-        import pandas as pd
+        # Convert interactions into the (customer_id, product_id, weight) format
+        # expected by LightFM core helpers.
+        df = interactions.copy()
+        if "action_type" in df.columns:
+            df["weight"] = (
+                df["action_type"]
+                .map(
+                    {"purchased": 1.0, "added": 0.5, "viewed": 0.2, "searched": 0.1}
+                )
+                .fillna(0.1)
+                .astype(float)
+            )
+        else:
+            df["weight"] = 1.0
 
-        interactions_df = pd.DataFrame(df)
+        interactions_df = df[
+            ["customer_id", "product_id", "weight"]
+        ].copy()
+        # LightFM core assumes string ids for mapping consistency.
+        interactions_df["customer_id"] = interactions_df["customer_id"].astype(str)
+        interactions_df["product_id"] = interactions_df["product_id"].astype(str)
 
         artifacts = train_lightfm(
             interactions_df,
@@ -70,9 +83,48 @@ def main() -> dict:
             len(artifacts.user_id_map),
             len(artifacts.item_id_map),
         )
+        # Log MLflow pyfunc so apply can load via `runs:/...`.
+        apply_mlflow_config(cfg)
+        ensure_experiment_artifact_root("recommendation_engine")
+        mlflow.set_experiment("recommendation_engine")
+
+        run = mlflow.start_run(run_name="lightfm_train")
+        run_id = run.info.run_id
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                payload_path = f"{tmp}/lightfm_artifacts.joblib"
+                joblib.dump(
+                    {
+                        "model": artifacts.model,
+                        "user_id_map": artifacts.user_id_map,
+                        "item_id_map": artifacts.item_id_map,
+                        "n_items": len(artifacts.item_id_map),
+                    },
+                    payload_path,
+                )
+                mlflow.log_params(
+                    {
+                        "no_components": 30,
+                        "loss": "warp",
+                        "epochs": 20,
+                        "n_users": len(artifacts.user_id_map),
+                        "n_items": len(artifacts.item_id_map),
+                    }
+                )
+                mlflow.pyfunc.log_model(
+                    artifact_path="lightfm_model",
+                    python_model=LightFMRecoWrapper(),
+                    artifacts={"lightfm_artifacts": payload_path},
+                    registered_model_name=None,
+                )
+        finally:
+            mlflow.end_run()
+
         return {
             "n_users": len(artifacts.user_id_map),
             "n_items": len(artifacts.item_id_map),
+            "run_id": run_id,
+            "model_uri": f"runs:/{run_id}/lightfm_model",
         }
     finally:
         if spark is not None:

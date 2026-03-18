@@ -1,16 +1,17 @@
 """
-Wipe the local MLflow backend and artifacts (experiments, runs, registry, model artifacts).
+Wipe the local MLflow backend and artifacts.
 
-Uses use_cases.mlflow.config so the same paths as training/UI are removed. Safe only for
-local SQLite backend; no-op on Databricks. Run: python -m use_cases.mlflow.wipe
+Hoisted from `use_cases/mlflow/wipe.py`.
 """
+
+from __future__ import annotations
 
 import shutil
 import sys
 
 
 def main() -> int:
-    from use_cases.mlflow.config import get_local_data_dir, get_mlflow_tracking_uri
+    from utils.mlflow.config import get_local_data_dir, get_mlflow_tracking_uri
 
     if get_mlflow_tracking_uri() is None:
         print(
@@ -20,7 +21,7 @@ def main() -> int:
         return 1
 
     root = get_local_data_dir()
-    removed = []
+    removed: list[str] = []
 
     db_file = root / "mlflow.db"
     if db_file.exists():
@@ -47,3 +48,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

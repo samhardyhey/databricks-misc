@@ -13,7 +13,7 @@ import mlflow
 import mlflow.pyfunc
 import numpy as np
 import pandas as pd
-from implicit.als import AlternatingLeastSquares
+from implicit.als import AlternatingLeastSquares  # type: ignore[import-untyped]
 from loguru import logger
 from scipy.sparse import csr_matrix
 
@@ -43,7 +43,7 @@ class ALSRecoWrapper(mlflow.pyfunc.PythonModel):
                 userid=u,
                 user_items=user_row,
                 N=n_items,
-                filter_already_liked=True,
+                filter_already_liked_items=True,
             )
             out.append(
                 {
@@ -86,9 +86,8 @@ def train_als(
     }
 
     if log_to_mlflow:
-        from use_cases.recommendation_engine.config import apply_mlflow_config
-
-        apply_mlflow_config()
+        # Expect caller to have already called apply_mlflow_config() and/or started a run.
+        # If no run is active, start one so the model is still logged.
         if mlflow.active_run() is None:
             mlflow.start_run(run_name="reco_als")
         with tempfile.TemporaryDirectory() as tmp:
@@ -126,6 +125,6 @@ def recommend_als(
         userid=user_code,
         user_items=user_row,
         N=n_items,
-        filter_already_liked=filter_already_liked,
+        filter_already_liked_items=filter_already_liked,
     )
     return list(zip(item_ids, scores.astype(float)))

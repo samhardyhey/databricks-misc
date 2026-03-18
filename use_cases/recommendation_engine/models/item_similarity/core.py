@@ -1,14 +1,18 @@
 """
 Core item-to-item similarity utilities (sklearn NearestNeighbors, cosine).
 
-Moved here from use_cases/recommendation_engine/item_similarity.py so that
-all model-specific code for item_similarity lives under models/item_similarity/.
+All model-specific code for item_similarity lives under models/item_similarity/.
 """
 
+from __future__ import annotations
+
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 from sklearn.preprocessing import StandardScaler
+
+import mlflow.pyfunc
 
 
 def train_item_similarity(
@@ -66,3 +70,55 @@ def recommend_similar_items_batch(
         )
         for pid in query_product_ids
     }
+
+
+class ItemSimilarityRecoWrapper(mlflow.pyfunc.PythonModel):
+    """
+    MLflow pyfunc wrapper for item_similarity.
+
+    Expects model_input with:
+      - product_id (str)
+      - optional k (int) per row (falls back to self.k)
+    Returns a DataFrame with:
+      - product_id
+      - similar_product_id
+      - similarity_score
+      - rank
+    """
+
+    def __init__(self, k: int = 10) -> None:
+        self.k = k
+
+    def load_context(self, context) -> None:
+        payload_path = context.artifacts["item_similarity"]
+        payload = joblib.load(payload_path)
+        self.nn = payload["nn"]
+        self.scaler = payload["scaler"]
+        self.product_features = payload["product_features"]
+        self.product_ids = payload["product_ids"]
+
+    def predict(self, context, model_input: pd.DataFrame) -> pd.DataFrame:
+        if "product_id" not in model_input.columns:
+            raise ValueError("model_input must include column `product_id`")
+
+        k = self.k
+        if "k" in model_input.columns and len(model_input) > 0:
+            # k is expected to be constant across rows for smoke testing.
+            k = int(model_input["k"].iloc[0])
+
+        query_product_ids = model_input["product_id"].tolist()
+        rows: list[dict] = []
+        for pid in query_product_ids:
+            sim_list = recommend_similar_items(
+                self.nn, self.scaler, self.product_ids, self.product_features, pid, k=k
+            )
+            for rank, (sim_pid, score) in enumerate(sim_list, start=1):
+                rows.append(
+                    {
+                        "product_id": pid,
+                        "similar_product_id": sim_pid,
+                        "similarity_score": float(score),
+                        "rank": rank,
+                    }
+                )
+        return pd.DataFrame(rows)

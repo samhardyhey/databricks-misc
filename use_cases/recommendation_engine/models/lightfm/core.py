@@ -11,8 +11,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+import joblib
 import numpy as np
 import pandas as pd
+import mlflow.pyfunc
 from lightfm import LightFM
 from lightfm.data import Dataset
 from loguru import logger
@@ -26,6 +28,63 @@ class LightFMArtifacts:
     item_id_map: dict[str, int]
     user_feature_map: Optional[dict[str, int]] = None
     item_feature_map: Optional[dict[str, int]] = None
+
+
+class LightFMRecoWrapper(mlflow.pyfunc.PythonModel):
+    """
+    MLflow pyfunc wrapper for LightFM recommendations.
+
+    Input (model_input DataFrame):
+      - customer_id (str)
+      - optional k (int) (falls back to self.k)
+
+    Output DataFrame:
+      - customer_id
+      - product_id
+      - score
+      - rank
+    """
+
+    def __init__(self, k: int = 10) -> None:
+        self.k = int(k)
+
+    def load_context(self, context) -> None:
+        payload = joblib.load(context.artifacts["lightfm_artifacts"])
+        self.model = payload["model"]
+        self.user_id_map = payload["user_id_map"]
+        self.item_id_map = payload["item_id_map"]
+        self.n_items = int(payload["n_items"])
+
+    def predict(self, context, model_input: pd.DataFrame) -> pd.DataFrame:
+        if "customer_id" not in model_input.columns:
+            raise ValueError("model_input must include column `customer_id`")
+
+        k = self.k
+        if "k" in model_input.columns and len(model_input) > 0:
+            k = int(model_input["k"].iloc[0])
+
+        inv_item_map = {v: k for k, v in self.item_id_map.items()}
+
+        user_ids = model_input["customer_id"].astype(str).tolist()
+        rows: list[dict] = []
+        for uid in user_ids:
+            if uid not in self.user_id_map:
+                continue
+            internal_u = int(self.user_id_map[uid])
+            scores = self.model.predict(
+                internal_u, np.arange(self.n_items, dtype=np.int32)
+            )
+            topk = np.argsort(-scores)[:k]
+            for rank, item_idx in enumerate(topk, start=1):
+                rows.append(
+                    {
+                        "customer_id": uid,
+                        "product_id": inv_item_map[int(item_idx)],
+                        "score": float(scores[int(item_idx)]),
+                        "rank": rank,
+                    }
+                )
+        return pd.DataFrame(rows)
 
 
 def build_lightfm_dataset(

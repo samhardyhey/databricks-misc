@@ -56,8 +56,9 @@ def main():
         import mlflow.sklearn
 
         apply_mlflow_config()
-        ensure_experiment_artifact_root("inventory_writeoff_risk")
-        mlflow.set_experiment("inventory_writeoff_risk")
+        experiment = "inventory_optimization-writeoff_risk"
+        ensure_experiment_artifact_root(experiment)
+        mlflow.set_experiment(experiment)
         with mlflow.start_run(run_name="writeoff_risk_classifier"):
             mlflow.log_params(
                 {

@@ -90,8 +90,8 @@ def main():
         "-o",
         "--output-dir",
         type=str,
-        default="prescription_pdfs",
-        help="Output directory for PDF files (default: prescription_pdfs)",
+        default="data/local/prescription_pdfs",
+        help="Output directory for PDF files (default: data/local/prescription_pdfs)",
     )
     parser.add_argument(
         "-s",

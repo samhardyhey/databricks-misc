@@ -21,7 +21,7 @@ from typing import Optional
 import pandas as pd
 from loguru import logger
 
-from use_cases.env_utils import is_running_on_databricks
+from utils.env_utils import is_running_on_databricks
 from use_cases.inventory_optimization.config import get_config
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.writeoff_risk.core import (
@@ -40,15 +40,6 @@ def _load_model(model_uri: Optional[str] = None):
     no registry model has been configured yet, while still allowing Databricks
     jobs to supply a concrete URI.
     """
-    try:
-        import mlflow  # type: ignore[import-not-found]
-        import mlflow.sklearn  # noqa: F401
-    except ImportError:
-        logger.info(
-            "Write-off risk predict skipped: mlflow is not installed; no model can be loaded."
-        )
-        return None
-
     uri = model_uri or os.environ.get("WRITEOFF_RISK_MODEL_URI")
     if not uri:
         logger.info(
@@ -57,6 +48,8 @@ def _load_model(model_uri: Optional[str] = None):
         )
         return None
     logger.info("Loading write-off risk model from {}", uri)
+    import mlflow
+    import mlflow.sklearn  # noqa: F401
     return mlflow.sklearn.load_model(uri)
 
 

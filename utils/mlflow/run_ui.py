@@ -1,20 +1,22 @@
 """
-Start the MLflow UI using the same config as local training (use_cases.mlflow.config).
+Start the MLflow UI for local use (SQLite backend + file artifacts).
 
-Backend and artifact root switch on environment: local -> SQLite in data/local;
-Databricks -> not supported (exit with message). Run: python -m use_cases.mlflow.run_ui
+Hoisted from `use_cases/mlflow/run_ui.py`.
 """
+
+from __future__ import annotations
 
 import subprocess
 import sys
 from pathlib import Path
 
-# Repo root for cwd when launching mlflow ui (use_cases/mlflow/run_ui.py -> parents[2])
+
+# Repo root for cwd when launching mlflow ui (utils/mlflow/run_ui.py -> parents[2])
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def main() -> int:
-    from use_cases.mlflow.config import (
+    from utils.mlflow.config import (
         get_local_data_dir,
         get_mlflow_artifact_root,
         get_mlflow_tracking_uri,
@@ -57,3 +59,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

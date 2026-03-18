@@ -17,7 +17,7 @@
 **Business Value**: ~$4.9m p.a. | Enterprise-wide (Healthcare, MedTech, Animal Care)
 **Use Case**: Recommend similar products and auto-substitutions to reduce sales leakage and increase margins
 **Current Status**: ✅ **Partial** — Item similarity, ALS, LightFM, ranker implemented under `models/`; DAB jobs and endpoints in place.
-**Local dev**: Develop locally (data gen, training, saving). Optional full-pipeline entrypoint `models/run_reco.py` runs locally (CSV) or on Databricks; per-model scripts (`models/<name>/train.py`, `predict.py`) and Make targets are the main surface. Data source via config.
+**Local dev**: Develop locally (data gen, training, saving). Optional full-pipeline entrypoint `models/run_reco_smoke.py` runs locally (CSV) or on Databricks; per-model scripts (`models/<name>/train.py`, `predict.py`) and Make targets are the main surface. Data source via config.
 
 ### Data Requirements
 
@@ -81,7 +81,7 @@ data/healthcare_data_medallion/
 ```
 
 **Training Workflow** (scheduled weekly; DAB bundle under use-case):
-- Jobs live in `use_cases/recommendation_engine/bundles/job/resources/` (retrain_jobs.yml, batch_apply_jobs.yml). Each model (item_similarity, als, lightfm, ranker) has retrain and batch-apply jobs; entrypoints are `models/<name>/train.py` and `models/<name>/predict.py`. Optional full-pipeline entrypoint: `models/run_reco.py`. Serving endpoints in `bundles/serving/resources/reco_endpoints.yml`.
+- Jobs live in `use_cases/recommendation_engine/bundles/job/resources/` (retrain_jobs.yml, batch_apply_jobs.yml). Each model (item_similarity, als, lightfm, ranker) has retrain and batch-apply jobs; entrypoints are `models/<name>/train.py` and `models/<name>/predict.py`. Optional full-pipeline entrypoint: `models/run_reco_smoke.py`. Serving endpoints in `bundles/serving/resources/reco_endpoints.yml`.
 
 **Serving Endpoint** (real-time API):
 - Databricks Model Serving endpoint: `recommendation-engine-prod`
@@ -120,7 +120,7 @@ use_cases/recommendation_engine/
 │   ├── serving/                # databricks.yml; resources/reco_endpoints.yml
 │   └── app/                    # databricks.yml; Streamlit app bundle
 ├── models/                     # Per-model: core + train + predict
-│   ├── run_reco.py             # Full-pipeline entrypoint (used by DAB retrain job for item_sim + ALS + ranker)
+│   ├── run_reco_smoke.py       # Full-pipeline entrypoint (used by DAB retrain job for item_sim + ALS + ranker)
 │   ├── data_loading.py, evaluation.py, feature_engineering.py
 │   ├── item_similarity/        # core.py, train.py, predict.py
 │   ├── als/                    # core.py, train.py, predict.py
@@ -176,7 +176,7 @@ use_cases/recommendation_engine/
 
 ### Databricks Architecture
 
-**Training Workflow** (scheduled weekly; DAB bundle under use-case): Jobs in `use_cases/inventory_optimization/bundles/job/resources/` (retrain_jobs.yml, batch_apply_jobs.yml). DAB tasks invoke `jobs/1_demand_forecasting.py`, `jobs/2_writeoff_risk_model.py`, `jobs/3_replenishment_optimization.py`, which use code under `models/demand_forecasting/`, `models/writeoff_risk/`, `models/replenishment/` (each with core.py, train.py, predict.py). Single entrypoint for local/scripted run: `run_inventory.py`.
+**Training Workflow** (scheduled weekly; DAB bundle under use-case): Jobs in `use_cases/inventory_optimization/bundles/job/resources/` (retrain_jobs.yml, batch_apply_jobs.yml). DAB tasks invoke `jobs/1_demand_forecasting.py`, `jobs/2_writeoff_risk_model.py`, `jobs/3_replenishment_optimization.py`, which use code under `models/demand_forecasting/`, `models/writeoff_risk/`, `models/replenishment/` (each with core.py, train.py, predict.py). Single entrypoint for local/scripted run: `run_inventory_smoke.py`.
 
 **Serving/Application**:
 - Batch scoring output to dashboard (Databricks SQL) for inventory planners
@@ -204,7 +204,7 @@ data/healthcare_data_medallion/
 ```
 use_cases/inventory_optimization/
 ├── config.py
-├── run_inventory.py           # Single entrypoint (local or scripted: load → train/apply components)
+├── run_inventory_smoke.py     # Single entrypoint (local or scripted: load → train/apply components)
 ├── jobs/                      # DAB entrypoints: 1_demand_forecasting.py, 2_writeoff_risk_model.py, 3_replenishment_optimization.py
 ├── data_loading.py           # Root-level data loading (used by run_inventory / jobs)
 ├── bundles/job/               # databricks.yml; resources/retrain_jobs.yml, batch_apply_jobs.yml
@@ -418,7 +418,7 @@ Ground-truth labels (`labels/`) are used for **evaluation and optional NER train
 
 **Config and environment switching** (same pattern as inventory_optimization / recommendation_engine):
 - **DOCINT_DATA_SOURCE**: `local` | `catalog` | `auto` — where to read documents and where to write predictions.
-- **Local**: DOCINT_BASE_DIR (default e.g. `prescription_pdfs/`) holds `documents/`, `predictions/` (and optional `labels/`, `annotated/`). All I/O is file-based.
+- **Local**: DOCINT_BASE_DIR (default e.g. `data/local/prescription_pdfs/`) holds `documents/`, `predictions/` (and optional `labels/`, `annotated/`). All I/O is file-based.
 - **Remote (Databricks)**: When DOCINT_DATA_SOURCE=catalog (or auto on Databricks), read document listing from catalog/volume and write predictions to Unity Catalog tables or configured volume path. Same Python code paths; config switches behaviour.
 
 **Batch jobs** (bundle under use-case; each job runnable locally or as DAB task):
@@ -491,43 +491,57 @@ Data: prescription PDFs from `data/prescription_pdf_generator/`.
 **Current Status**: ⚠️ Not implemented
 **Local dev**: Can be developed locally for most part.
 
-### Data Requirements
+**New (proposed) UX layer**: Databricks Genie + Streamlit “data chat”
+- Build multiple domain-specific Genie Spaces (Healthcare, Animal Care, TWC) rather than one large general-purpose space.
+- Host a single Streamlit app that routes chat prompts to the selected Genie Space and renders both text + tabular query results.
 
-**Sub-project 1: Ranging & Consolidation** (Healthcare)
-- Reuse: `silver_orders`, `silver_products`, `silver_inventory`
-- Add: `warehouse_costs` table (DC/SKU storage cost, handling cost), `fulfillment_sla` metrics
+### Medallion Foundations (tables exposed to Genie + dashboards)
 
-**Sub-project 2: Market Intelligence** (Animal Care)
-- Add `competitor_products` table: `competitor_id`, `product_name`, `price`, `url`, `scrape_date`
-- Add `competitor_price_history` table: time series of competitor pricing
-- Web scraping: Python `requests` + `beautifulsoup4` or `scrapy`
+Genie and the BI dashboards should query the same governed medallion outputs (dbt `bronze` → `silver` → `gold`), so the chat experience is consistent with dashboards and permissions.
 
-**Sub-project 3: Franchise Reporting** (TWC)
-- Add `store_sales` table: `store_id`, `product_id`, `date`, `sales_quantity`, `revenue`
-- Add `store_attributes` table: `store_id`, `location`, `size_sqm`, `store_type`, `cluster_id`
-- Add `promotions` table: `promo_id`, `store_id`, `product_id`, `start_date`, `end_date`, `discount_rate`
+**Healthcare (Ranging & Consolidation)**
+- Silver inputs (example): `silver_orders`, `silver_products`, `silver_inventory`, (plus any validated `silver_warehouse_costs` / `fulfillment_sla` tables)
+- Gold outputs (example): `gold_range_recommendations`
 
-### Modelling Approach
+**Animal Care (Market Intelligence)**
+- Silver inputs (example): `silver_competitor_products`, `silver_competitor_price_history` (or equivalent)
+- Gold outputs (example): `gold_competitor_price_history`
 
-**Ranging & Consolidation**:
-- Optimization: minimize storage/handling costs subject to SLA constraints
-- Alternative: unsupervised clustering (k-means) to group slow-moving SKUs for consolidation
-- Python: `sklearn.cluster.KMeans`, `scipy.optimize`
+**TWC Franchise Reporting**
+- Silver inputs (example): `silver_store_sales`, `silver_store_attributes`, `silver_promotions`
+- Gold outputs (example): `gold_promo_impact`, `gold_store_product_recs`
 
-**Market Intelligence**:
-- Web scraping pipeline (non-ML)
-- Optional: LLM summarization of competitor changes
-  - Prompt: "Summarize key pricing changes this week for pet food category"
-  - Model: Azure OpenAI or Databricks Foundation Models
+In practice, each domain-scoped Genie Space should only be configured with the small set of tables/columns required to answer the domain questions (and drive the dashboards), plus explicit KPI definitions/synonyms.
 
-**Franchise Reporting**:
-- Store clustering: `sklearn.cluster.KMeans` on store attributes (size, location, demographics)
-- Promo impact: causal inference or uplift modeling
-  - Use `causalml` or difference-in-differences regression
-- Product recommendations: reuse recommendation engine from project #1
+### Genie Chat Experience (domain-scoped Genie Spaces + Streamlit router)
 
-**Evaluation**: Business KPI tracking (cost reduction %, sales uplift, analyst time saved)
+**Goal**: Let analysts ask natural-language questions over the same governed medallion outputs (silver/gold), while keeping domain semantics isolated via separate Genie Spaces.
 
+**Multiple specialized Genie Spaces (recommended; 1 per domain)**:
+- `healthcare_insights`:
+  - Knowledge Store scope: healthcare silver/gold tables required for ranging & consolidation KPIs.
+  - Add domain metadata + synonyms (DC naming, SKU naming, KPI definitions).
+- `animal_care_insights`:
+  - Knowledge Store scope: competitor product + price history + market-intelligence outputs.
+  - Add trusted SQL expressions / "gold standard" KPI definitions used by your reports.
+- `twc_franchise_insights`:
+  - Knowledge Store scope: store attributes + promotion impact + store-level recommendations.
+  - Add business semantics (cluster naming, promo identifiers, sales/revenue KPI definitions).
+
+**Governance & isolation**:
+- Use Unity Catalog permissions (table-level access + Genie Space permissions) so users only see permitted results.
+- Keep each Space’s table list small (focus on ~5–10 tables per domain) to reduce ambiguity and prevent conflicting KPI definitions.
+
+**Streamlit router (hosted as a Databricks App)**:
+- A single Streamlit app provides a domain selector and maps the selected domain to the corresponding Genie Space ID.
+- Use `databricks-sdk` `WorkspaceClient()` to call the Genie Conversation APIs.
+- Render Genie attachments:
+  - plain text explanations
+  - generated SQL (optional) inside an expander
+  - tabular results (retrieved by statement/statement_id) displayed as a DataFrame
+- Optionally collect feedback with `st.feedback` and send it back to Genie (`w.genie.send_message_feedback`).
+
+<!--
 ### Databricks Architecture
 
 **Each sub-project gets own use-case** (bundle under use-case):
@@ -573,8 +587,23 @@ use_cases/franchise_analytics/
 └── databricks.yml
 ```
 
+**Genie + Streamlit layer** (UI / orchestration):
+```
+use_cases/genie_insights_chat/
+├── app/
+│   └── app.py                               # Streamlit chat UI (select domain -> use domain Genie Space)
+├── app/requirements.txt
+└── bundles/app/databricks.yml              # Databricks Apps bundle for hosting
+```
+
+**Notes**:
+- Genie Spaces are configured in Databricks (Knowledge Store: curated tables, KPIs, synonyms, and trusted SQL expressions).
+- The Streamlit app is the “glue” code: it switches spaces by domain and renders attachments + tabular results.
+
 **Application**:
-- Dashboards (Databricks SQL) for each sub-project
+- Databricks SQL dashboards for each sub-project (built on the shared silver/gold model outputs)
+- Optional: embed dashboard deep-links inside the Streamlit chat experience
+- Genie chat (Streamlit + domain-specific Genie Spaces) for ad-hoc questions and explainability
 - Weekly automated reports (email/Slack integration)
 
 **Data Pipeline** (dbt medallion):
@@ -646,7 +675,7 @@ databricks-misc/
     │       ├── 2_price_tracking.py
     │       └── 3_weekly_summary.py
     │
-    └── franchise_analytics/                    # NEW MODULE
+    ├── franchise_analytics/                    # NEW MODULE
         ├── README.md
         ├── databricks.yml
         ├── resources/
@@ -658,7 +687,42 @@ databricks-misc/
             ├── 1_store_clustering.py
             ├── 2_promo_impact.py
             └── 3_recommendations.py
+    └── genie_insights_chat/                   # Databricks App: Streamlit Genie chat UI
+        ├── app/
+        │   └── app.py
+        ├── app/requirements.txt
+        └── bundles/app/databricks.yml        # hosts the Streamlit app on Databricks
 ```
+-->
+
+### Databricks Architecture (Genie Spaces + BI dashboards)
+
+**Target “product shape”** (as requested):
+- 3x domain Genie Spaces (`healthcare_insights`, `animal_care_insights`, `twc_franchise_insights`)
+- 1x Streamlit router app (hosted as a Databricks App) that switches which Genie Space is used based on domain
+- 1x BI dashboard per domain (Databricks SQL), each built on the corresponding medallion gold outputs
+
+**Genie configuration**:
+- For each Genie Space, set the Knowledge Store scope to only the relevant silver/gold tables, plus the KPI definitions/synonyms used by that domain’s dashboard.
+
+**Router behavior**:
+- Router app shows a domain selector.
+- Router app maps domain -> Genie Space ID and sends the user prompt to the selected Space.
+- Render attachments: text + optional SQL + tabular results.
+
+**Example logical structure**:
+```
+use_cases/genie_insights_router/
+├── app/
+│   └── app.py                               # router: select domain -> call selected Genie Space
+├── app/requirements.txt
+└── bundles/app/databricks.yml              # Databricks Apps bundle
+```
+
+**Domain dashboards (Databricks SQL)**:
+- Healthcare dashboard: reads from `gold_range_recommendations`
+- Animal Care dashboard: reads from `gold_competitor_price_history`
+- TWC dashboard: reads from `gold_promo_impact` and `gold_store_product_recs`
 
 ---
 
@@ -667,7 +731,7 @@ databricks-misc/
 **Local development** (run data gen, medallion, and model training without Databricks):
 - **Data generation**: Healthcare generator is pure pandas/Faker; writes CSVs to e.g. `data/local/`. No Spark or DB required. Optional: script to load CSVs into DuckDB/SQLite for a local “raw” DB.
 - **Medallion**: Default dbt profile is Databricks (Unity Catalog). To run medallion locally: use dbt-duckdb (or dbt-sqlite) profile, point sources at local DB populated from generator CSVs, and adjust SQL dialect if needed (e.g. `current_timestamp()`).
-- **Model training / MLflow**: Training code is pandas + sklearn/xgboost/prophet etc.; no Spark in model code. MLflow uses default tracking (local `./mlruns` when not on Databricks). Add explicit local data path (e.g. `RUN_LOCAL=1`, `DATA_PATH=...` or `use_cases.env_utils.is_running_on_databricks()`) so entrypoints load from CSV/local DB instead of requiring Spark and Unity Catalog; keep `create_sample_data()` as fallback.
+- **Model training / MLflow**: Training code is pandas + sklearn/xgboost/prophet etc.; no Spark in model code. MLflow uses default tracking (local `./mlruns` when not on Databricks). Add explicit local data path (e.g. `RUN_LOCAL=1`, `DATA_PATH=...` or `utils.env_utils.is_running_on_databricks()`) so entrypoints load from CSV/local DB instead of requiring Spark and Unity Catalog; keep `create_sample_data()` as fallback.
 - **Use cases**: Recommendation, inventory, insights — core logic and training are local-friendly (DataFrame/CSV input). Customer service — same, with local vector store (e.g. Chroma/FAISS) instead of Databricks Vector Search. Document intelligence — PDF generation, OCR, and annotation are all runnable locally using open-source libraries (no Spark NLP/OCR requirement).
 
 **For all projects**:

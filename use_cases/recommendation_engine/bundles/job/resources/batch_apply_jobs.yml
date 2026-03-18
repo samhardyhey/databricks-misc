@@ -27,9 +27,9 @@ resources:
 
       tasks:
         - task_key: apply_recommendation_engine
-          # Currently reuses run_reco.py; in future this should point to a dedicated batch_scoring script
+          # Uses run_reco_smoke.py so training/logging + MLflow load/apply are exercised locally too.
           spark_python_task:
-            python_file: use_cases/recommendation_engine/models/run_reco.py
+            python_file: use_cases/recommendation_engine/models/run_reco_smoke.py
           environment_key: apply_env
 
       environments:

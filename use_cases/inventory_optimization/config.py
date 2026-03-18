@@ -1,19 +1,29 @@
 """
 Inventory optimisation run config: data source (local CSV vs Unity Catalog) and paths.
 Switch via INVENTORY_DATA_SOURCE and environment; same code path for train/eval.
-MLflow: see use_cases.mlflow.config (local SQLite vs Databricks workspace).
+MLflow: see utils.mlflow.config (local SQLite vs Databricks workspace).
 """
 
 import os
 from pathlib import Path
 from typing import Literal
 
-from use_cases.env_utils import is_running_on_databricks
-from use_cases.mlflow.config import get_mlflow_registry_uri, get_mlflow_tracking_uri
-
-# Defaults (overridable by env)
-_DEFAULT_LOCAL_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "local"
-_DEFAULT_CATALOG_SCHEMA = "workspace.healthcare_medallion"
+from utils.use_case_utils import (
+    get_catalog_schema as _get_catalog_schema,
+    get_duckdb_medallion_schema as _get_duckdb_medallion_schema,
+    get_duckdb_path as _get_duckdb_path,
+    get_local_data_dir as _get_local_data_dir,
+    get_local_data_source as _get_local_data_source,
+    resolve_data_source,
+)
+from utils.env_utils import is_running_on_databricks
+from utils.use_case_utils import (
+    apply_mlflow_config,
+    ensure_experiment_artifact_root,
+    get_mlflow_artifact_root,
+    get_mlflow_registry_uri,
+    get_mlflow_tracking_uri,
+)
 
 DataSource = Literal["local", "catalog", "auto"]
 
@@ -25,18 +35,12 @@ def get_data_source() -> Literal["local", "catalog"]:
     - 'auto': use 'catalog' on Databricks (DATABRICKS_RUNTIME_VERSION set), else 'local'.
     - Explicit 'local'/'catalog' override (e.g. Databricks Connect + catalog).
     """
-    raw = os.environ.get("INVENTORY_DATA_SOURCE", "auto").strip().lower()
-    if raw == "catalog":
-        return "catalog"
-    if raw == "local":
-        return "local"
-    return "catalog" if is_running_on_databricks() else "local"
+    return resolve_data_source(env_var_name="INVENTORY_DATA_SOURCE")
 
 
 def get_local_data_dir() -> Path:
     """Directory for local CSVs (e.g. data/local). Override with LOCAL_DATA_PATH."""
-    p = os.environ.get("LOCAL_DATA_PATH", str(_DEFAULT_LOCAL_DATA_DIR))
-    return Path(p).resolve()
+    return _get_local_data_dir(env_var_name="LOCAL_DATA_PATH")
 
 
 def get_duckdb_path() -> Path | None:
@@ -45,13 +49,7 @@ def get_duckdb_path() -> Path | None:
     From DBT_DUCKDB_PATH (default data/local/medallion.duckdb relative to repo).
     Returns None if the file does not exist.
     """
-    raw = os.environ.get("DBT_DUCKDB_PATH")
-    if raw:
-        p = Path(raw).resolve()
-    else:
-        repo = Path(__file__).resolve().parents[2]
-        p = (repo / "data" / "local" / "medallion.duckdb").resolve()
-    return p if p.is_file() else None
+    return _get_duckdb_path(env_var_name="DBT_DUCKDB_PATH")
 
 
 def get_duckdb_medallion_schema() -> str:
@@ -59,9 +57,7 @@ def get_duckdb_medallion_schema() -> str:
     Base schema name for DuckDB medallion (dbt builds e.g. {base}_silver, {base}_gold).
     Override with DBT_DUCKDB_MEDALLION_SCHEMA. Default matches dbt duckdb profile local.
     """
-    return os.environ.get(
-        "DBT_DUCKDB_MEDALLION_SCHEMA", "healthcare_medallion_local"
-    ).strip()
+    return _get_duckdb_medallion_schema(env_var_name="DBT_DUCKDB_MEDALLION_SCHEMA")
 
 
 def get_local_data_source() -> Literal["duckdb", "csv"]:
@@ -69,17 +65,15 @@ def get_local_data_source() -> Literal["duckdb", "csv"]:
     When data_source is 'local', prefer 'duckdb' if DBT_DUCKDB_PATH exists and is a file;
     otherwise 'csv'. Loaders fall back to CSV if DuckDB is chosen but tables are missing.
     """
-    if get_duckdb_path() is not None:
-        return "duckdb"
-    return "csv"
+    return _get_local_data_source(duckdb_path=get_duckdb_path())
 
 
 def get_catalog_schema() -> str:
     """Unity Catalog schema for inventory tables. Override with INVENTORY_CATALOG_SCHEMA."""
-    return os.environ.get("INVENTORY_CATALOG_SCHEMA", _DEFAULT_CATALOG_SCHEMA)
+    return _get_catalog_schema(env_var_name="INVENTORY_CATALOG_SCHEMA")
 
 
-# MLflow tracking/artifact/experiment: delegated to use_cases.mlflow.config (local vs Databricks)
+# MLflow tracking/artifact/experiment: delegated to utils.mlflow.config (local vs Databricks)
 # get_mlflow_tracking_uri, get_mlflow_artifact_root, ensure_experiment_artifact_root imported above
 
 

@@ -12,9 +12,6 @@ compare_forecasting_models, etc.).
 from typing import Any, Dict, Optional
 
 import mlflow
-import mlflow.prophet  # type: ignore[import-untyped]
-import mlflow.sklearn  # type: ignore[import-untyped]
-import mlflow.xgboost  # type: ignore[import-untyped]
 import numpy as np
 import pandas as pd
 from loguru import logger
@@ -30,7 +27,7 @@ def compare_forecasting_models(
     target_column: str,
     time_column: str,
     group_by: Optional[str] = None,
-    experiment_name: str = "inventory_demand_forecast",
+    experiment_name: str = "inventory_optimization-demand_forecast",
 ) -> Dict[str, Any]:
     """
     Minimal placeholder implementation to keep inventory demos working.

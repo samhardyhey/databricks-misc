@@ -7,14 +7,18 @@ Intended for:
 
 Behaviour:
 - Uses inventory_optimization.config.get_config() for local vs catalog and schema.
-- Loads data via load_inventory_data (same as run_inventory.py / jobs/2_writeoff_risk_model.py).
+- Loads data via load_inventory_data (same as run_inventory_smoke.py / jobs/2_writeoff_risk_model.py).
 - Builds features with build_writeoff_risk_features and trains a classifier.
 - Logs metrics and model to MLflow when available.
 """
 
 from loguru import logger
 
-from use_cases.inventory_optimization.config import apply_mlflow_config, get_config
+from use_cases.inventory_optimization.config import (
+    apply_mlflow_config,
+    ensure_experiment_artifact_root,
+    get_config,
+)
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.writeoff_risk.core import (
     build_writeoff_risk_features,
@@ -22,7 +26,7 @@ from use_cases.inventory_optimization.models.writeoff_risk.core import (
 )
 
 
-def main() -> None:
+def main() -> dict:
     cfg = get_config()
     spark = None
     if cfg["data_source"] == "catalog" and spark is None and cfg["on_databricks"]:
@@ -38,7 +42,7 @@ def main() -> None:
         logger.warning("No inventory data; run data generator / medallion first")
         if spark is not None:
             spark.stop()
-        return
+        return {"writeoff_risk_trained": False, "reason": "no_inventory"}
 
     features_df = build_writeoff_risk_features(
         inventory, orders=orders, products=products
@@ -55,38 +59,48 @@ def main() -> None:
         logger.warning("Insufficient positive labels for write-off classifier")
         if spark is not None:
             spark.stop()
-        return
+        return {
+            "writeoff_risk_trained": False,
+            "reason": "insufficient_positive_labels",
+        }
 
     model, feature_cols, metrics = train_writeoff_risk_classifier(features_df)
     logger.info("Write-off risk model trained: {}", metrics)
 
     # MLflow logging (local and Databricks) so make mlflow-ui shows all models
+    import mlflow
+    import mlflow.sklearn
+
+    apply_mlflow_config()
+    experiment = "inventory_optimization-writeoff_risk"
+    ensure_experiment_artifact_root(experiment)
+    mlflow.set_experiment(experiment)
+
+    run = mlflow.start_run(run_name="writeoff_risk_classifier")
+    run_id = run.info.run_id
     try:
-        import mlflow
-        import mlflow.sklearn
-
-        from use_cases.inventory_optimization.config import (
-            ensure_experiment_artifact_root,
+        mlflow.log_params(
+            {
+                "n_features": len(feature_cols),
+                "features": ",".join(feature_cols),
+            }
         )
+        mlflow.log_metrics(metrics)
+        mlflow.sklearn.log_model(model, "model")
+    finally:
+        mlflow.end_run()
 
-        apply_mlflow_config()
-        ensure_experiment_artifact_root("inventory_writeoff_risk")
-        mlflow.set_experiment("inventory_writeoff_risk")
-        with mlflow.start_run(run_name="writeoff_risk_classifier"):
-            mlflow.log_params(
-                {
-                    "n_features": len(feature_cols),
-                    "features": ",".join(feature_cols),
-                }
-            )
-            mlflow.log_metrics(metrics)
-            mlflow.sklearn.log_model(model, "model")
-        logger.info("Logged write-off risk model to MLflow")
-    except Exception as e:
-        logger.debug("MLflow logging skipped: {}", e)
+    logger.info("Logged write-off risk model to MLflow")
 
     if spark is not None:
         spark.stop()
+
+    return {
+        "writeoff_risk_trained": True,
+        "run_id": run_id,
+        "model_uri": f"runs:/{run_id}/model",
+        "metrics": metrics,
+    }
 
 
 if __name__ == "__main__":

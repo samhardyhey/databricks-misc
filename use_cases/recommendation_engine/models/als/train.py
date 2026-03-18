@@ -38,10 +38,12 @@ def main() -> dict:
         spark = SparkSession.builder.appName("ALSRecoTrain").getOrCreate()
 
     apply_mlflow_config(cfg)
-    ensure_experiment_artifact_root("recommendation_engine")
-    mlflow.set_experiment("recommendation_engine")
-    if mlflow.active_run() is None:
-        mlflow.start_run(run_name="reco_als_pipeline")
+    ensure_experiment_artifact_root("recommendation_engine-als")
+    mlflow.set_experiment("recommendation_engine-als")
+    run = mlflow.active_run()
+    if run is None:
+        run = mlflow.start_run(run_name="als_train")
+    run_id = run.info.run_id
 
     try:
         data = load_reco_data(config=cfg, spark=spark)
@@ -71,6 +73,8 @@ def main() -> dict:
             "als_trained": True,
             "n_users": int(user_item_matrix.shape[0]),
             "n_items": int(user_item_matrix.shape[1]),
+            "run_id": run_id,
+            "model_uri": f"runs:/{run_id}/als_model",
         }
     finally:
         try:

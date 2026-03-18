@@ -6,38 +6,33 @@ Current behaviour:
 - Designed to be called from jobs or locally; can be extended to write to UC tables.
 """
 
+import os
 from typing import Optional
 
+import mlflow
 import pandas as pd
 from loguru import logger
 
-from use_cases.recommendation_engine.config import get_config
+from use_cases.recommendation_engine.config import apply_mlflow_config, get_config
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
-from use_cases.recommendation_engine.models.lightfm.core import (
-    LightFMArtifacts,
-    recommend_for_users,
-    train_lightfm,
-)
 
 
-def _train_or_load_lightfm(interactions: pd.DataFrame) -> LightFMArtifacts:
-    """
-    For now we train a fresh LightFM model; this can be extended
-    later to load from persisted MLflow artifacts.
-    """
-    return train_lightfm(
-        interactions,
-        no_components=30,
-        loss="warp",
-        epochs=10,
-        num_threads=4,
-        user_col="customer_id",
-        item_col="product_id",
-        rating_col=None,
-    )
+def _load_lightfm_model(model_uri: Optional[str] = None):
+    uri = model_uri or os.environ.get("LIGHTFM_MODEL_URI")
+    if not uri:
+        logger.info(
+            "LightFM predict skipped: LIGHTFM_MODEL_URI is not set (or pass model_uri)."
+        )
+        return None
+    logger.info("Loading LightFM model from {}", uri)
+    return mlflow.pyfunc.load_model(uri)
 
 
-def main(user_ids: Optional[list[str]] = None, k: int = 10) -> pd.DataFrame:
+def main(
+    user_ids: Optional[list[str]] = None,
+    k: int = 10,
+    model_uri: Optional[str] = None,
+) -> pd.DataFrame:
     cfg = get_config()
     logger.info(
         "LightFM predict: data_source={}, on_databricks={}",
@@ -52,6 +47,11 @@ def main(user_ids: Optional[list[str]] = None, k: int = 10) -> pd.DataFrame:
         spark = SparkSession.builder.appName("LightFMRecoPredict").getOrCreate()
 
     try:
+        apply_mlflow_config(cfg)
+        model = _load_lightfm_model(model_uri=model_uri)
+        if model is None:
+            return pd.DataFrame()
+
         data = load_reco_data(config=cfg, spark=spark)
         interactions = data.get("interactions")
         if interactions is None or not len(interactions):
@@ -63,8 +63,13 @@ def main(user_ids: Optional[list[str]] = None, k: int = 10) -> pd.DataFrame:
             # If ALS user coding exists, we could re-use, but here we simply use raw ids
             user_ids = interactions["customer_id"].astype(str).unique().tolist()[:100]
 
-        artifacts = _train_or_load_lightfm(interactions)
-        recs = recommend_for_users(artifacts, user_ids=user_ids, k=k)
+        df_in = pd.DataFrame(
+            {
+                "customer_id": user_ids,
+                "k": [int(k)] * len(user_ids),
+            }
+        )
+        recs = model.predict(df_in)
         logger.info("Generated {} LightFM recommendations", len(recs))
         return recs
     finally:

@@ -15,7 +15,7 @@ import mlflow
 import pandas as pd
 from loguru import logger
 
-from use_cases.env_utils import is_running_on_databricks
+from utils.env_utils import is_running_on_databricks
 from use_cases.recommendation_engine.config import apply_mlflow_config, get_config
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
 
@@ -34,8 +34,6 @@ def _load_item_similarity_model(model_uri: Optional[str] = None):
         return None
     logger.info("Loading item_similarity model from {}", uri)
     model = mlflow.pyfunc.load_model(uri)
-    artifacts = model.load_context().artifacts
-    logger.debug("Loaded item_similarity artifacts: {}", list(artifacts.keys()))
     return model
 
 
@@ -77,23 +75,10 @@ def main(model_uri: Optional[str] = None, k: int = 10) -> pd.DataFrame:
     product_ids = product_features.index.tolist()
     query_ids = product_ids
 
-    # Placeholder: use identity similarity until pyfunc predict is wired; model was loaded above.
-    recs = {
-        pid: [(pid, 0.0)] for pid in query_ids
-    }  # TODO: replace with model.predict() when artifact format is standardized.
-
-    rows = []
-    for pid, sim_list in recs.items():
-        for rank, (rec_pid, score) in enumerate(sim_list[:k], start=1):
-            rows.append(
-                {
-                    "product_id": pid,
-                    "similar_product_id": rec_pid,
-                    "similarity_score": float(score),
-                    "rank": rank,
-                }
-            )
-    out = pd.DataFrame(rows)
+    # pyfunc wrapper returns a DataFrame with columns:
+    # product_id, similar_product_id, similarity_score, rank
+    df_in = pd.DataFrame({"product_id": query_ids, "k": [k] * len(query_ids)})
+    out = model.predict(df_in)
 
     if spark is not None and len(out):
         from pyspark.sql import functions as F

@@ -7,7 +7,7 @@ Loads data via config: Unity Catalog on Databricks; locally prefers DuckDB medal
 
 from loguru import logger
 
-from use_cases.env_utils import is_running_on_databricks
+from utils.env_utils import is_running_on_databricks
 from use_cases.inventory_optimization.config import apply_mlflow_config, get_config
 from use_cases.inventory_optimization.models.data_loading import load_inventory_data
 from use_cases.inventory_optimization.models.demand_forecasting.core import (
@@ -39,7 +39,7 @@ def main():
             target_column="quantity",
             time_column="order_date",
             group_by=None,
-            experiment_name="inventory_demand_forecast",
+            experiment_name="inventory_optimization-demand_forecast",
         )
         logger.info("Demand forecasting job completed")
     finally:

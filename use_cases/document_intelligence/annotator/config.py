@@ -11,7 +11,7 @@ from pathlib import Path
 
 # Repo root for default base dir (annotator/config.py -> parents[3] = repo root)
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_DEFAULT_BASE_DIR = _REPO_ROOT / "prescription_pdfs"
+_DEFAULT_BASE_DIR = _REPO_ROOT / "data" / "local" / "prescription_pdfs"
 
 
 def get_base_dir() -> Path:

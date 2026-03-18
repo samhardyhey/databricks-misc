@@ -28,25 +28,42 @@ from use_cases.recommendation_engine.models.feature_engineering import (
 )
 from use_cases.recommendation_engine.models.item_similarity.core import (
     recommend_similar_items,
+    ItemSimilarityRecoWrapper,
     train_item_similarity,
 )
 
 
 def _log_item_similarity_mlflow(
-    nn, scaler, product_ids: list, n_neighbors: int, metrics: dict | None = None
+    nn,
+    scaler,
+    product_features: pd.DataFrame,
+    product_ids: list,
+    n_neighbors: int,
+    metrics: dict | None = None,
 ) -> None:
     mlflow.log_param("model_type", "item_similarity")
     mlflow.log_param("n_neighbors", n_neighbors)
     mlflow.log_param("n_products", len(product_ids))
     if metrics:
         mlflow.log_metrics(metrics)
-    with tempfile.NamedTemporaryFile(suffix=".joblib", delete=False) as f:
-        path = f.name
-    try:
-        joblib.dump({"nn": nn, "scaler": scaler, "product_ids": product_ids}, path)
-        mlflow.log_artifact(path, "item_similarity")
-    finally:
-        Path(path).unlink(missing_ok=True)
+    # Log as MLflow pyfunc so apply can load via mlflow.pyfunc.load_model.
+    with tempfile.TemporaryDirectory() as tmp:
+        payload_path = Path(tmp) / "item_similarity.joblib"
+        joblib.dump(
+            {
+                "nn": nn,
+                "scaler": scaler,
+                "product_features": product_features,
+                "product_ids": product_ids,
+            },
+            payload_path,
+        )
+        mlflow.pyfunc.log_model(
+            artifact_path="model",
+            python_model=ItemSimilarityRecoWrapper(),
+            artifacts={"item_similarity": str(payload_path)},
+            registered_model_name=None,
+        )
     logger.info("Logged item_similarity model and params to MLflow")
 
 
@@ -65,9 +82,10 @@ def main() -> dict:
         spark = SparkSession.builder.appName("ItemSimilarityTrain").getOrCreate()
 
     apply_mlflow_config(cfg)
-    ensure_experiment_artifact_root("recommendation_engine")
-    mlflow.set_experiment("recommendation_engine")
-    mlflow.start_run(run_name="item_similarity_train")
+    ensure_experiment_artifact_root("recommendation_engine-item_similarity")
+    mlflow.set_experiment("recommendation_engine-item_similarity")
+    run = mlflow.start_run(run_name="item_similarity_train")
+    run_id = run.info.run_id
 
     try:
         data = load_reco_data(config=cfg, spark=spark)
@@ -119,12 +137,19 @@ def main() -> dict:
                 logger.info("Metrics (item_similarity, test set): {}", metrics)
 
         _log_item_similarity_mlflow(
-            nn, scaler, product_ids, n_neighbors, metrics=metrics
+            nn,
+            scaler,
+            product_features,
+            product_ids,
+            n_neighbors,
+            metrics=metrics,
         )
 
         return {
             "item_similarity": True,
             "metrics": metrics,
+            "run_id": run_id,
+            "model_uri": f"runs:/{run_id}/model",
         }
     finally:
         try:
