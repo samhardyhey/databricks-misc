@@ -426,7 +426,6 @@ Ground-truth labels (`labels/`) are used for **evaluation and optional NER train
 use_cases/document_intelligence/
 ├── config.py                     # get_config(), DOCINT_BASE_DIR, DOCINT_DATA_SOURCE, predictions_dir
 ├── data_loading.py               # load_document_data(); discover PDFs and prediction paths from config
-├── run_document_intelligence.py  # Single entrypoint: load data, run OCR, run field extraction, save predictions
 ├── ocr_pipeline.py               # run_ocr(); read PDFs, write OCR text to predictions store
 ├── ner_field_extraction.py       # run_field_extraction(); read OCR/labels, write fields to predictions store
 ├── predictions_io.py             # Save/load predictions (OCR and fields) to predictions_dir
@@ -457,7 +456,6 @@ use_cases/document_intelligence/
 ├── ocr_pipeline.py               # run_ocr(); read PDFs, write OCR text to predictions
 ├── ner_field_extraction.py       # run_field_extraction(); read OCR/labels, write fields to predictions
 ├── predictions_io.py             # Save/load predictions (OCR, fields) to predictions_dir
-├── run_document_intelligence.py  # Single entrypoint: load → OCR → extract → save predictions
 ├── jobs/
 │   ├── 1_generate_data.py        # Job: generate prescription PDFs + labels
 │   ├── 2_ocr_extraction.py       # Job: OCR only, write predictions
@@ -471,7 +469,7 @@ Data: prescription PDFs from `data/prescription_pdf_generator/`.
 
 1. **Config** — Extend `config.py` with `predictions_dir` (e.g. `base_dir / "predictions"`), overridable via env. Optional `DOCINT_DATA_SOURCE` = `local` | `catalog` | `auto` for future catalog reads/writes.
 2. **Save predictions** — In OCR and field-extraction modules (or a small `predictions_io` helper): after each step, write results to `predictions_dir/ocr/` and `predictions_dir/fields/` (e.g. JSON per doc or single table), using the same schema the annotator expects (nested patient/doctor/facility/medication).
-3. **Pipeline entrypoint** — Ensure `run_document_intelligence.py` and job scripts **save** OCR and field-extraction outputs to the predictions dir so the annotator reads from predictions, not from ground-truth labels.
+3. **Pipeline entrypoint** — Ensure `jobs/2_ocr_extraction.py` and `jobs/3_field_extraction.py` **save** OCR and field-extraction outputs to the predictions dir so the annotator reads from predictions, not from ground-truth labels.
 4. **Field extraction input** — Until a NER model exists: either (a) derive fields from OCR with heuristics, or (b) for MVP, copy generator `labels/` into `predictions/fields/` so the annotator has something to review. Later: NER consumes OCR from predictions and writes real extractions.
 5. **Annotator** — Point annotator at **predictions**: prefer `predictions/fields/` as the source to display and edit; fall back to `labels/` if predictions missing. Continue writing corrections to `annotated/labels/`.
 6. **Data loading** — In `data_loading.py`, discover prediction paths (OCR and field files under `predictions_dir`) and expose them in the returned dict.

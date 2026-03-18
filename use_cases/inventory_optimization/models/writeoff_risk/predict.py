@@ -40,7 +40,11 @@ def _load_model(model_uri: Optional[str] = None):
     no registry model has been configured yet, while still allowing Databricks
     jobs to supply a concrete URI.
     """
-    uri = model_uri or os.environ.get("WRITEOFF_RISK_MODEL_URI")
+    uri = (
+        model_uri
+        or os.environ.get("WRITEOFF_RISK_MODEL_URI")
+        or "models:/inventory_optimization-writeoff_risk@Champion"
+    )
     if not uri:
         logger.info(
             "Write-off risk predict skipped: WRITEOFF_RISK_MODEL_URI is not set; "

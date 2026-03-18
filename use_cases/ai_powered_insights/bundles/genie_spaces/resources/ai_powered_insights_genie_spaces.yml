@@ -1,0 +1,36 @@
+resources:
+  genie_spaces:
+    healthcare_insights:
+      title: "Healthcare Insights"
+      description: "Ranging & consolidation analytics over healthcare medallion outputs"
+      warehouse_id: ${var.sql_warehouse_id}
+      # TODO: Configure Knowledge Store: tables + KPIs + instructions + synonyms.
+      # Exact genie space keys depend on the supported DAB schema for Genie spaces.
+      permissions:
+        - group_name: analytics-healthcare
+          permission: CAN_RUN
+        - group_name: analytics-healthcare-readonly
+          permission: CAN_VIEW
+
+    animal_care_insights:
+      title: "Animal Care Insights"
+      description: "Market intelligence analytics over animal care medallion outputs"
+      warehouse_id: ${var.sql_warehouse_id}
+      # TODO: Knowledge Store: tables + KPIs + instructions + synonyms.
+      permissions:
+        - group_name: analytics-animal-care
+          permission: CAN_RUN
+        - group_name: analytics-animal-care-readonly
+          permission: CAN_VIEW
+
+    twc_franchise_insights:
+      title: "TWC Franchise Insights"
+      description: "Franchise reporting analytics over franchise medallion outputs"
+      warehouse_id: ${var.sql_warehouse_id}
+      # TODO: Knowledge Store: tables + KPIs + instructions + synonyms.
+      permissions:
+        - group_name: analytics-twc
+          permission: CAN_RUN
+        - group_name: analytics-twc-readonly
+          permission: CAN_VIEW
+

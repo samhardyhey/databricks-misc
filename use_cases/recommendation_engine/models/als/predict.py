@@ -19,7 +19,7 @@ from use_cases.recommendation_engine.config import apply_mlflow_config, get_conf
 def _load_als_model(model_uri: Optional[str] = None):
     """
     Load ALS model from MLflow. Locally use a runs:/ or file:// URI (set ALS_MODEL_URI);
-    on Databricks jobs can set ALS_MODEL_URI to a registry URI (e.g. models:/RECO_als/Production).
+    on Databricks jobs can set ALS_MODEL_URI to a registry URI (e.g. models:/recommendation_engine-als@Champion).
     Returns None if the URI is not set or load fails.
     """
     uri = (

@@ -1,0 +1,32 @@
+resources:
+  dashboards:
+    healthcare_ops_dashboard:
+      display_name: "Healthcare Ranging Overview"
+      file_path: src/dashboards/healthcare_ops.lvdash.json
+      warehouse_id: ${var.sql_warehouse_id}
+      dataset_catalog: ${var.catalog}
+      dataset_schema: ${var.medallion_schema}
+      permissions:
+        - group_name: analytics-healthcare
+          permission: CAN_READ
+
+    animal_care_ops_dashboard:
+      display_name: "Animal Care Market Intelligence Overview"
+      file_path: src/dashboards/animal_care_ops.lvdash.json
+      warehouse_id: ${var.sql_warehouse_id}
+      dataset_catalog: ${var.catalog}
+      dataset_schema: ${var.medallion_schema}
+      permissions:
+        - group_name: analytics-animal-care
+          permission: CAN_READ
+
+    twc_ops_dashboard:
+      display_name: "TWC Franchise Reporting Overview"
+      file_path: src/dashboards/twc_ops.lvdash.json
+      warehouse_id: ${var.sql_warehouse_id}
+      dataset_catalog: ${var.catalog}
+      dataset_schema: ${var.medallion_schema}
+      permissions:
+        - group_name: analytics-twc
+          permission: CAN_READ
+

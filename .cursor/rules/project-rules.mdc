@@ -80,7 +80,7 @@ alwaysApply: true
     - writes results to local artifacts (DataFrame / CSV) or Unity Catalog tables when running on Databricks.
 - Existing flat model modules at the use-case root (e.g. `use_cases/recommendation_engine/item_similarity.py`, `collaborative_filtering.py`, `hybrid_ranker.py`, `use_cases/inventory_optimization/demand_forecasting.py`, `writeoff_risk_classifier.py`, `replenishment_optimizer.py`) should be **gradually refactored** so that:
   - Their substantive contents move into the corresponding `models/<model_name>/core.py`.
-  - The original modules become thin shims (re-exporting from `models/<model_name>/core`) to preserve backwards-compatible imports during the transition.
+  - All referenced imports/callsites are updated to point at the new `models/<model_name>/...` locations, and the old modules are removed once nothing references them (avoid shim re-exports).
 - New model work should be added under `models/<model_name>/` from the start (core + train/apply), and other modules should import from there using root-based imports.
 
 ### Naming: DAB config vs Python code
@@ -122,6 +122,7 @@ alwaysApply: true
 - Logging: Always use loguru instead of print statements
 - Module Structure: Prefer semantic naming (parent_module.semantic_name) over verbose names
 - Imports: Always use **root-based imports** from the repo root (e.g. `from use_cases.inventory_optimization.demand_forecasting import prepare_forecasting_data, run_xgboost_experiment`, `from data.healthcare_data_generator.src.healthcare_data_generator import ...`). Avoid relative or package-local imports (`from .foo import ...`, `from foo import ...` inside subpackages) so that scripts run consistently from the repo root, Databricks jobs, and DAB bundles.
+- Refactors: if you change/refactor a module’s location, propagate that change by updating all referenced imports/call-sites; avoid shim/re-export modules for the rename.
 
 ### Misc
 - Do not create unnecessary markdown/README files; we typically just one one root level README and then perhaps one in a major module ONLY if the complexity warrants it

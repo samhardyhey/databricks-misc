@@ -1,0 +1,91 @@
+bundle:
+  name: ai_powered_insights_app
+
+include:
+  - resources/*.yml
+
+sync:
+  paths:
+    - ../../../..  # repo root so use_cases/* and data/ are available
+
+variables:
+  app_workspace_root:
+    description: Workspace root path for the app bundle
+    default: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+  service_principal_name:
+    description: Service principal name for this environment (run_as)
+    default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
+
+  genie_healthcare_space_id:
+    description: Genie Space ID for Healthcare domain
+    default: ""
+  genie_animal_care_space_id:
+    description: Genie Space ID for Animal Care domain
+    default: ""
+  genie_twc_space_id:
+    description: Genie Space ID for TWC domain
+    default: ""
+
+  healthcare_dashboard_url:
+    description: Optional URL for the Healthcare dashboard (for deep-linking)
+    default: ""
+  animal_care_dashboard_url:
+    description: Optional URL for the Animal Care dashboard (for deep-linking)
+    default: ""
+  twc_dashboard_url:
+    description: Optional URL for the TWC dashboard (for deep-linking)
+    default: ""
+
+targets:
+  dev-sp:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      app_workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      service_principal_name: <TBD-AI-INSIGHTS-DEV-SP>
+      genie_healthcare_space_id: ""
+      genie_animal_care_space_id: ""
+      genie_twc_space_id: ""
+      healthcare_dashboard_url: ""
+      animal_care_dashboard_url: ""
+      twc_dashboard_url: ""
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+
+  test-sp:
+    mode: development
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      app_workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      service_principal_name: <TBD-AI-INSIGHTS-TEST-SP>
+      genie_healthcare_space_id: ""
+      genie_animal_care_space_id: ""
+      genie_twc_space_id: ""
+      healthcare_dashboard_url: ""
+      animal_care_dashboard_url: ""
+      twc_dashboard_url: ""
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+
+  prod-sp:
+    mode: production
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      app_workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      service_principal_name: <TBD-AI-INSIGHTS-PROD-SP>
+      genie_healthcare_space_id: ""
+      genie_animal_care_space_id: ""
+      genie_twc_space_id: ""
+      healthcare_dashboard_url: ""
+      animal_care_dashboard_url: ""
+      twc_dashboard_url: ""
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+

@@ -18,7 +18,11 @@ from use_cases.recommendation_engine.models.data_loading import load_reco_data
 
 
 def _load_lightfm_model(model_uri: Optional[str] = None):
-    uri = model_uri or os.environ.get("LIGHTFM_MODEL_URI")
+    uri = (
+        model_uri
+        or os.environ.get("LIGHTFM_MODEL_URI")
+        or "models:/recommendation_engine-lightfm@Champion"
+    )
     if not uri:
         logger.info(
             "LightFM predict skipped: LIGHTFM_MODEL_URI is not set (or pass model_uri)."

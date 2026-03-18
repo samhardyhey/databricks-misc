@@ -5,7 +5,7 @@ Runs the full local pipeline:
 1) generate prescription PDFs + JSON labels
 2) OCR extraction
 3) field extraction (OCR + proxy NER)
-4) start the Streamlit annotator app in headless mode briefly (ensures it can import/run)
+4) start the Streamlit annotator app (leaves it running)
 
 This is a lightweight orchestration wrapper intended for quick verification after changes.
 """
@@ -15,7 +15,6 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 from loguru import logger
@@ -30,12 +29,8 @@ def _run_python(script_path: Path, env: dict[str, str], timeout_s: int | None = 
     subprocess.run(cmd, cwd=str(Path(__file__).resolve().parents[2]), env=env, check=True, timeout=timeout_s)
 
 
-def _start_streamlit_briefly(env: dict[str, str], app_path: Path, wait_s: int = 8) -> None:
-    """
-    Start Streamlit and terminate after a short wait.
-
-    We don't try to validate UI interactions; the goal is to verify the app can start.
-    """
+def _run_streamlit(env: dict[str, str], app_path: Path) -> None:
+    """Run Streamlit annotator and block until the user stops it."""
     cmd = [
         sys.executable,
         "-m",
@@ -49,29 +44,13 @@ def _start_streamlit_briefly(env: dict[str, str], app_path: Path, wait_s: int = 
         "--logger.level=error",
     ]
 
-    logger.info("smoke: starting streamlit briefly (headless)")
-    proc = subprocess.Popen(
+    logger.info("smoke: starting streamlit (headless, blocking)")
+    subprocess.run(
         cmd,
         cwd=str(Path(__file__).resolve().parents[2]),
         env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
+        check=False,
     )
-
-    try:
-        time.sleep(wait_s)
-        if proc.poll() is not None:
-            # Process already exited (likely import error).
-            out, _ = proc.communicate(timeout=5)
-            raise RuntimeError(f"Streamlit exited early. Output:\n{out}")
-    finally:
-        proc.terminate()
-        try:
-            proc.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait(timeout=5)
 
 
 def main() -> dict:
@@ -101,9 +80,9 @@ def main() -> dict:
     if not fields_dir.exists():
         raise RuntimeError(f"Smoke failed: expected fields output at {fields_dir} but it does not exist.")
 
-    # Start the annotator app briefly (headless) so import/runtime errors are caught.
+    # Start the annotator app (headless). Keep it running as requested.
     app_path = Path(__file__).resolve().parent / "annotator" / "app.py"
-    _start_streamlit_briefly(env=os.environ.copy(), app_path=app_path)
+    _run_streamlit(env=os.environ.copy(), app_path=app_path)
 
     logger.success("document-intelligence smoke done")
     return {"base_dir": str(base_dir), "fields_dir": str(fields_dir)}

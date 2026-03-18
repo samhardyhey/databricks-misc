@@ -1,0 +1,18 @@
+resources:
+  apps:
+    ai_powered_insights_router_app:
+      name: ai-powered-insights-router
+      description: "AI Powered Insights: Streamlit router over domain-scoped Genie Spaces"
+      source_code_path: use_cases/ai_powered_insights/app
+      environment:
+        spec:
+          env_vars:
+            GENIE_HEALTHCARE_SPACE_ID: ${var.genie_healthcare_space_id}
+            GENIE_ANIMAL_CARE_SPACE_ID: ${var.genie_animal_care_space_id}
+            GENIE_TWC_SPACE_ID: ${var.genie_twc_space_id}
+            HEALTHCARE_DASHBOARD_URL: ${var.healthcare_dashboard_url}
+            ANIMAL_CARE_DASHBOARD_URL: ${var.animal_care_dashboard_url}
+            TWC_DASHBOARD_URL: ${var.twc_dashboard_url}
+          dependencies:
+            - -r use_cases/ai_powered_insights/app/requirements.txt
+

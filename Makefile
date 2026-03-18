@@ -29,6 +29,7 @@ MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 .PHONY: document-intelligence-smoke
 .PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
 .PHONY: reco-data reco-run reco-install reco-item-sim-train reco-item-sim-apply reco-als-train reco-als-apply reco-app-run
+.PHONY: ai-insights-app-run
 .PHONY: inventory-data inventory-run inventory-install inventory-writeoff-train inventory-writeoff-apply inventory-demand-train inventory-demand-apply inventory-replenishment-train inventory-replenishment-apply
 .PHONY: mlflow-ui mlflow-wipe
 .PHONY: marvelous-mlops-venv marvelous-mlops-fetch-medium marvelous-mlops-fetch-substack marvelous-mlops-fetch-youtube
@@ -65,6 +66,7 @@ help:
 	@echo "  make reco-als-train                - Train ALS model only"
 	@echo "  make reco-als-apply                - Apply ALS model (set ALS_MODEL_URI for runs:/<run_id>/model)"
 	@echo "  make reco-app-run                  - Run recommendation Streamlit app locally"
+	@echo "  make ai-insights-app-run           - Run AI Powered Insights (Genie + router) Streamlit app locally"
 	@echo "  Inventory optimisation (full sequence: data → train+apply; INVENTORY_DATA_SOURCE=local|catalog|auto):"
 	@echo "  make inventory-install             - Install inventory use-case deps (scipy, lightgbm)"
 	@echo "  make inventory-data                - Generate healthcare CSVs (alias for data-local-generate-quick)"
@@ -214,11 +216,12 @@ document-intelligence-field-extraction:
 	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local $(PY) use_cases/document_intelligence/jobs/3_field_extraction.py
 	@echo "document-intelligence field-extraction done → $(DOC_INTEL_PDF_OUTPUT)/predictions/fields/"
 
-# Full pipeline (OCR + field extraction in one run; same as job 2 then job 3)
+# Full pipeline (Job 2 + Job 3; assumes PDFs already exist)
 document-intelligence-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
 	@test -d $(REPO_ROOT)/$(DOC_INTEL_PDF_OUTPUT)/documents || (echo "Run: make document-intelligence-generate-data first" && exit 1)
-	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local $(PY) use_cases/document_intelligence/run_document_intelligence.py
+	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local $(PY) use_cases/document_intelligence/jobs/2_ocr_extraction.py
+	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local $(PY) use_cases/document_intelligence/jobs/3_field_extraction.py
 	@echo "document-intelligence run done."
 
 # Streamlit annotator app (review predictions from predictions/fields/)
@@ -281,6 +284,12 @@ reco-app-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/recommendation_engine/app/app.py
 	@echo "reco app running (Streamlit)"
+
+# Streamlit app for AI Powered Insights (Genie + domain router)
+ai-insights-app-run:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && (pip install -r use_cases/ai_powered_insights/app/requirements.txt if needed)" && exit 1)
+	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/ai_powered_insights/app/app.py
+	@echo "ai-powered-insights app running (Streamlit)"
 
 # --- Inventory optimisation (single entrypoint; INVENTORY_DATA_SOURCE=local|catalog|auto) ---
 inventory-install:

@@ -1,0 +1,66 @@
+bundle:
+  name: ai_powered_insights_genie_spaces
+  uuid: 3a6a5b2e-7ad3-4d9b-9a9e-1a0c7d0b1b1a
+
+include:
+  - resources/*.yml
+
+sync:
+  paths:
+    - ../../../..
+
+variables:
+  catalog:
+    description: Unity Catalog containing medallion outputs used by dashboards/Genie
+    default: workspace
+  medallion_schema:
+    description: Medallion schema containing silver/gold outputs (dbt/UC schema)
+    default: healthcare_medallion_dev
+  service_principal_name:
+    description: Service principal used for run_as
+    default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
+  sql_warehouse_id:
+    description: SQL warehouse ID used by Genie/Knowledge Store (placeholder)
+    default: ""
+
+targets:
+  dev-sp:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      medallion_schema: healthcare_medallion_dev
+      service_principal_name: <TBD-AI-INSIGHTS-DEV-SP>
+      sql_warehouse_id: ""
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+
+  test-sp:
+    mode: development
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      medallion_schema: healthcare_medallion_test
+      service_principal_name: <TBD-AI-INSIGHTS-TEST-SP>
+      sql_warehouse_id: ""
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+
+  prod-sp:
+    mode: production
+    workspace:
+      host: https://dbc-f501771e-54b7.cloud.databricks.com
+      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: workspace
+      medallion_schema: healthcare_medallion_prod
+      service_principal_name: <TBD-AI-INSIGHTS-PROD-SP>
+      sql_warehouse_id: ""
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+
