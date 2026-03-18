@@ -1,5 +1,5 @@
-import os
 import json
+import os
 import time
 from typing import Any, Dict, List
 
@@ -70,15 +70,16 @@ def main() -> None:
     on_db = is_running_on_databricks()
     default_endpoint_url = os.environ.get("RECO_ENDPOINT_URL", "").strip()
 
-    default_item_similarity_url = os.environ.get(
-        "RECO_ENDPOINT_URL_ITEM_SIMILARITY", ""
-    ).strip() or default_endpoint_url
+    default_item_similarity_url = (
+        os.environ.get("RECO_ENDPOINT_URL_ITEM_SIMILARITY", "").strip()
+        or default_endpoint_url
+    )
     default_als_url = (
         os.environ.get("RECO_ENDPOINT_URL_ALS", "").strip() or default_endpoint_url
     )
-    default_lightfm_url = os.environ.get(
-        "RECO_ENDPOINT_URL_LIGHTFM", ""
-    ).strip() or default_endpoint_url
+    default_lightfm_url = (
+        os.environ.get("RECO_ENDPOINT_URL_LIGHTFM", "").strip() or default_endpoint_url
+    )
 
     with st.sidebar:
         st.markdown("**Environment**")
@@ -176,7 +177,9 @@ def main() -> None:
                         df = pd.DataFrame(results).head(top_k)
                         st.dataframe(df)
                     else:
-                        st.info(f"{label}: response raw is not a list; see JSON output.")
+                        st.info(
+                            f"{label}: response raw is not a list; see JSON output."
+                        )
             else:
                 url = urls[endpoint_choice]
                 if not _has_url(url):
@@ -186,7 +189,9 @@ def main() -> None:
                     )
                 else:
                     resp = _call_reco_endpoint(url, customer_id, cart_ids)
-                    with st.expander(f"{endpoint_choice} - full JSON output", expanded=True):
+                    with st.expander(
+                        f"{endpoint_choice} - full JSON output", expanded=True
+                    ):
                         st.code(_pretty_json(resp), language="json")
 
                     raw = resp.get("raw")
