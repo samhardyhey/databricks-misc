@@ -2,7 +2,7 @@
 Job-style entrypoint for OCR / text extraction.
 
 Intended for:
-- Local runs: python use_cases/document_intelligence/jobs/1_ocr_extraction.py
+- Local runs: python use_cases/document_intelligence/jobs/2_ocr_extraction.py
 - Databricks jobs: spark_python_task.python_file pointing here.
 """
 

@@ -1,8 +1,9 @@
 """
-Streamlit annotation interface for prescription PDFs.
+Streamlit app to review and verify prescription PDF predictions (annotator).
 
-This app allows users to view PDFs and edit their corresponding JSON labels,
-saving annotated versions to a separate directory.
+Purely for OCR/NER output: load predictions from predictions/fields/, show PDF
+alongside extracted fields for verification and correction, save to annotated/labels/.
+No ground-truth labels — prediction-only.
 """
 
 import base64
@@ -11,12 +12,12 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import streamlit as st
-from config import ANNOTATED_DIR, DOCUMENTS_DIR, LABELS_DIR
+from config import ANNOTATED_DIR, DOCUMENTS_DIR, PREDICTIONS_FIELDS_DIR
 from loguru import logger
 
 # Page configuration
 st.set_page_config(
-    page_title="Prescription PDF Annotator",
+    page_title="Prescription PDF Annotator — Review Predictions",
     page_icon="📋",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -33,17 +34,21 @@ if "annotated_dir" not in st.session_state:
     st.session_state.annotated_dir = ANNOTATED_DIR
 
 
-def load_documents(documents_dir: Path, labels_dir: Path) -> List[Tuple[Path, Path]]:
-    """Load matching PDF and JSON file pairs."""
+def load_documents(
+    documents_dir: Path,
+    predictions_fields_dir: Path,
+) -> List[Tuple[Path, Path]]:
+    """
+    Load PDFs that have a corresponding prediction file (OCR/NER output).
+    Returns (pdf_path, json_path) for each document with a prediction.
+    """
     pdf_files = sorted(documents_dir.glob("*.pdf"))
-    json_files = {f.stem: f for f in labels_dir.glob("*.json")}
+    pairs: List[Tuple[Path, Path]] = []
 
-    pairs = []
     for pdf_file in pdf_files:
-        json_file = json_files.get(pdf_file.stem)
-        if json_file:
-            pairs.append((pdf_file, json_file))
-
+        pred_path = predictions_fields_dir / f"{pdf_file.stem}.json"
+        if pred_path.exists():
+            pairs.append((pdf_file, pred_path))
     return pairs
 
 
@@ -103,31 +108,37 @@ def set_review_status(file_stem: str, status: str) -> None:
 
 
 def main():
-    st.title("📋 Prescription PDF Annotator")
+    st.title("📋 Prescription PDF Annotator — Review Predictions")
 
     # Sidebar for navigation
     with st.sidebar:
         st.header("Configuration")
         st.info(
-            f"📁 Documents: `{DOCUMENTS_DIR}`\n📁 Labels: `{LABELS_DIR}`\n📁 Annotated: `{ANNOTATED_DIR}`"
+            f"📁 Documents: `{DOCUMENTS_DIR}`\n"
+            f"📁 Predictions (fields): `{PREDICTIONS_FIELDS_DIR}`\n"
+            f"📁 Annotated (output): `{ANNOTATED_DIR}`"
         )
-        st.caption("Edit `config.py` to change directories")
+        st.caption("Set DOCINT_BASE_DIR to match the pipeline base dir. Run OCR + field extraction first.")
 
         if st.button("Load Documents"):
             if not DOCUMENTS_DIR.exists():
                 st.error(f"Documents directory not found: {DOCUMENTS_DIR}")
                 return
-            if not LABELS_DIR.exists():
-                st.error(f"Labels directory not found: {LABELS_DIR}")
+            if not PREDICTIONS_FIELDS_DIR.exists():
+                st.error(
+                    "Predictions directory not found. Run the pipeline (generate → OCR → field extraction) first."
+                )
                 return
 
-            pairs = load_documents(DOCUMENTS_DIR, LABELS_DIR)
+            pairs = load_documents(DOCUMENTS_DIR, PREDICTIONS_FIELDS_DIR)
             if pairs:
                 st.session_state.document_pairs = pairs
                 st.session_state.current_index = 0
-                st.success(f"Loaded {len(pairs)} document pairs")
+                st.success(f"Loaded {len(pairs)} documents with predictions to review")
             else:
-                st.warning("No matching PDF/JSON pairs found")
+                st.warning(
+                    "No PDF + prediction pairs found. Ensure predictions/fields/ contains JSON for PDFs in documents/."
+                )
 
         # Navigation
         if "document_pairs" in st.session_state and st.session_state.document_pairs:
@@ -211,18 +222,16 @@ def main():
     pdf_path, json_path = pairs[current_index]
     file_stem = pdf_path.stem
 
-    # Load JSON data
+    # Load JSON: prefer last saved correction if present, else pipeline prediction
+    annotated_json_path = ANNOTATED_DIR / "labels" / f"{file_stem}.json"
     try:
-        json_data = load_json(json_path)
+        if annotated_json_path.exists():
+            json_data = load_json(annotated_json_path)
+        else:
+            json_data = load_json(json_path)
     except Exception as e:
         st.error(f"Error loading JSON: {e}")
         return
-
-    # Check if annotated version exists
-    annotated_json_path = ANNOTATED_DIR / "labels" / f"{file_stem}.json"
-    if annotated_json_path.exists():
-        json_data = load_json(annotated_json_path)
-        st.info("📝 Loading annotated version")
 
     # Side-by-side layout
     col_left, col_right = st.columns([1, 1])
@@ -230,6 +239,7 @@ def main():
     with col_left:
         st.header("📄 Document")
         st.write(f"**File:** {pdf_path.name}")
+        st.caption("🔹 Verify/correct OCR + NER prediction")
 
         # Display PDF
         try:
@@ -249,7 +259,7 @@ def main():
             st.error(f"Error loading PDF: {e}")
 
     with col_right:
-        st.header("✏️ Annotation Form")
+        st.header("✏️ Review / Correct Fields")
 
         # Review status
         current_status = get_review_status(file_stem)

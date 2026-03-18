@@ -16,6 +16,8 @@ import mlflow.prophet  # type: ignore[import-untyped]
 import mlflow.sklearn  # type: ignore[import-untyped]
 import mlflow.xgboost  # type: ignore[import-untyped]
 import numpy as np
+
+from use_cases.inventory_optimization.config import ensure_experiment_artifact_root
 import pandas as pd
 from loguru import logger
 
@@ -47,6 +49,7 @@ def compare_forecasting_models(
     mape = float((np.abs(y - baseline) / np.where(y == 0, 1.0, y)).mean() * 100)
 
     try:
+        ensure_experiment_artifact_root(experiment_name)
         mlflow.set_experiment(experiment_name)
         with mlflow.start_run(run_name=f"{experiment_name}_naive_mean"):
             mlflow.log_param("model_type", "naive_mean")

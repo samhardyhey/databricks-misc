@@ -425,8 +425,9 @@ use_cases/document_intelligence/
 ├── data_loading.py           # load_document_data(); discover PDFs and prediction paths from config
 ├── run_document_intelligence.py   # Single entrypoint: load data, run OCR, run field extraction, save predictions
 ├── jobs/
-│   ├── 1_ocr_extraction.py   # OCR only; read PDFs from config, write predictions (OCR text) to predictions store
-│   └── 2_field_extraction.py # Field extraction only; read OCR from predictions store, write extracted fields to predictions store
+│   ├── 1_generate_data.py    # Generate prescription PDFs + labels (documents/, labels/)
+│   ├── 2_ocr_extraction.py   # OCR only; read PDFs from config, write predictions (OCR text) to predictions store
+│   └── 3_field_extraction.py # Field extraction only; read OCR from predictions store, write extracted fields to predictions store
 ├── resources/                # DAB job definitions
 └── bundles/job/databricks.yml
 ```
@@ -457,8 +458,9 @@ databricks-misc/
         ├── ner_field_extraction.py      # run_field_extraction(); read OCR/labels, return/write fields to predictions
         ├── run_document_intelligence.py  # Single entrypoint: load → OCR → extract → save predictions
         ├── jobs/
-        │   ├── 1_ocr_extraction.py       # Job: OCR only, write predictions
-        │   └── 2_field_extraction.py     # Job: field extraction only, write predictions
+        │   ├── 1_generate_data.py        # Job: generate prescription PDFs + labels
+        │   ├── 2_ocr_extraction.py       # Job: OCR only, write predictions
+        │   └── 3_field_extraction.py     # Job: field extraction only, write predictions
         ├── annotator/                    # Streamlit app: read predictions + PDFs, review, write annotated/
         ├── resources/                    # DAB job YAML
         └── bundles/job/databricks.yml

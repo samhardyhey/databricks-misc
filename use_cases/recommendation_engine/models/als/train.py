@@ -11,7 +11,11 @@ Requires the [reco] extra (implicit, lightgbm, mlflow). Run: make reco-install.
 import mlflow
 from loguru import logger
 
-from use_cases.recommendation_engine.config import apply_mlflow_config, get_config
+from use_cases.recommendation_engine.config import (
+    apply_mlflow_config,
+    ensure_experiment_artifact_root,
+    get_config,
+)
 from use_cases.recommendation_engine.models.als.core import train_als
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
 from use_cases.recommendation_engine.models.feature_engineering import (
@@ -34,6 +38,7 @@ def main() -> dict:
         spark = SparkSession.builder.appName("ALSRecoTrain").getOrCreate()
 
     apply_mlflow_config(cfg)
+    ensure_experiment_artifact_root("recommendation_engine")
     mlflow.set_experiment("recommendation_engine")
     if mlflow.active_run() is None:
         mlflow.start_run(run_name="reco_als_pipeline")

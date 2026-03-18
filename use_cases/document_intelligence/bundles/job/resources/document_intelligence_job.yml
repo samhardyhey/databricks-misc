@@ -1,32 +1,67 @@
-# Document intelligence job: runs run_document_intelligence.py over prescription PDFs.
+# Document intelligence: two separate jobs.
+# 1. Data generation — generate prescription PDFs + labels.
+# 2. Pipeline — OCR extraction then field extraction (two-phase).
+
 resources:
   jobs:
-    document_intelligence_job:
-      name: document_intelligence_job
-      description: "Run document intelligence pipeline for prescription PDFs (OCR + field extraction)"
+    document_intelligence_generate_job:
+      name: document_intelligence_generate_job
+      description: "Generate prescription PDFs and JSON labels (documents/ and labels/)"
 
       schedule:
-        quartz_cron_expression: "0 0 5 * * ?"  # daily 5am
+        quartz_cron_expression: "0 0 4 * * ?"  # daily 4am (before pipeline)
         timezone_id: Australia/Sydney
         pause_status: PAUSED
 
       tasks:
-        - task_key: run_document_intelligence
+        - task_key: generate_data
           spark_python_task:
-            python_file: use_cases/document_intelligence/run_document_intelligence.py
-          environment_key: default
+            python_file: use_cases/document_intelligence/jobs/1_generate_data.py
+          environment_key: generate_env
 
       environments:
-        - environment_key: default
+        - environment_key: generate_env
           spec:
             client: "2"
             env_vars:
-              DOCINT_BASE_DIR: /Workspace/Users/samhardyhey@gmail.com/prescription_pdfs
+              DOCINT_BASE_DIR: ${var.docint_base_dir}
+              DOCINT_NUM_PDFS: ${var.docint_num_pdfs}
+              PYTHONPATH: ${var.workspace_root}
+            dependencies:
+              - loguru>=0.7
+              - faker>=19.0
+              - reportlab>=4.0
+
+    document_intelligence_pipeline_job:
+      name: document_intelligence_pipeline_job
+      description: "OCR extraction then field extraction (two-phase pipeline)"
+
+      schedule:
+        quartz_cron_expression: "0 0 5 * * ?"  # daily 5am (after generate)
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: ocr_extraction
+          spark_python_task:
+            python_file: use_cases/document_intelligence/jobs/2_ocr_extraction.py
+          environment_key: pipeline_env
+
+        - task_key: field_extraction
+          depends_on:
+            - task_key: ocr_extraction
+          spark_python_task:
+            python_file: use_cases/document_intelligence/jobs/3_field_extraction.py
+          environment_key: pipeline_env
+
+      environments:
+        - environment_key: pipeline_env
+          spec:
+            client: "2"
+            env_vars:
+              DOCINT_BASE_DIR: ${var.docint_base_dir}
               PYTHONPATH: ${var.workspace_root}
             dependencies:
               - pandas>=2.0
               - loguru>=0.7
               - pdfplumber>=0.11
-              # Optional: add pytesseract and OCR engine deps when available in the workspace
-              # - pytesseract
-

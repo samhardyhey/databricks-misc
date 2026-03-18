@@ -1,19 +1,34 @@
 """
-Configuration file for the Prescription PDF Annotator.
+Configuration for the Prescription PDF Annotator (review predictions).
 
-Edit these paths to match your directory structure.
+Aligns with the document intelligence pipeline: same base dir (DOCINT_BASE_DIR).
+- Read only from predictions/fields/ (OCR + NER pipeline output to verify/correct).
+- Save corrections to annotated/labels/. No ground-truth labels — prediction-only.
 """
 
+import os
 from pathlib import Path
 
-# Base directory containing the prescription PDFs and labels
-BASE_DIR = Path("prescription_pdfs")
+# Repo root for default base dir (annotator/config.py -> parents[3] = repo root)
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_DEFAULT_BASE_DIR = _REPO_ROOT / "prescription_pdfs"
+
+
+def get_base_dir() -> Path:
+    """Base directory (documents/, predictions/, annotated/). Override with DOCINT_BASE_DIR or LOCAL_DATA_PATH."""
+    p = os.environ.get("DOCINT_BASE_DIR") or os.environ.get(
+        "LOCAL_DATA_PATH", str(_DEFAULT_BASE_DIR)
+    )
+    return Path(p).resolve()
+
+
+BASE_DIR = get_base_dir()
 
 # Directory containing PDF documents
 DOCUMENTS_DIR = BASE_DIR / "documents"
 
-# Directory containing JSON label files
-LABELS_DIR = BASE_DIR / "labels"
+# Predictions from pipeline (OCR + field extraction) — only source for review
+PREDICTIONS_FIELDS_DIR = BASE_DIR / "predictions" / "fields"
 
-# Directory where annotated JSON files will be saved
+# Where corrected annotations are saved
 ANNOTATED_DIR = BASE_DIR / "annotated"

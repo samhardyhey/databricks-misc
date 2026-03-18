@@ -15,9 +15,10 @@ DBT_BIN := $(REPO_ROOT)/.venv/bin/dbt
 # Local data: output dirs (data/local is gitignored)
 DATA_LOCAL_DIR := $(REPO_ROOT)/data/local
 MEDALLION_DIR := $(REPO_ROOT)/data/healthcare_data_medallion
-# Local MLflow: same path as reco/inventory config so make mlflow-ui shows all logged models
+# Local MLflow: SQLite backend in data/local (avoids FileStore deprecation and trace/metrics 500s)
+MLFLOW_DB := $(REPO_ROOT)/data/local/mlflow.db
 MLRUNS_DIR ?= $(REPO_ROOT)/data/local/mlruns
-export MLFLOW_TRACKING_URI ?= file://$(MLRUNS_DIR)
+export MLFLOW_TRACKING_URI ?= sqlite:///$(MLFLOW_DB)
 
 # Prescription PDF generation: sensible defaults (override: make data-local-generate-pdfs DOC_INTEL_PDF_ARGS="-n 5 -s 42")
 DOC_INTEL_PDF_ARGS ?= -n 10
@@ -45,7 +46,7 @@ help:
 	@echo "  make uv-activate          - Print activate command for .venv"
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
 	@echo "  make format [FMT_ARGS=.]  - Run autoflake, isort, black"
-	@echo "  make mlflow-ui            - Start MLflow UI (backend data/local/mlruns); open http://localhost:5000"
+	@echo "  make mlflow-ui            - Start MLflow UI (SQLite data/local/mlflow.db, artifacts data/local/mlruns); http://localhost:5001"
 	@echo ""
 	@echo "  Local (data generation / medallion):"
 	@echo "  make clean-local-data           - Remove data/local/, test_output/, prescription_pdfs, medallion target/logs (start again)"
@@ -107,12 +108,12 @@ uv-dev:
 uv-activate:
 	@echo "Run: source $(REPO_ROOT)/.venv/bin/activate"
 
-# --- Local MLflow UI (reco + inventory models logged to data/local/mlruns when MLFLOW_TRACKING_URI not set) ---
+# --- Local MLflow UI (SQLite backend data/local/mlflow.db; artifacts in data/local/mlruns) ---
 mlflow-ui:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
-	@mkdir -p $(MLRUNS_DIR)
-	cd $(REPO_ROOT) && $(PY) -m mlflow ui --backend-store-uri file://$(REPO_ROOT)/data/local/mlruns --host 0.0.0.0
-	@echo "MLflow UI: http://localhost:5000 (Ctrl+C to stop)"
+	@mkdir -p $(DATA_LOCAL_DIR) $(MLRUNS_DIR)
+	@echo "MLflow UI: http://localhost:5001 (Ctrl+C to stop)"
+	cd $(REPO_ROOT) && $(PY) -m mlflow ui --backend-store-uri sqlite:///$(MLFLOW_DB) --default-artifact-root file://$(MLRUNS_DIR) --host 0.0.0.0 --port 5001
 
 # --- Cleanup ---
 cleanup:

@@ -62,4 +62,6 @@ def get_config() -> dict:
         "labels_dir": base_dir / "labels",
         "annotated_dir": base_dir / "annotated",
         "on_databricks": is_running_on_databricks(),
+        "generate_num_pdfs": get_generate_num_pdfs(),
+        "generate_seed": get_generate_seed(),
     }

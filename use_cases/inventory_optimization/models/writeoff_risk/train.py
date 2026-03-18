@@ -65,9 +65,12 @@ def main() -> None:
         import mlflow
         import mlflow.sklearn
 
+        from use_cases.inventory_optimization.config import ensure_experiment_artifact_root
+
         tracking_uri = cfg.get("mlflow_tracking_uri")
         if tracking_uri is not None:
             mlflow.set_tracking_uri(tracking_uri)
+        ensure_experiment_artifact_root("inventory_writeoff_risk")
         mlflow.set_experiment("inventory_writeoff_risk")
         with mlflow.start_run(run_name="writeoff_risk_classifier"):
             mlflow.log_params(

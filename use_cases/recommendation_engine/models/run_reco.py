@@ -16,7 +16,11 @@ import mlflow
 import pandas as pd
 from loguru import logger
 
-from use_cases.recommendation_engine.config import apply_mlflow_config, get_config
+from use_cases.recommendation_engine.config import (
+    apply_mlflow_config,
+    ensure_experiment_artifact_root,
+    get_config,
+)
 from use_cases.recommendation_engine.models.als.core import train_als
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
 from use_cases.recommendation_engine.models.evaluation import evaluate_recommendations
@@ -70,6 +74,7 @@ def main(config: dict | None = None, spark=None) -> dict:
         )
 
     apply_mlflow_config()
+    ensure_experiment_artifact_root("recommendation_engine")
     mlflow.set_experiment("recommendation_engine")
     mlflow.start_run(run_name="reco_pipeline")
 

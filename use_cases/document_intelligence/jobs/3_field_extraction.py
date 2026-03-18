@@ -2,7 +2,7 @@
 Job-style entrypoint for field extraction / structuring.
 
 Intended for:
-- Local runs: python use_cases/document_intelligence/jobs/2_field_extraction.py
+- Local runs: python use_cases/document_intelligence/jobs/3_field_extraction.py
 - Databricks jobs: spark_python_task.python_file pointing here.
 """
 
