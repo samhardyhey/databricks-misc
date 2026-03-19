@@ -31,11 +31,11 @@ targets:
     default: true
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
       source_schema: healthcare_dev_raw
-      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-DATA-GENERATOR-DEV-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
@@ -54,11 +54,11 @@ targets:
     mode: development
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
       source_schema: healthcare_test_raw
-      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-DATA-GENERATOR-TEST-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
@@ -77,11 +77,11 @@ targets:
     mode: production
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
       source_schema: healthcare_prod_raw
-      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-DATA-GENERATOR-PROD-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}

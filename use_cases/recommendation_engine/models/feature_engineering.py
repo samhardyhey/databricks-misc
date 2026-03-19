@@ -3,6 +3,10 @@ Model-specific feature construction for recommendation engine.
 Read from gold/silver (training_base, products, orders); used in training and serving.
 """
 
+from __future__ import annotations
+
+from typing import Any
+
 import numpy as np
 import pandas as pd
 
@@ -64,9 +68,11 @@ def build_interaction_matrix(
     customer_col: str = "customer_id",
     product_col: str = "product_id",
     weight_col: str | None = None,
-) -> tuple[pd.Series, pd.Series, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, Any, Any]:
     """
-    Build sparse user-item matrix for ALS. Returns (customer_ids, product_ids, weights).
+    Build sparse user-item matrix for ALS. Returns
+    ``user_codes``, ``item_codes``, ``weights``, and categorical accessors with
+    ``.categories`` for mapping codes back to ids.
     Weights: use weight_col if provided, else 1 for purchased and fractional for others.
     """
     df = interactions.copy()
@@ -118,3 +124,31 @@ def add_negative_samples(
     if negs:
         return pd.concat([training_base, pd.DataFrame(negs)], ignore_index=True)
     return training_base
+
+
+def build_ranker_feature_frame(
+    pairs_df: pd.DataFrame, products: pd.DataFrame
+) -> tuple[pd.DataFrame, list[str]]:
+    """
+    Merge (customer_id, product_id, label, …) rows with product attributes and
+    return numeric matrices for LightGBM ranker training/scoring.
+    """
+    merged = pairs_df.merge(products, on="product_id", how="left")
+    feature_cols: list[str] = []
+    skip = {
+        "customer_id",
+        "product_id",
+        "label",
+        "last_interaction_timestamp",
+        "interaction_timestamp",
+        "timestamp",
+    }
+    for col in merged.columns:
+        if col in skip:
+            continue
+        if merged[col].dtype == object:
+            merged[col] = pd.factorize(merged[col].fillna(""))[0]
+        else:
+            merged[col] = pd.to_numeric(merged[col], errors="coerce").fillna(0)
+        feature_cols.append(col)
+    return merged, feature_cols

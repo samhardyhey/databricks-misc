@@ -53,6 +53,22 @@
 
 **Evaluation**: Precision@5, Recall@10, NDCG, offline substitution acceptance rate, margin improvement
 
+### Metrics, splits, and comparing models (recommendation)
+
+The four recommenders **solve different sub-problems** (content similarity vs matrix factorisation vs hybrid ranker), so they are not interchangeable as a single “best accuracy” leaderboard without context. What *is* comparable in MLflow is **offline ranking quality on the same protocol**:
+
+| Aspect | Convention in this repo |
+|--------|-------------------------|
+| **Train/validation split** | **Temporal split on `silver_reco_interactions`**: events sorted by `interaction_timestamp` / `timestamp`; the **last 20% of events** are validation (`reco_val_fraction` = 0.2, overridable in code via `reco_split_eval.DEFAULT_VAL_FRACTION`). Models are fit **only** on the earlier 80%. |
+| **K** | **Top-10** everywhere (`RECOMMENDATION_OFFLINE_EVAL_K` = 10) so Precision/Recall/NDCG are aligned. |
+| **MLflow metric keys** | **`val_precision_at_k`, `val_recall_at_k`, `val_ndcg_at_k`** — log these in every reco training run for cross-experiment comparison. |
+| **Protocol params** | **`reco_eval_protocol`, `reco_eval_k`, `reco_n_train_events`, `reco_n_val_events`** describe the split so runs stay apples-to-apples. |
+| **Eval user cap** | **≤500 users** by default for heavy eval paths (`RECO_OFFLINE_MAX_EVAL_USERS`) to keep ranker / scoring jobs bounded; increase when you need tighter estimates. |
+
+**Ground truth for offline metrics:** validation-period **purchases** (`action_type == purchased`) per customer, compared to each model’s top-K recommendations for users who appear in training (standard transductive setup). **Item-to-item similarity** uses the **last product each user touched in the train window** as an anchor, then measures whether similar items match **future** validation purchases — aligned with “signal from past, evaluate on future” like the CF models.
+
+**MLflow tip:** Filter runs by the shared metric names and by `reco_eval_k` / `reco_val_fraction` to compare Champion models across ALS, LightFM, item similarity, and ranker without mistaking incomparable quantities.
+
 ### Feature ownership (dbt vs ML code)
 
 **Keep in dbt (medallion):** Base, reusable aggregates that many consumers need (e.g. customer × product purchase counts, last order date, product/customer attributes from silver). Think of this as **feature storage / wide tables**, not the full model-specific feature set. Optionally one slim “training base” table (e.g. `gold_reco_training_base`: customer, product, label, key IDs).
@@ -158,6 +174,24 @@ use_cases/recommendation_engine/
   - Constraints: MOQ, warehouse capacity, budget, supplier lead times, expiry windows
 
 **Evaluation**: Forecast MAE/RMSE/MAPE, reduction in write-offs (%), service level achievement, inventory turnover ratio
+
+### Metrics, comparability, and MLflow (inventory)
+
+The three inventory components are **structurally different**: demand is **forecast error** (regression over time), write-off is **classification** (precision/recall/F1 on risk), replenishment is a **policy / heuristic** (counts and quantities from ROP-style rules, not ranking accuracy). It is **normal and correct** that they do **not** share a single headline metric; comparing them directly like-for-like would be misleading.
+
+**When you *can* align in MLflow**
+
+- Use **consistent naming prefixes** by task so the UI stays organised, e.g. `forecast_*`, `writeoff_*`, `replenishment_*` (already reflected in separate experiments per component).
+- **Demand vs write-off:** You could add auxiliary **business-shaped** metrics on shared slices (e.g. expected € impact, or calibration on a holdout week) — only if defined carefully — but **do not force** MAPE and F1 into one number.
+- **Replenishment:** Log **operational summaries** (`below_rop_count`, `total_reorder_qty`, etc.) as metrics; treat them as **KPIs**, not classification metrics.
+
+**Train/test separation (current intent)**
+
+- **Demand (`compare_forecasting_models`):** **Temporal split** on order rows by `order_date`: mean fitted on the early **80%**, MAE/RMSE/MAPE on the **held-out 20%** (see `models/demand_forecasting/core.py`). Full Prophet/XGBoost work should keep the same contract.
+- **Write-off:** **Stratified train/test** inside the classifier (`models/writeoff_risk/core.py`).
+- **Replenishment:** Uses **current** inventory + orders to compute a policy; there is no classic ML test set unless you simulate forward periods separately.
+
+This keeps MLflow useful for **within-component** comparisons (e.g. two demand models, two write-off checkpoints) while making cross-component comparison **qualitative** (KPIs and business outcomes) rather than a single shared accuracy score.
 
 ### Databricks Architecture
 

@@ -20,6 +20,11 @@ MEDALLION_DIR := $(REPO_ROOT)/data/healthcare_data_medallion
 # UC foundation (Unity Catalog schemas/volumes) deploy settings
 UC_FOUNDATION_TARGET ?= dev-sp
 
+# Databricks workspace user for bundle root_path in databricks.yml ( /Workspace/Users/<email>/.bundle/... ).
+# Override if your workspace home differs. See: make dab-workspace-print
+WORKSPACE_USER_EMAIL ?= sam.hardy@ebosgroup.com
+WORKSPACE_BUNDLE_PREFIX := /Workspace/Users/$(WORKSPACE_USER_EMAIL)/.bundle
+
 # Document intelligence (prescription PDFs): local base dir
 DOC_INTEL_PDF_OUTPUT := data/local/prescription_pdfs
 
@@ -28,7 +33,7 @@ MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
 MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
 .PHONY: help cleanup clean-local-data format uc-foundation-deploy
-.PHONY: dab-list dab-validate dab-deploy dab-run
+.PHONY: dab-list dab-workspace-print dab-validate dab-deploy dab-run
 .PHONY: foundation-dab-validate-uc foundation-dab-deploy-uc
 .PHONY: data-dab-validate-generator data-dab-deploy-generator data-dab-run-generator
 .PHONY: data-dab-validate-medallion data-dab-deploy-medallion data-dab-run-medallion
@@ -651,6 +656,9 @@ endef
 define dab_requires_direct_engine
 $(if $(filter uc_foundation ai_powered_insights_genie_spaces,$(1)),1,)
 endef
+
+dab-workspace-print:
+	@echo "$(WORKSPACE_BUNDLE_PREFIX)   (set WORKSPACE_USER_EMAIL if bundle YAML paths must match your Databricks user)"
 
 dab-list:
 	@echo "Available DAB bundles:"

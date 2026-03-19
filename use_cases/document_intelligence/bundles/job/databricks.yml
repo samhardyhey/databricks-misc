@@ -23,7 +23,7 @@ variables:
     default: ""
   docint_base_dir:
     description: Local base dir (documents/, predictions/, annotated/). Used when DOCINT_DATA_SOURCE=local.
-    default: /Workspace/Users/samhardyhey@gmail.com/data/local/prescription_pdfs
+    default: /Workspace/Users/sam.hardy@ebosgroup.com/data/local/prescription_pdfs
   docint_num_pdfs:
     description: Number of prescription PDFs to generate (DOCINT_NUM_PDFS)
     default: "10"
@@ -46,12 +46,12 @@ targets:
     default: true
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
       medallion_schema: workspace.document_intelligence_dev
-      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
-      docint_base_dir: /Workspace/Users/samhardyhey@gmail.com/data/local/prescription_pdfs
+      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      docint_base_dir: /Workspace/Users/sam.hardy@ebosgroup.com/data/local/prescription_pdfs
       docint_num_pdfs: "10"
       docint_data_source: catalog
       docint_catalog_schema: workspace.document_intelligence_dev
@@ -69,12 +69,12 @@ targets:
     mode: development
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
       medallion_schema: workspace.document_intelligence_test
-      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
-      docint_base_dir: /Workspace/Users/samhardyhey@gmail.com/data/local/prescription_pdfs
+      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      docint_base_dir: /Workspace/Users/sam.hardy@ebosgroup.com/data/local/prescription_pdfs
       docint_num_pdfs: "10"
       docint_data_source: catalog
       docint_catalog_schema: workspace.document_intelligence_test
@@ -92,12 +92,12 @@ targets:
     mode: production
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
       medallion_schema: workspace.document_intelligence_prod
-      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
-      docint_base_dir: /Workspace/Users/samhardyhey@gmail.com/data/local/prescription_pdfs
+      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      docint_base_dir: /Workspace/Users/sam.hardy@ebosgroup.com/data/local/prescription_pdfs
       docint_num_pdfs: "10"
       docint_data_source: catalog
       docint_catalog_schema: workspace.document_intelligence_prod

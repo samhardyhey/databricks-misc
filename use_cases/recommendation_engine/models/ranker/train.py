@@ -2,8 +2,8 @@
 Train a LightGBM ranker for recommendation_engine.
 """
 
-import pandas as pd
 import mlflow
+import pandas as pd
 from loguru import logger
 
 from use_cases.recommendation_engine.config import (
@@ -12,38 +12,32 @@ from use_cases.recommendation_engine.config import (
     get_config,
 )
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
-from use_cases.recommendation_engine.models.feature_engineering import add_negative_samples
-from use_cases.recommendation_engine.models.ranker.core import train_ranker
+from use_cases.recommendation_engine.models.feature_engineering import (
+    add_negative_samples,
+    build_ranker_feature_frame,
+)
+from use_cases.recommendation_engine.models.ranker.core import rank_candidates, train_ranker
+from use_cases.recommendation_engine.models.reco_split_eval import (
+    RECOMMENDATION_OFFLINE_EVAL_K,
+    DEFAULT_VAL_FRACTION,
+    log_common_reco_eval_params_mlflow,
+    offline_max_eval_users,
+    purchases_truth,
+    standard_offline_metrics,
+    temporal_train_val_split,
+    evaluate_prediction_df,
+)
+from use_cases.recommendation_engine.pipelines.build_training_base import (
+    _compute_training_base,
+)
 from utils.mlflow.registry import set_latest_version_alias
 
 
-def _build_ranker_frame(
-    training_base: pd.DataFrame, products: pd.DataFrame
-) -> tuple[pd.DataFrame, list[str]]:
+def _prepare_training_base_df(training_base: pd.DataFrame) -> pd.DataFrame:
     df = training_base.copy()
     if "label" not in df.columns:
         df["label"] = 1
-
-    merged = df.merge(products, on="product_id", how="left")
-
-    # Build a simple numeric feature set for ranker baseline.
-    feature_cols: list[str] = []
-    for col in merged.columns:
-        if col in {
-            "customer_id",
-            "product_id",
-            "label",
-            "last_interaction_timestamp",
-            "interaction_timestamp",
-            "timestamp",
-        }:
-            continue
-        if merged[col].dtype == object:
-            merged[col] = pd.factorize(merged[col].fillna(""))[0]
-        else:
-            merged[col] = pd.to_numeric(merged[col], errors="coerce").fillna(0)
-        feature_cols.append(col)
-    return merged, feature_cols
+    return df
 
 
 def main() -> dict:
@@ -62,22 +56,35 @@ def main() -> dict:
 
     try:
         data = load_reco_data(config=cfg, spark=spark)
-        training_base = data.get("training_base")
+        interactions = data.get("interactions")
         products = data.get("products")
-        if training_base is None or products is None or training_base.empty:
+        if products is None or interactions is None or interactions.empty:
             raise RuntimeError(
-                "Missing training_base/products for ranker training. "
-                "Local: run make reco-local-data && make reco-build-training-base."
+                "Ranker training requires interactions + products for temporal split. "
+                "Local: make reco-data. Catalog: silver_reco_interactions + silver_products."
             )
 
+        products = products.copy()
+        products["product_id"] = products["product_id"].astype(str)
+
+        train_int, val_int = temporal_train_val_split(
+            interactions, val_fraction=DEFAULT_VAL_FRACTION
+        )
+        tb_raw = _compute_training_base(train_int)
+        tb_raw["customer_id"] = tb_raw["customer_id"].astype(str)
+        tb_raw["product_id"] = tb_raw["product_id"].astype(str)
+        training_base = _prepare_training_base_df(tb_raw)
+
         sampled = add_negative_samples(training_base, products, n_neg_per_pos=2)
-        train_df, feature_cols = _build_ranker_frame(sampled, products)
+        train_df, feature_cols = build_ranker_feature_frame(sampled, products)
 
         apply_mlflow_config(cfg)
         experiment = "recommendation_engine-ranker"
         ensure_experiment_artifact_root(experiment)
         mlflow.set_experiment(experiment)
 
+        k = RECOMMENDATION_OFFLINE_EVAL_K
+        offline: dict[str, float] = {}
         with mlflow.start_run(run_name="ranker_train") as run:
             model = train_ranker(
                 train_df=train_df,
@@ -86,8 +93,70 @@ def main() -> dict:
                 label_col="label",
                 log_to_mlflow=False,
             )
-            mlflow.log_param("n_features", len(feature_cols))
-            mlflow.log_param("n_rows", len(train_df))
+            truth = purchases_truth(val_int)
+            pos_users_train = training_base.loc[
+                training_base["label"] == 1, "customer_id"
+            ].unique()
+            eval_users = [
+                u for u in truth["customer_id"].unique() if u in set(pos_users_train)
+            ]
+            max_u = offline_max_eval_users()
+            if max_u > 0 and len(eval_users) > max_u:
+                eval_users = eval_users[:max_u]
+            pids = products["product_id"].unique()
+            if eval_users:
+                rows = []
+                for u in eval_users:
+                    for pid in pids:
+                        rows.append(
+                            {"customer_id": str(u), "product_id": str(pid)}
+                        )
+                cand = pd.DataFrame(rows)
+                cand = cand.merge(
+                    training_base,
+                    on=["customer_id", "product_id"],
+                    how="left",
+                )
+                if "label" in cand.columns:
+                    cand = cand.drop(columns=["label"])
+                cand["label"] = 0
+                num_fill = [
+                    c
+                    for c in cand.columns
+                    if c
+                    not in ("customer_id", "product_id", "last_interaction_timestamp")
+                ]
+                if num_fill:
+                    cand[num_fill] = cand[num_fill].fillna(0)
+                scored, _ = build_ranker_feature_frame(cand, products)
+                for c in feature_cols:
+                    if c not in scored.columns:
+                        scored[c] = 0
+                pred_wide = rank_candidates(
+                    model, scored, feature_cols, top_k=k
+                )
+                pred_df = pred_wide[["customer_id", "product_id"]].copy()
+                raw_ev = evaluate_prediction_df(pred_df, truth, k=k)
+                offline = standard_offline_metrics(raw_ev)
+
+            mlflow.log_params(
+                {
+                    "n_features": len(feature_cols),
+                    "n_rows": len(train_df),
+                    **log_common_reco_eval_params_mlflow(
+                        DEFAULT_VAL_FRACTION,
+                        k,
+                        len(train_int),
+                        len(val_int),
+                    ),
+                }
+            )
+            mlflow.log_metrics(
+                offline
+                or standard_offline_metrics(
+                    {"precision_at_k": 0.0, "recall_at_k": 0.0, "ndcg_at_k": 0.0}
+                )
+            )
             mlflow.lightgbm.log_model(
                 model.booster_,
                 artifact_path="ranker_model",
@@ -97,7 +166,12 @@ def main() -> dict:
 
         model_uri = f"runs:/{run.info.run_id}/ranker_model"
         logger.info("Ranker trained; model_uri={}", model_uri)
-        return {"model_uri": model_uri, "n_rows": len(train_df), "n_features": len(feature_cols)}
+        return {
+            "model_uri": model_uri,
+            "n_rows": len(train_df),
+            "n_features": len(feature_cols),
+            "offline_metrics": offline,
+        }
     finally:
         if spark is not None:
             spark.stop()

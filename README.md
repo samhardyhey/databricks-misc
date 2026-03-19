@@ -23,5 +23,6 @@ Implements **EBOS AI/ML use-cases** for healthcare/pharmaceutical distribution o
 - **Data (local):** `make data-local-generate-quick`, `make data-local-duckdb-load`, `make data-local-dbt-run`.
 - **Use-case e2e (local):** e.g. `make reco-local-e2e`, `make inventory-local-e2e` — run one at a time (shared DuckDB).
 - **UC foundation:** `make uc-foundation-deploy` (then deploy generator/medallion/use-case bundles).
+- **Bundle workspace paths:** Databricks Asset Bundle `workspace.root_path` values use `/Workspace/Users/sam.hardy@ebosgroup.com/.bundle/...` by default. If your workspace user differs, search-replace that email in `**/bundles/**/databricks.yml` or adjust `WORKSPACE_USER_EMAIL` (`make dab-workspace-print`).
 
 See [Makefile](Makefile) for all targets (`make help`).

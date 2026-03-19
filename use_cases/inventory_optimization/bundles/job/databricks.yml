@@ -40,14 +40,14 @@ targets:
     default: true
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
       medallion_bronze_schema: workspace.healthcare_medallion_dev_bronze
       medallion_silver_schema: workspace.healthcare_medallion_dev_silver
       medallion_gold_schema: workspace.healthcare_medallion_dev_gold
       output_schema: workspace.inventory_optimization_dev
-      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-INVENTORY-DEV-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
@@ -61,14 +61,14 @@ targets:
     mode: development
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
       medallion_bronze_schema: workspace.healthcare_medallion_test_bronze
       medallion_silver_schema: workspace.healthcare_medallion_test_silver
       medallion_gold_schema: workspace.healthcare_medallion_test_gold
       output_schema: workspace.inventory_optimization_test
-      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-INVENTORY-TEST-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
@@ -82,14 +82,14 @@ targets:
     mode: production
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
       medallion_bronze_schema: workspace.healthcare_medallion_prod_bronze
       medallion_silver_schema: workspace.healthcare_medallion_prod_silver
       medallion_gold_schema: workspace.healthcare_medallion_prod_gold
       output_schema: workspace.inventory_optimization_prod
-      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-INVENTORY-PROD-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}

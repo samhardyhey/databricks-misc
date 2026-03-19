@@ -50,7 +50,7 @@ targets:
     default: true
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       healthcare_raw_schema_name: healthcare_dev_raw
       healthcare_medallion_schema_name: healthcare_medallion_dev
@@ -70,7 +70,7 @@ targets:
     mode: development
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       healthcare_raw_schema_name: healthcare_test_raw
       healthcare_medallion_schema_name: healthcare_medallion_test
@@ -90,7 +90,7 @@ targets:
     mode: production
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       healthcare_raw_schema_name: healthcare_prod_raw
       healthcare_medallion_schema_name: healthcare_medallion_prod

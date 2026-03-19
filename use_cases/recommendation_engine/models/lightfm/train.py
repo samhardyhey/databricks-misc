@@ -8,6 +8,7 @@ import tempfile
 
 import joblib
 import mlflow
+import pandas as pd
 from loguru import logger
 
 from use_cases.recommendation_engine.config import (
@@ -18,7 +19,18 @@ from use_cases.recommendation_engine.config import (
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
 from use_cases.recommendation_engine.models.lightfm.core import (
     LightFMRecoWrapper,
+    recommend_for_users,
     train_lightfm,
+)
+from use_cases.recommendation_engine.models.reco_split_eval import (
+    RECOMMENDATION_OFFLINE_EVAL_K,
+    DEFAULT_VAL_FRACTION,
+    log_common_reco_eval_params_mlflow,
+    offline_max_eval_users,
+    purchases_truth,
+    standard_offline_metrics,
+    temporal_train_val_split,
+    evaluate_prediction_df,
 )
 from utils.mlflow.registry import set_latest_version_alias
 
@@ -47,9 +59,13 @@ def main() -> dict:
             )
             return {}
 
+        train_int, val_int = temporal_train_val_split(
+            interactions, val_fraction=DEFAULT_VAL_FRACTION
+        )
+
         # Convert interactions into the (customer_id, product_id, weight) format
         # expected by LightFM core helpers.
-        df = interactions.copy()
+        df = train_int.copy()
         if "action_type" in df.columns:
             df["weight"] = (
                 df["action_type"]
@@ -88,7 +104,26 @@ def main() -> dict:
 
         run = mlflow.start_run(run_name="lightfm_train")
         run_id = run.info.run_id
+        offline: dict[str, float] = {}
         try:
+            k = RECOMMENDATION_OFFLINE_EVAL_K
+            truth = purchases_truth(val_int)
+            cand_users = [
+                u
+                for u in truth["customer_id"].unique()
+                if u in artifacts.user_id_map
+            ]
+            max_u = offline_max_eval_users()
+            cand_users = cand_users[:max_u] if max_u > 0 else cand_users
+            reco_df = (
+                recommend_for_users(artifacts, cand_users, k=k)
+                if cand_users
+                else pd.DataFrame(columns=["customer_id", "product_id", "score", "rank"])
+            )
+            pred_df = reco_df[["customer_id", "product_id"]].copy()
+            raw_eval = evaluate_prediction_df(pred_df, truth, k=k)
+            offline = standard_offline_metrics(raw_eval)
+
             with tempfile.TemporaryDirectory() as tmp:
                 payload_path = f"{tmp}/lightfm_artifacts.joblib"
                 joblib.dump(
@@ -107,8 +142,15 @@ def main() -> dict:
                         "epochs": 20,
                         "n_users": len(artifacts.user_id_map),
                         "n_items": len(artifacts.item_id_map),
+                        **log_common_reco_eval_params_mlflow(
+                            DEFAULT_VAL_FRACTION,
+                            k,
+                            len(train_int),
+                            len(val_int),
+                        ),
                     }
                 )
+                mlflow.log_metrics(offline)
                 mlflow.pyfunc.log_model(
                     artifact_path="lightfm_model",
                     python_model=LightFMRecoWrapper(),
@@ -126,6 +168,7 @@ def main() -> dict:
             "n_items": len(artifacts.item_id_map),
             "run_id": run_id,
             "model_uri": f"runs:/{run_id}/lightfm_model",
+            "offline_metrics": offline,
         }
     finally:
         if spark is not None:
