@@ -16,7 +16,9 @@ from loguru import logger
 from use_cases.recommendation_engine.config import get_config
 
 # Local output path when data_source is local (override with RECO_LOCAL_TRAINING_BASE_PATH).
-DEFAULT_LOCAL_TRAINING_BASE_PATH = Path("data/local/reco/gold_reco_training_base.parquet")
+DEFAULT_LOCAL_TRAINING_BASE_PATH = Path(
+    "data/local/reco/gold_reco_training_base.parquet"
+)
 
 
 def _compute_training_base(interactions: pd.DataFrame) -> pd.DataFrame:
@@ -26,7 +28,11 @@ def _compute_training_base(interactions: pd.DataFrame) -> pd.DataFrame:
     df = interactions.copy()
     if "action_type" not in df.columns:
         raise ValueError("interactions must have action_type")
-    ts_col = "interaction_timestamp" if "interaction_timestamp" in df.columns else "timestamp"
+    ts_col = (
+        "interaction_timestamp"
+        if "interaction_timestamp" in df.columns
+        else "timestamp"
+    )
     if ts_col not in df.columns:
         raise ValueError(f"interactions must have {ts_col}")
     df["_label"] = (df["action_type"] == "purchased").astype(int)
@@ -42,6 +48,7 @@ def _load_interactions_local(cfg: dict) -> pd.DataFrame:
     """Load silver_reco_interactions from DuckDB or CSV."""
     if cfg.get("local_data_source") == "duckdb" and cfg.get("duckdb_path"):
         import duckdb
+
         path = Path(cfg["duckdb_path"])
         if not path.is_file():
             raise FileNotFoundError(f"DuckDB not found: {path}. Run make reco-data.")
@@ -49,7 +56,9 @@ def _load_interactions_local(cfg: dict) -> pd.DataFrame:
         silver = f"{base}_silver"
         conn = duckdb.connect(str(path), read_only=True)
         try:
-            df = conn.execute(f"SELECT * FROM {silver}.silver_reco_interactions").fetchdf()
+            df = conn.execute(
+                f"SELECT * FROM {silver}.silver_reco_interactions"
+            ).fetchdf()
         except Exception as e:
             logger.warning("DuckDB silver_reco_interactions failed: {}", e)
             conn.close()
@@ -64,7 +73,9 @@ def _load_interactions_local(cfg: dict) -> pd.DataFrame:
         data_dir = Path(data_dir)
     path = data_dir / "product_interactions.csv"
     if not path.exists():
-        raise FileNotFoundError(f"Interactions CSV not found: {path}. Run make reco-data.")
+        raise FileNotFoundError(
+            f"Interactions CSV not found: {path}. Run make reco-data."
+        )
     df = pd.read_csv(path)
     if "interaction_timestamp" not in df.columns and "timestamp" in df.columns:
         df["interaction_timestamp"] = pd.to_datetime(df["timestamp"])
@@ -80,6 +91,7 @@ def main() -> dict:
 
     if data_source == "catalog":
         from pyspark.sql import SparkSession
+
         spark = SparkSession.builder.appName("RecoBuildTrainingBase").getOrCreate()
         table_in = f"{cfg['input_silver_schema']}.silver_reco_interactions"
         logger.info("Loading interactions from {}", table_in)
@@ -89,14 +101,18 @@ def main() -> dict:
         training_base = _compute_training_base(df)
         out_table = f"{cfg['output_schema']}.gold_reco_training_base"
         logger.info("Writing training base to {}", out_table)
-        spark.createDataFrame(training_base).write.saveAsTable(out_table, mode="overwrite")
+        spark.createDataFrame(training_base).write.saveAsTable(
+            out_table, mode="overwrite"
+        )
         return {"written": out_table, "rows": len(training_base)}
 
     # Local
     interactions = _load_interactions_local(cfg)
     training_base = _compute_training_base(interactions)
     out_path = Path(
-        __import__("os").environ.get("RECO_LOCAL_TRAINING_BASE_PATH", str(DEFAULT_LOCAL_TRAINING_BASE_PATH))
+        __import__("os").environ.get(
+            "RECO_LOCAL_TRAINING_BASE_PATH", str(DEFAULT_LOCAL_TRAINING_BASE_PATH)
+        )
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     training_base.to_parquet(out_path, index=False)

@@ -2,7 +2,7 @@
 
 This repository implements the **EBOS AI/ML Use Cases**: a set of use-cases for healthcare/pharmaceutical distribution (Databricks + Unity Catalog). All use-cases are of equal priority; implementation order may vary. It combines a **shared data foundation** (generators + medallion) with **use-cases** that consume that data — one data platform, many use-cases on top, mimicking real-life data generation and medallions.
 
-**Full specification**: [docs/EBOS_USE_CASES.md](docs/EBOS_USE_CASES.md) (data requirements, modelling approach, architecture, file structure per use-case).  
+**Full specification**: [docs/EBOS_USE_CASES.md](docs/EBOS_USE_CASES.md) (data requirements, modelling approach, architecture, file structure per use-case).
 **Data generator roadmap**: [docs/DATA_GENERATOR_DEV_PLAN.md](docs/DATA_GENERATOR_DEV_PLAN.md) (phased plan to implement all new data for use cases, extending the healthcare generator where possible).
 
 ---
@@ -31,13 +31,13 @@ This repository implements the **EBOS AI/ML Use Cases**: a set of use-cases for 
 
 ## Use-cases (EBOS shortlist)
 
-| #     | Use-case                                                                                                    | Status                                 | Location                                                                                               |
-| ----- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| **1** | **Recommendation Engine for Ordering** — Similar products, auto-substitutions, margin-aware recommendations | ✅ Partial (item_similarity, ALS, LightFM, ranker) | `use_cases/recommendation_engine/` (`models/` for core, train, apply) |
-| **2** | **Inventory Optimisation** — Demand forecasting, write-off risk, replenishment optimisation         | ✅ Partial (demand_forecasting, writeoff_risk, replenishment)  | `use_cases/inventory_optimization/` (`models/` for core, train, apply) |
-| **3** | **AI Customer Service Agents** — Intent classification, RAG, order tracking                                 | ⚠️ Not implemented                      | `use_cases/customer_service_agent/`                                                                    |
-| **4** | **Document Intelligence (Finance & Ordering)** — OCR, NER, invoice/PO extraction                            | ✅ Partial (Spark NLP setup, annotator) | `use_cases/document_intelligence/`                                                                     |
-| **5** | **AI Powered Insights & Analytics** — Ranging/consolidation, market intelligence, franchise analytics       | ⚠️ Not implemented                      | `use_cases/ranging_consolidation/`, `use_cases/market_intelligence/`, `use_cases/franchise_analytics/` |
+| #     | Use-case                                                                                                    | Status                                                       | Location                                                                                               |
+| ----- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| **1** | **Recommendation Engine for Ordering** — Similar products, auto-substitutions, margin-aware recommendations | ✅ Partial (item_similarity, ALS, LightFM, ranker)            | `use_cases/recommendation_engine/` (`models/` for core, train, apply)                                  |
+| **2** | **Inventory Optimisation** — Demand forecasting, write-off risk, replenishment optimisation                 | ✅ Partial (demand_forecasting, writeoff_risk, replenishment) | `use_cases/inventory_optimization/` (`models/` for core, train, apply)                                 |
+| **3** | **AI Customer Service Agents** — Intent classification, RAG, order tracking                                 | ⚠️ Not implemented                                            | `use_cases/customer_service_agent/`                                                                    |
+| **4** | **Document Intelligence (Finance & Ordering)** — OCR, NER, invoice/PO extraction                            | ✅ Partial (Spark NLP setup, annotator)                       | `use_cases/document_intelligence/`                                                                     |
+| **5** | **AI Powered Insights & Analytics** — Ranging/consolidation, market intelligence, franchise analytics       | ⚠️ Not implemented                                            | `use_cases/ranging_consolidation/`, `use_cases/market_intelligence/`, `use_cases/franchise_analytics/` |
 
 Details (data requirements, modelling, jobs, apps): see [docs/EBOS_USE_CASES.md](docs/EBOS_USE_CASES.md).
 
