@@ -1,3 +1,4 @@
+# UC foundation: schemas and volumes. Grants and data contracts: docs/DATA_AND_PLATFORM.md.
 resources:
   schemas:
     healthcare_raw:

@@ -1,6 +1,6 @@
 # Data foundation: generators and medallion
 
-This directory holds the **shared data foundation** for EBOS use cases: synthetic data generators and the **medallion** (bronze → silver → gold) built with dbt. For the phased plan to extend generators and add new tables, and for the **use-case → required tabular data** coverage matrix, see [docs/DATA_GENERATOR_DEV_PLAN.md](../docs/DATA_GENERATOR_DEV_PLAN.md).
+This directory holds the **shared data foundation** for EBOS use cases: synthetic data generators and the **medallion** (bronze → silver → gold) built with dbt. For generator/medallion scope, use-case→data mapping, and local dev, see [docs/DATA_AND_PLATFORM.md](../docs/DATA_AND_PLATFORM.md).
 
 ---
 

@@ -1,8 +1,8 @@
-# EBOS AI/ML Use Cases
+# EBOS AI/ML use cases
 
-**Use-cases**: Equal priority; implementation order may vary.
-**Infrastructure**: Databricks + Unity Catalog (`workspace.default` schema)
-**Repo layout**: Use-cases live under `use_cases/<name>/`; DAB bundles (jobs, endpoints, interactive) live under each use-case or data component. New data tables (generator/medallion extensions) are planned and will be implemented incrementally.
+**Use-cases:** Equal priority; implementation order may vary. **Infrastructure:** Databricks + Unity Catalog. **Repo layout:** Use-cases under `use_cases/<name>/` with DAB bundles (jobs, endpoints, apps) per use-case or data component.
+
+**Data & platform** (UC layout, data flow, grants, contracts, generator/medallion scope, local dev): [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md).
 
 **Existing Assets**:
 - Healthcare data generator with medallion architecture (bronze/silver/gold)
@@ -61,26 +61,11 @@
 
 Use dbt for shared, stable, coarse-grained building blocks; do all model-specific and serving-aligned feature engineering in Python, reading from those gold (or silver) tables. This avoids train–serve skew and keeps the medallion from being a dependency for every small ML experiment, while still benefiting from a single, governed data foundation.
 
-### Databricks Architecture
+### Databricks architecture
 
-**Data Pipeline** (dbt medallion; use-case prefix `reco_` for recommendation-engine tables):
-```
-data/healthcare_data_medallion/
-├── bronze/
-│   ├── bronze_reco_interactions.sql   # Raw interaction events
-│   └── bronze_reco_substitutions.sql  # Raw substitution events
-│
-├── silver/
-│   ├── silver_reco_interactions.sql   # Cleansed interactions with joins
-│   └── silver_reco_substitutions.sql # Validated substitution events
-│
-└── gold/
-    ├── gold_reco_training_base.sql    # Slim base (customer, product, label) for ML
-    ├── gold_reco_features.sql         # Optional: base aggregates / feature storage
-    └── gold_reco_candidates.sql       # Batch-scored recommendations (top-50 per customer)
-```
+**Data:** Reco reads from medallion silver (e.g. silver_reco_interactions, silver_products, silver_orders); use-case-owned tables (e.g. gold_reco_training_base, gold_item_similarity_candidates) live in `recommendation_engine_<env>`. See [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md).
 
-**Training Workflow** (scheduled weekly; DAB bundle under use-case):
+**Training workflow** (scheduled weekly; DAB bundle under use-case):
 - Jobs live in `use_cases/recommendation_engine/bundles/job/resources/` (retrain_jobs.yml, batch_apply_jobs.yml). Each model (item_similarity, als, lightfm, ranker) has retrain and batch-apply jobs; entrypoints are `models/<name>/train.py` and `models/<name>/predict.py`. Optional full-pipeline entrypoint: `models/run_reco_smoke.py`. Serving endpoints in `bundles/serving/resources/reco_endpoints.yml`.
 
 **Serving Endpoint** (real-time API):
@@ -183,24 +168,9 @@ use_cases/recommendation_engine/
 - Optional: real-time API for "should I reorder now?" queries
 - Alerts: send notifications when inventory falls below reorder point
 
-**Data Pipeline** (dbt medallion):
-```
-data/healthcare_data_medallion/
-├── bronze/
-│   ├── bronze_expiry_batches.sql      # NEW: Raw expiry data
-│   └── bronze_writeoffs.sql           # NEW: Raw writeoff events
-│
-├── silver/
-│   ├── silver_inventory_enhanced.sql  # NEW: Inventory with expiry/batch data
-│   └── silver_writeoffs.sql           # NEW: Validated writeoff events
-│
-└── gold/
-    ├── gold_demand_forecast.sql       # NEW: Forecasted demand (P50/P75/P90)
-    ├── gold_writeoff_risk_scores.sql  # NEW: Expiry risk predictions
-    └── gold_replenishment_recommendations.sql  # NEW: Reorder recommendations
-```
+**Data:** Inventory reads from medallion silver/bronze (silver_inventory, silver_orders, silver_expiry_batches, etc.); writes to `inventory_optimization_<env>` (gold_writeoff_risk_scores, gold_replenishment_recommendations, etc.). See [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md).
 
-**File structure**: Data/medallion as in Data Pipeline above. Use-case layout:
+**File structure:** Data/medallion as in Data Pipeline above. Use-case layout:
 ```
 use_cases/inventory_optimization/
 ├── config.py
@@ -305,26 +275,9 @@ use_cases/customer_service_agent/
 - **Deployment**: Databricks App via DAB bundle
 - **Users**: Customer service managers, QA team, ML team
 
-**Data Pipeline** (dbt medallion - separate project):
-```
-data/customer_service_medallion/                # NEW dbt project
-├── bronze/
-│   ├── bronze_cases.sql                        # NEW: Raw customer service cases
-│   ├── bronze_messages.sql                     # NEW: Raw case messages
-│   └── bronze_knowledge_docs.sql               # NEW: Raw knowledge documents
-│
-├── silver/
-│   ├── silver_cases.sql                        # NEW: Validated cases
-│   ├── silver_messages.sql                     # NEW: Cleansed messages with sentiment
-│   └── silver_knowledge_docs.sql               # NEW: Processed documents for indexing
-│
-└── gold/
-    ├── gold_agent_conversations.sql            # NEW: Anonymized conversation logs
-    ├── gold_agent_performance.sql              # NEW: Performance metrics
-    └── gold_knowledge_index.sql                # NEW: Document chunks for vector search
-```
+**Data:** Separate customer_service generator + medallion (bronze/silver/gold for cases, messages, knowledge docs). See [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md) and generator scope.
 
-**File Structure**:
+**File structure:**
 ```
 databricks-misc/
 ├── data/
@@ -444,9 +397,7 @@ Jobs write to a **predictions store** (local dir or catalog) so that the annotat
 - **Usage**: Point app at base dir (or config): it reads `documents/` and **predictions/fields/** (or equivalent); user reviews and corrects; app writes to `annotated/labels/`. Optional: show confidence or exception status when available.
 - **Integration**: Corrected data in `annotated/` can feed gold_doc_labels for evaluation and optional future NER training; approved records can trigger downstream ordering integration.
 
-**Data / predictions storage** (location switched by DOCINT_DATA_SOURCE):
-- **Local** (DOCINT_DATA_SOURCE=local): Under DOCINT_BASE_DIR: `documents/` (PDFs), `predictions/ocr/`, `predictions/fields/` (JSON per doc), `annotated/` (reviewer output). Generate job writes to base_dir; OCR and field extraction read/write under base_dir.
-- **Remote** (DOCINT_DATA_SOURCE=catalog, typical on Databricks): **Documents** on a UC managed volume (DOCINT_DOCUMENTS_VOLUME, e.g. `/Volumes/workspace/document_intelligence/prescription_documents`). **Predictions** in Unity Catalog tables: DOCINT_CATALOG_SCHEMA (e.g. `workspace.document_intelligence_medallion_dev`), tables `silver_doc_pages` (OCR output), `silver_doc_fields_extracted` (field extraction). Generate job uploads PDFs to the volume; OCR and field extraction jobs read from volume and write to tables (implement in jobs when using catalog).
+**Data / predictions:** Local = DOCINT_BASE_DIR (documents/, predictions/, annotated/). Remote = UC volume for PDFs, use-case schema for tables (silver_doc_pages, silver_doc_fields_extracted). See [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md).
 
 **File structure** (current):
 ```
@@ -493,23 +444,7 @@ Data: prescription PDFs from `data/prescription_pdf_generator/`.
 - Build multiple domain-specific Genie Spaces (Healthcare, Animal Care, TWC) rather than one large general-purpose space.
 - Host a single Streamlit app that routes chat prompts to the selected Genie Space and renders both text + tabular query results.
 
-### Medallion Foundations (tables exposed to Genie + dashboards)
-
-Genie and the BI dashboards should query the same governed medallion outputs (dbt `bronze` → `silver` → `gold`), so the chat experience is consistent with dashboards and permissions.
-
-**Healthcare (Ranging & Consolidation)**
-- Silver inputs (example): `silver_orders`, `silver_products`, `silver_inventory`, (plus any validated `silver_warehouse_costs` / `fulfillment_sla` tables)
-- Gold outputs (example): `gold_range_recommendations`
-
-**Animal Care (Market Intelligence)**
-- Silver inputs (example): `silver_competitor_products`, `silver_competitor_price_history` (or equivalent)
-- Gold outputs (example): `gold_competitor_price_history`
-
-**TWC Franchise Reporting**
-- Silver inputs (example): `silver_store_sales`, `silver_store_attributes`, `silver_promotions`
-- Gold outputs (example): `gold_promo_impact`, `gold_store_product_recs`
-
-In practice, each domain-scoped Genie Space should only be configured with the small set of tables/columns required to answer the domain questions (and drive the dashboards), plus explicit KPI definitions/synonyms.
+**Data:** Genie and dashboards read from medallion bronze/silver (e.g. silver_orders, bronze_competitor_price_history, bronze_promotions). Use-case schema `ai_powered_insights_<env>` reserved for future marts. See [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md).
 
 ### Genie Chat Experience (domain-scoped Genie Spaces + Streamlit router)
 
@@ -603,11 +538,12 @@ Implementation details live in `use_cases/ai_powered_insights/technical_design.m
 
 ---
 
-## Development Patterns
+## Development patterns
 
-**Local development** (run data gen, medallion, and model training without Databricks):
-- **Data generation**: Healthcare generator is pure pandas/Faker; writes CSVs to e.g. `data/local/`. No Spark or DB required. Optional: script to load CSVs into DuckDB/SQLite for a local “raw” DB.
-- **Medallion**: Default dbt profile is Databricks (Unity Catalog). To run medallion locally: use dbt-duckdb (or dbt-sqlite) profile, point sources at local DB populated from generator CSVs, and adjust SQL dialect if needed (e.g. `current_timestamp()`).
+**Local vs remote, data generation, medallion, grants:** [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md) and [data/README.md](../data/README.md).
+
+**Modelling (summary):**
+- (See DATA_AND_PLATFORM.md for data generation.) No Spark or DB required. Optional: script to load CSVs into DuckDB/SQLite for a local “raw” DB.
 - **Model training / MLflow**: Training code is pandas + sklearn/xgboost/prophet etc.; no Spark in model code. MLflow uses default tracking (local `./mlruns` when not on Databricks). Add explicit local data path (e.g. `RUN_LOCAL=1`, `DATA_PATH=...` or `utils.env_utils.is_running_on_databricks()`) so entrypoints load from CSV/local DB instead of requiring Spark and Unity Catalog; keep `create_sample_data()` as fallback.
 - **Use cases**: Recommendation, inventory, insights — core logic and training are local-friendly (DataFrame/CSV input). Customer service — same, with local vector store (e.g. Chroma/FAISS) instead of Databricks Vector Search. Document intelligence — PDF generation, OCR, and annotation are all runnable locally using open-source libraries (no Spark NLP/OCR requirement).
 
@@ -629,8 +565,4 @@ Implementation details live in `use_cases/ai_powered_insights/technical_design.m
 - Create separate dbt projects for projects #3, #4 (orthogonal domains)
 - Consistent patterns: data quality checks, incremental models, macro reuse
 
-**Modelling**:
-- Start with simple baselines (sklearn, heuristics)
-- Iterate to more sophisticated models based on evaluation
-- Prioritize interpretability and business rule integration
-- Keep production models CPU-friendly for cost optimization
+**Modelling:** Start with simple baselines; iterate from evaluation; prefer interpretability and business rules; keep production models CPU-friendly.
