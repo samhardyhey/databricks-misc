@@ -31,7 +31,12 @@ def default_duckdb_path() -> Path:
     env = os.environ.get("DBT_DUCKDB_PATH", "").strip()
     if env:
         return Path(env).expanduser().resolve()
-    return Path(__file__).resolve().parent.parent.parent.parent / "data" / "local" / "medallion.duckdb"
+    return (
+        Path(__file__).resolve().parent.parent.parent.parent
+        / "data"
+        / "local"
+        / "medallion.duckdb"
+    )
 
 
 def connect_readonly(path: Path) -> duckdb.DuckDBPyConnection:
@@ -106,9 +111,7 @@ def schemas_for_layer(
     if layer_id == "other":
         keys = {"raw", "bronze", "silver", "gold"}
         return [
-            s
-            for s in all_schemas
-            if layer_key_for_schema(s, fixed_raw) not in keys
+            s for s in all_schemas if layer_key_for_schema(s, fixed_raw) not in keys
         ]
     return [s for s in all_schemas if layer_key_for_schema(s, fixed_raw) == layer_id]
 
@@ -133,7 +136,9 @@ def main() -> None:
             value=str(default_p),
             help="Defaults from DBT_DUCKDB_PATH or data/local/medallion.duckdb",
         )
-        limit = st.slider("Preview row limit", min_value=10, max_value=2000, value=200, step=10)
+        limit = st.slider(
+            "Preview row limit", min_value=10, max_value=2000, value=200, step=10
+        )
         st.markdown(
             "Need a database? From repo root: `make data-local-dbt-run` "
             "(or full `make data-local-e2e`)."
@@ -163,7 +168,11 @@ def main() -> None:
     raw_name = "healthcare_dev_raw"
     if raw_name not in all_schemas:
         raw_name = next(
-            (s for s in all_schemas if "raw" in s.lower() and s.startswith("healthcare_")),
+            (
+                s
+                for s in all_schemas
+                if "raw" in s.lower() and s.startswith("healthcare_")
+            ),
             all_schemas[0],
         )
 
@@ -221,7 +230,9 @@ use-case Python (reco / inventory / …) reads gold & silver
 
             st.markdown("#### This table")
             with st.container(border=True):
-                st.markdown(narratives.table_reading_guide(layer_id, table_pick, raw_name))
+                st.markdown(
+                    narratives.table_reading_guide(layer_id, table_pick, raw_name)
+                )
 
             con3 = connect_readonly(db_path)
             try:

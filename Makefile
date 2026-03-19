@@ -63,16 +63,17 @@ MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
 .PHONY: document-intelligence-install document-intelligence-ensure-spacy-model document-intelligence-generate-pdfs document-intelligence-generate-data document-intelligence-ocr document-intelligence-field-extraction document-intelligence-run document-intelligence-app-run document-intelligence-smoke
 .PHONY: mlflow-ui mlflow-wipe
 .PHONY: marvelous-mlops-venv marvelous-mlops-fetch-medium marvelous-mlops-fetch-substack marvelous-mlops-fetch-youtube marvelous-mlops-practice-digest
-.PHONY: uv-venv uv-sync install uv-dev uv-activate
+.PHONY: uv-venv uv-setup dev-install uv-sync install uv-dev uv-activate venv-clean
 .PHONY: bootstrap-system-tools bootstrap-system-tools-uv bootstrap-system-tools-databricks
 
 help:
 	@echo "Targets:"
 	@echo "  ## Local env/util"
-	@echo "  make uv-venv              - Create .venv (uses uv if available, else python3 -m venv)"
-	@echo "  make uv-sync / install     - Install deps; use install then uv-dev for dev tools"
-	@echo "  make uv-dev               - Install dev deps (autoflake, isort, black, pytest)"
-	@echo "  make test / test-use-cases - pytest nominal tests for all use cases (requires uv-dev)"
+	@echo "  make uv-setup / dev-install - **Recommended:** uv venv + sync with dev tools (format, pytest) in one step"
+	@echo "  make uv-venv              - Create .venv only (uses UV_BIN/uv if available, else python3 -m venv)"
+	@echo "  make install / uv-sync    - Install project + **dev** extra (autoflake, isort, black, pytest)"
+	@echo "  make uv-dev               - Alias for install (kept for muscle memory)"
+	@echo "  make test / test-use-cases - pytest nominal tests for all use cases (requires uv-setup or install)"
 	@echo "  make test-reco             - pytest recommendation_engine/tests only"
 	@echo "  make test-inventory       - pytest inventory_optimization/tests only"
 	@echo "  make test-doc-intel       - pytest document_intelligence/tests only"
@@ -80,7 +81,8 @@ help:
 	@echo "  make uv-activate          - Print activate command for .venv"
 	@echo "  STREAMLIT_LOCAL_OPTS       - Make variable: default '--server.runOnSave true ...' for *-app-run; see .streamlit/config.toml"
 	@echo "  make bootstrap-system-tools - Chicken/egg: uv + Databricks CLI into \$$HOME/.local/bin (curl/unzip; override DATABRICKS_CLI_VERSION=)"
-	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
+	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, etc. (does **not** remove .venv)"
+	@echo "  make venv-clean            - Delete repo .venv (fresh env: make uv-setup)"
 	@echo "  make format [FMT_ARGS=.]  - Run autoflake, isort, black"
 	@echo "  make mlflow-ui            - Start MLflow UI (utils.mlflow, local only); http://localhost:5001"
 	@echo "  make mlflow-wipe          - Remove local MLflow DB and artifacts (experiments, runs, registry)"
@@ -190,30 +192,52 @@ help:
 	@echo "  make reco-dab-run-ranker-apply    - Run ranker apply job"
 
 # --- Environment (databricks-misc): use uv if available, else python3/pip ---
+# Prefer UV_BIN (widen PATH via Makefile) so bootstrap -> uv works in the same Make session.
 uv-venv:
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv venv) || (command -v python3.12 >/dev/null 2>&1 && python3.12 -m venv .venv) || (command -v python3.11 >/dev/null 2>&1 && python3.11 -m venv .venv) || python3 -m venv .venv
-	@echo "Created .venv. Next: make install  [make uv-dev for format tools]"
+	@if [ -n "$(strip $(UV_BIN))" ]; then \
+		cd $(REPO_ROOT) && "$(UV_BIN)" venv; \
+	elif command -v uv >/dev/null 2>&1; then \
+		cd $(REPO_ROOT) && uv venv; \
+	else \
+		cd $(REPO_ROOT) && ((command -v python3.12 >/dev/null 2>&1 && python3.12 -m venv .venv) || (command -v python3.11 >/dev/null 2>&1 && python3.11 -m venv .venv) || python3 -m venv .venv); \
+	fi
+	@echo "Created .venv. Next: make install  (or one-shot: make uv-setup)"
+
+# Create .venv and install project + **dev** optional (formatters, pytest). Recommended after clone.
+uv-setup: uv-venv uv-sync
+	@echo "uv-setup done."
+
+dev-install: uv-setup
 
 uv-sync:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync || .venv/bin/pip install -e .)
-	@echo "Deps installed. For dev tools (format + pytest): make uv-dev"
+	@if [ -n "$(strip $(UV_BIN))" ]; then \
+		cd $(REPO_ROOT) && "$(UV_BIN)" sync --extra dev; \
+	elif command -v uv >/dev/null 2>&1; then \
+		cd $(REPO_ROOT) && uv sync --extra dev; \
+	else \
+		cd $(REPO_ROOT) && .venv/bin/pip install -e ".[dev]"; \
+	fi
+	@echo "Deps installed (includes dev: format + pytest)."
 
 install: uv-sync
 
-uv-dev:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev || .venv/bin/pip install -e ".[dev]")
-	@echo "Dev deps installed."
+uv-dev: uv-sync
+	@echo "uv-dev: same as install (dev tools always included)."
 
 uv-activate:
 	@echo "Run: source $(REPO_ROOT)/.venv/bin/activate"
 
-# --- Use-case nominal tests (pytest; install dev extra first: make uv-dev) ---
+# Remove local virtualenv only (Makefile caches VENV_PY; run in a new shell after this).
+venv-clean:
+	rm -rf $(REPO_ROOT)/.venv
+	@echo ".venv removed. Run: make uv-setup"
+
+# --- Use-case nominal tests (pytest; requires make install / uv-setup) ---
 test: test-use-cases
 
 test-use-cases:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make uv-dev first" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup first" && exit 1)
 	$(PY) -m pytest \
 		$(REPO_ROOT)/use_cases/recommendation_engine/tests \
 		$(REPO_ROOT)/use_cases/inventory_optimization/tests \
@@ -222,19 +246,19 @@ test-use-cases:
 		-q
 
 test-reco:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make uv-dev first" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup first" && exit 1)
 	$(PY) -m pytest $(REPO_ROOT)/use_cases/recommendation_engine/tests -q
 
 test-inventory:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make uv-dev first" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup first" && exit 1)
 	$(PY) -m pytest $(REPO_ROOT)/use_cases/inventory_optimization/tests -q
 
 test-doc-intel:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make uv-dev first" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup first" && exit 1)
 	$(PY) -m pytest $(REPO_ROOT)/use_cases/document_intelligence/tests -q
 
 test-ai-insights:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make uv-dev first" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup first" && exit 1)
 	$(PY) -m pytest $(REPO_ROOT)/use_cases/ai_powered_insights/tests -q
 
 # --- Bootstrap OS-level tools (before uv-venv / databricks bundle) ---
@@ -247,7 +271,7 @@ bootstrap-system-tools: bootstrap-system-tools-uv bootstrap-system-tools-databri
 	@echo ""
 	@echo "bootstrap-system-tools: done."
 	@echo "Add to PATH if needed: export PATH=\"$(INSTALL_BIN_DIR):\$$PATH\""
-	@echo "Then: cd $(REPO_ROOT) && make uv-venv && make install"
+	@echo "Then: cd $(REPO_ROOT) && make uv-setup"
 
 bootstrap-system-tools-uv:
 	@echo "[bootstrap] uv (astral install.sh; or self-update if already on PATH)..."
@@ -258,6 +282,12 @@ bootstrap-system-tools-uv:
 	else \
 		curl -LsSf https://astral.sh/uv/install.sh | sh; \
 	fi
+	@PATH="$(INSTALL_BIN_DIR):$(HOME)/.cargo/bin:$(HOME)/.local/bin:/opt/homebrew/bin:/usr/local/bin:$$PATH" \
+		sh -c 'if command -v uv >/dev/null 2>&1; then \
+			echo "[bootstrap] uv verified: $$(command -v uv) — $$(uv --version)"; \
+		else \
+			echo "[bootstrap] uv not on PATH in this shell. Open a new terminal or run: export PATH=\"$(INSTALL_BIN_DIR):$$PATH\""; \
+		fi'
 
 bootstrap-system-tools-databricks:
 	@echo "[bootstrap] Databricks CLI v$(DATABRICKS_CLI_VERSION) -> $(INSTALL_BIN_DIR)"
@@ -293,12 +323,12 @@ bootstrap-system-tools-databricks:
 
 # --- MLflow UI (utils.mlflow; local env only) ---
 mlflow-ui:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && $(PY) -m utils.mlflow.run_ui
 
 # --- Wipe local MLflow (utils.mlflow) ---
 mlflow-wipe:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && $(PY) -m utils.mlflow.wipe
 
 # --- Cleanup ---
@@ -326,10 +356,10 @@ clean-local-data:
 # Canonical local clean (compat wrapper keeps working)
 data-local-clean: clean-local-data
 
-# --- Format (autoflake -> isort -> black); requires make uv-dev ---
+# --- Format (autoflake -> isort -> black); included in make install / uv-setup ---
 FMT_ARGS ?= data use_cases
 format:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make uv-dev" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && $(PY) -m autoflake $(FMT_ARGS) --remove-all-unused-imports --remove-unused-variables --recursive --in-place
 	cd $(REPO_ROOT) && $(PY) -m isort $(FMT_ARGS)
 	cd $(REPO_ROOT) && $(PY) -m black $(FMT_ARGS)
@@ -342,12 +372,12 @@ uc-foundation-deploy:
 
 # --- Local: data generation and medallion (repo root = source root) ---
 data-local-generate:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && $(PY) data/healthcare_data_generator/src/generate_local.py -o $(DATA_LOCAL_DIR)
 	@echo "Healthcare CSVs in $(DATA_LOCAL_DIR)/"
 
 data-local-generate-quick:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	@$(MAKE) data-local-generate
 
 # End-to-end local data foundation (clean -> generate -> duckdb -> dbt run -> dbt test)
@@ -361,12 +391,12 @@ use-cases-local-e2e: data-local-e2e reco-local-install reco-local-e2e inventory-
 	@echo "use-cases-local-e2e: all steps done."
 
 data-local-generate-pdfs:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && $(PY) data/prescription_pdf_generator/generate_prescription_pdfs_local.py
 	@echo "Generated PDFs in $(DOC_INTEL_PDF_OUTPUT)/"
 
 data-local-duckdb-load:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && REPO_ROOT=$(REPO_ROOT) DBT_DUCKDB_PATH=$(REPO_ROOT)/data/local/medallion.duckdb $(PY) data/healthcare_data_medallion/load_local_raw_to_duckdb.py \
 		--csv-dir $(DATA_LOCAL_DIR) --duckdb-path $(REPO_ROOT)/data/local/medallion.duckdb
 	@echo "DuckDB raw layer at $(REPO_ROOT)/data/local/medallion.duckdb"
@@ -387,47 +417,47 @@ data-local-dbt-test: data-local-dbt-run
 # Streamlit: medallion layers in local DuckDB (read-only). Do not run alongside data-local-e2e (same DuckDB file).
 # Installs extras via uv only (see UV_BIN — widened PATH so Make finds ~/.local/bin / Homebrew). Override: UV_BIN=/path/to/uv
 data-local-medallion-app-run:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	@test -f $(DATA_LOCAL_DUCKDB_PATH) || (echo "Missing DuckDB at $(DATA_LOCAL_DUCKDB_PATH). Run: make data-local-dbt-run" && exit 1)
 	@test -n "$(strip $(UV_BIN))" || (echo "uv not found. Install: https://docs.astral.sh/uv/  Or: make bootstrap-system-tools  Or set UV_BIN=/path/to/uv" && exit 1)
-	cd $(REPO_ROOT) && "$(UV_BIN)" sync --extra healthcare_medallion_app
+	cd $(REPO_ROOT) && "$(UV_BIN)" sync --extra dev --extra healthcare_medallion_app
 	cd $(REPO_ROOT) && DBT_DUCKDB_PATH=$(DATA_LOCAL_DUCKDB_PATH) $(PY) -m streamlit run data/healthcare_data_medallion/app/app.py $(STREAMLIT_LOCAL_OPTS)
 	@echo "data-local medallion explorer (Streamlit)"
 
 # --- Document intelligence (jobs 1/2/3 + full pipeline + Streamlit app; defaults from config) ---
 document-intelligence-install:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev --extra document_intelligence || .venv/bin/pip install -e ".[document_intelligence]")
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup first" && exit 1)
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev --extra document_intelligence || .venv/bin/pip install -e ".[dev,document_intelligence]")
 	@echo "Document intelligence deps installed (includes en_core_web_sm via uv optional extra)."
 
 # Ensure en_core_web_sm is loadable (pip install pinned wheel if missing; use --check-only for CI)
 document-intelligence-ensure-spacy-model:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup first" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/document_intelligence/ensure_spacy_model.py $(ENSURE_SPACY_ARGS)
 
 # Job 1: generate prescription PDFs + labels (same entrypoint as DAB document_intelligence_generate_job)
 document-intelligence-generate-data:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make document-intelligence-install" && exit 1)
 	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local $(PY) use_cases/document_intelligence/jobs/1_generate_data.py
 	@echo "document-intelligence generate-data done → $(DOC_INTEL_PDF_OUTPUT)/documents and $(DOC_INTEL_PDF_OUTPUT)/labels"
 
 # Job 2: OCR extraction → predictions/ocr/
 document-intelligence-ocr:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make document-intelligence-install" && exit 1)
 	@test -d $(REPO_ROOT)/$(DOC_INTEL_PDF_OUTPUT)/documents || (echo "Run: make document-intelligence-generate-data first" && exit 1)
 	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local $(PY) use_cases/document_intelligence/jobs/2_ocr_extraction.py
 	@echo "document-intelligence OCR done → $(DOC_INTEL_PDF_OUTPUT)/predictions/ocr/"
 
 # Job 3: field extraction → predictions/fields/
 document-intelligence-field-extraction:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make document-intelligence-install" && exit 1)
 	@test -d $(REPO_ROOT)/$(DOC_INTEL_PDF_OUTPUT)/documents || (echo "Run: make document-intelligence-generate-data first" && exit 1)
 	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local $(PY) use_cases/document_intelligence/jobs/3_field_extraction.py
 	@echo "document-intelligence field-extraction done → $(DOC_INTEL_PDF_OUTPUT)/predictions/fields/"
 
 # Full pipeline (Job 2 + Job 3; assumes PDFs already exist)
 document-intelligence-run:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make document-intelligence-install" && exit 1)
 	@test -d $(REPO_ROOT)/$(DOC_INTEL_PDF_OUTPUT)/documents || (echo "Run: make document-intelligence-generate-data first" && exit 1)
 	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local $(PY) use_cases/document_intelligence/jobs/2_ocr_extraction.py
 	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local $(PY) use_cases/document_intelligence/jobs/3_field_extraction.py
@@ -435,13 +465,13 @@ document-intelligence-run:
 
 # Streamlit annotator app (review predictions from predictions/fields/)
 document-intelligence-app-run:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make document-intelligence-install" && exit 1)
 	@test -d $(REPO_ROOT)/$(DOC_INTEL_PDF_OUTPUT)/predictions/fields || (echo "Run: make document-intelligence-run (or generate-data + ocr + field-extraction) first so predictions/fields/ exists" && exit 1)
 	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/document_intelligence/annotator/app.py $(STREAMLIT_LOCAL_OPTS)
 	@echo "document-intelligence annotator app (Streamlit)"
 
 document-intelligence-smoke:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make document-intelligence-install" && exit 1)
 	cd $(REPO_ROOT) && DOCINT_DATA_SOURCE=local $(PY) use_cases/document_intelligence/run_document_intelligence_smoke.py
 	@echo "document-intelligence smoke done"
 
@@ -483,82 +513,82 @@ doc-intel-dab-run-pipeline:
 
 # --- Recommendation engine (single entrypoint; RECO_DATA_SOURCE=local|catalog|auto) ---
 reco-install:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev --extra reco || .venv/bin/pip install -e ".[reco]")
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup first" && exit 1)
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev --extra reco || .venv/bin/pip install -e ".[dev,reco]")
 	@echo "Reco deps (implicit, lightgbm, mlflow) installed."
 
 reco-data: data-local-generate-quick data-local-duckdb-load data-local-dbt-run
 
 # Use-case-owned transform: build gold_reco_training_base from silver (run before train when using catalog or local parquet).
 reco-build-training-base:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && RECO_DATA_SOURCE=local DBT_DUCKDB_PATH=$(RECO_LOCAL_DUCKDB_PATH) $(PY) use_cases/recommendation_engine/pipelines/build_training_base.py
 	@echo "reco training base built (data/local/reco/gold_reco_training_base.parquet)."
 
 # Full sequence: generate medallion data → train/log MLflow models → MLflow-load apply
 reco-run: reco-data
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-install" && exit 1)
 	@echo "[reco] training+logging to MLflow, then loading via MLflow pyfunc..."
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/run_reco_smoke.py
 	@echo "reco run smoke done (train/log + MLflow load + apply)."
 
 # Per-model reco entrypoints (train/apply)
 reco-item-sim-train:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/item_similarity/train.py
 
 reco-item-sim-apply:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/item_similarity/predict.py
 
 reco-als-train:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/als/train.py
 
 reco-als-apply:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/als/predict.py
 
 reco-lightfm-train:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/lightfm/train.py
 
 reco-lightfm-apply:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/lightfm/predict.py
 
 reco-ranker-train:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/ranker/train.py
 
 reco-ranker-apply:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/recommendation_engine/models/ranker/predict.py
 
 # Streamlit app for recommendation engine
 reco-app-run:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make reco-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/recommendation_engine/app/app.py $(STREAMLIT_LOCAL_OPTS)
 	@echo "reco app running (Streamlit)"
 
 # Streamlit app for AI Powered Insights (Genie + domain router)
 ai-insights-app-run:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	@$(PY) -m pip install -r use_cases/ai_powered_insights/app/requirements.txt >/dev/null 2>&1 || true
 	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/ai_powered_insights/app/app.py $(STREAMLIT_LOCAL_OPTS)
 	@echo "ai-powered-insights app running (Streamlit)"
 
 # --- Inventory optimisation (single entrypoint; INVENTORY_DATA_SOURCE=local|catalog|auto) ---
 inventory-install:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev --extra inventory || .venv/bin/pip install -e ".[inventory]")
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup first" && exit 1)
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev --extra inventory || .venv/bin/pip install -e ".[dev,inventory]")
 	@echo "Inventory deps (scipy, lightgbm) installed."
 
 inventory-data: data-local-generate-quick data-local-duckdb-load data-local-dbt-run
 
 # Full sequence: generate medallion data → train/log MLflow → MLflow-load apply (write-off risk)
 inventory-run: inventory-data
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	@echo "[inventory] data ready (inventory-data). Installing inventory deps..."
 	@$(MAKE) inventory-install
 	@echo "[inventory] training+logging MLflow models, then loading back via smoke wrapper..."
@@ -567,27 +597,27 @@ inventory-run: inventory-data
 
 # Per-model inventory entrypoints (train/apply)
 inventory-writeoff-train:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/writeoff_risk/train.py
 
 inventory-writeoff-apply:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/writeoff_risk/predict.py
 
 inventory-demand-train:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/demand_forecasting/train.py
 
 inventory-demand-apply:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/demand_forecasting/predict.py
 
 inventory-replenishment-train:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/replenishment/train.py
 
 inventory-replenishment-apply:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/replenishment/predict.py
 
 ai-insights-local-app-run: ai-insights-app-run
@@ -598,7 +628,7 @@ reco-local-data: reco-data
 reco-local-smoke: reco-local-run
 # Local e2e: data, use-case transform (gold_reco_training_base), then train/apply smoke.
 reco-local-e2e: reco-local-data reco-build-training-base
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-install" && exit 1)
 	@echo "[reco-local] running train+apply smoke (DuckDB + local training base)..."
 	cd $(REPO_ROOT) && RECO_DATA_SOURCE=local DBT_DUCKDB_PATH=$(RECO_LOCAL_DUCKDB_PATH) $(PY) use_cases/recommendation_engine/models/run_reco_smoke.py
 	@echo "reco-local-e2e done."
@@ -615,7 +645,7 @@ reco-local-app-run: reco-app-run
 # Local reco run should always use the local DuckDB medallion (avoid RECO_* catalog schema envs).
 RECO_LOCAL_DUCKDB_PATH ?= $(REPO_ROOT)/data/local/medallion.duckdb
 reco-local-run: reco-local-data reco-local-install
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make reco-local-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make reco-local-install" && exit 1)
 	@test -f $(RECO_LOCAL_DUCKDB_PATH) || (echo "Missing DuckDB medallion at $(RECO_LOCAL_DUCKDB_PATH). Run: make data-local-e2e (or data-local-dbt-run)" && exit 1)
 	@echo "[reco-local] training+logging to MLflow, then loading via MLflow pyfunc (DuckDB medallion)..."
 	cd $(REPO_ROOT) && RECO_DATA_SOURCE=local DBT_DUCKDB_PATH=$(RECO_LOCAL_DUCKDB_PATH) $(PY) use_cases/recommendation_engine/models/run_reco_smoke.py
@@ -671,7 +701,7 @@ inventory-local-replenishment-apply: inventory-replenishment-apply
 # Local inventory run should always use the local DuckDB medallion (avoid INVENTORY_* catalog schema envs).
 INVENTORY_LOCAL_DUCKDB_PATH ?= $(REPO_ROOT)/data/local/medallion.duckdb
 inventory-local-run: inventory-local-data inventory-local-install
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make inventory-local-install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make inventory-local-install" && exit 1)
 	@test -f $(INVENTORY_LOCAL_DUCKDB_PATH) || (echo "Missing DuckDB medallion at $(INVENTORY_LOCAL_DUCKDB_PATH). Run: make data-local-e2e (or data-local-dbt-run)" && exit 1)
 	@echo "[inventory-local] running inventory smoke (DuckDB medallion)..."
 	cd $(REPO_ROOT) && INVENTORY_DATA_SOURCE=local DBT_DUCKDB_PATH=$(INVENTORY_LOCAL_DUCKDB_PATH) $(PY) use_cases/inventory_optimization/run_inventory_smoke.py
@@ -756,27 +786,27 @@ data-dab-run-medallion:
 # --- Marvelous MLOps (optional extra marvelous_mlops in pyproject.toml) ---
 # Use uv pip / pip so we merge into the existing venv without uv sync stripping other extras.
 marvelous-mlops-venv:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv pip install -e ".[marvelous_mlops]" || $(PY) -m pip install -e ".[marvelous_mlops]")
 	@echo "Optional extra marvelous_mlops installed. Run: make marvelous-mlops-fetch-medium|fetch-substack|fetch-youtube"
 
 marvelous-mlops-fetch-medium:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make marvelous-mlops-venv" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make marvelous-mlops-venv" && exit 1)
 	cd $(MARVELOUS_MLOPS_DIR) && $(PY) fetch_medium.py
 	@echo "Medium fetch done."
 
 marvelous-mlops-practice-digest:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make marvelous-mlops-venv" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make marvelous-mlops-venv" && exit 1)
 	cd $(MARVELOUS_MLOPS_DIR) && $(PY) extract_practice_digest.py
 	@echo "Practice digest: $(MARVELOUS_MLOPS_DIR)/insights/databricks_practice_digest.md"
 
 marvelous-mlops-fetch-substack:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make marvelous-mlops-venv" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make marvelous-mlops-venv" && exit 1)
 	cd $(MARVELOUS_MLOPS_DIR) && $(PY) fetch_substack.py
 	@echo "Substack fetch done."
 
 marvelous-mlops-fetch-youtube:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make marvelous-mlops-venv" && exit 1)
+	@test -x $(VENV_PY) || (echo "Run: make uv-setup && make marvelous-mlops-venv" && exit 1)
 	cd $(MARVELOUS_MLOPS_DIR) && $(PY) fetch_youtube.py
 	@echo "YouTube fetch done."
 

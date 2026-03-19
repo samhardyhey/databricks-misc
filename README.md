@@ -33,7 +33,7 @@ The **`marvelous_mlops/`** tree is an explicit **policy-development** workstream
 
 Use this path to exercise generators, medallion (DuckDB + dbt), and use-case Python on your machine. **Do not run local e2e targets in parallel** — they share `data/local/medallion.duckdb` and will contend on locks.
 
-1. **Env:** `make uv-venv`, `make install`, `make uv-dev`.
+1. **Env:** `make uv-setup` (or `make bootstrap-system-tools` first if `uv` is missing), then optional extras (`make reco-install`, `make doc-intel-local-install`, …). Same as `make uv-venv && make install`; `install` always includes **dev** tools (formatters, pytest). Remove the env with `make venv-clean`.
 2. **Unit/smoke (pytest):** `make test`.
 3. **Data foundation e2e:** `make data-local-e2e` — clean → generate CSVs → DuckDB load → `dbt run` → `dbt test`. (Incremental steps: `make data-local-generate-quick`, `make data-local-duckdb-load`, `make data-local-dbt-run`, `make data-local-dbt-test`.)
 4. **Use-case e2e (after medallion exists):**

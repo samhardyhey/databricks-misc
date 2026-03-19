@@ -105,7 +105,7 @@ applyTo: '**'
 
 ### Technical Architecture
 - Development Model: Local development with Databricks Connect for remote execution
-  - Local Python: UV env `databricks-misc` (make uv-venv, make install, make uv-dev). Repo root is the source root: use imports from root (e.g. `from data.prescription_pdf_generator...`, `from use_cases...`). No per-subproject PYTHONPATH; set PYTHONPATH to repo root only if not using the venv.
+  - Local Python: UV env `.venv` at repo root — **`make uv-setup`** (one command) or `make uv-venv && make install`; **`make install` always includes the `dev` extra** (formatters, pytest). **`make venv-clean`** removes `.venv`. Repo root is the source root: use imports from root (e.g. `from data.prescription_pdf_generator...`, `from use_cases...`). No per-subproject PYTHONPATH; set PYTHONPATH to repo root only if not using the venv.
 - Local vs remote: Use `utils.env_utils.is_running_on_databricks()` to fork behaviour. When local (no Databricks runtime): load data from `data/local/` CSVs or env `LOCAL_DATA_PATH`; skip Spark where applicable. MLflow uses local `./mlruns` when not on Databricks. See docs/EBOS_USE_CASES.md (Development Patterns).
 - **Local medallion (faster dev)**: Replicate the medallion as completely and realistically as possible locally to speed up development (run dbt without Databricks). Use a local DB as the dbt target: **prefer DuckDB** (dbt-duckdb) for closest realism—analytical SQL, optional CSV-as-source, single file. SQLite (dbt-sqlite) is fine if you prefer; populate from CSVs first. Production keeps the Databricks profile.
 - **Environment switching for prediction (batch apply)**: When running **locally**, prediction/apply scripts must honour the same environment split as training:
