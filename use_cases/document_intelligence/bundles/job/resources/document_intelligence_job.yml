@@ -80,6 +80,8 @@ resources:
               DOCINT_CATALOG_SCHEMA: ${var.docint_catalog_schema}
               DOCINT_DOCUMENTS_VOLUME: ${var.docint_documents_volume}
               PYTHONPATH: ${var.workspace_root}
+              # Wheel is listed in dependencies below; skip runtime pip in ensure_spacy_model.
+              DOCINT_AUTO_INSTALL_SPACY_MODEL: "0"
             # spaCy models: official distribution is GitHub Release wheels on explosion/spacy-models
             # (not PyPI). Optional HF mirror: huggingface.co/spacy/en_core_web_sm (verify wheel ↔ spacy pin).
             dependencies:

@@ -417,7 +417,7 @@ Ground-truth labels (`labels/`) are used for **evaluation and optional NER train
 - **Local**: DOCINT_BASE_DIR (default e.g. `data/local/prescription_pdfs/`) holds `documents/`, `predictions/` (and optional `labels/`, `annotated/`). All I/O is file-based.
 - **Remote (Databricks)**: When DOCINT_DATA_SOURCE=catalog (or auto on Databricks), read document listing from catalog/volume and write predictions to Unity Catalog tables or configured volume path. Same Python code paths; config switches behaviour.
 
-**Remote / cluster:** Install **`spacy`** plus the **`en_core_web_sm`** wheel URL from **GitHub Releases** on [`explosion/spacy-models`](https://github.com/explosion/spacy-models/releases) in the job environment (`document_intelligence_job.yml` `pipeline_env`), mirroring `pyproject.toml` / `model_dep_urls.py`. See [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md) §4 for mirrors (e.g. Hugging Face) and version checks. If the wheel is missing, code falls back to `blank:en` (regex-only; no spaCy NER).
+**Remote / cluster:** Install **`spacy`** plus the **`en_core_web_sm`** wheel URL from **GitHub Releases** on [`explosion/spacy-models`](https://github.com/explosion/spacy-models/releases) in the job environment (`document_intelligence_job.yml` `pipeline_env`), mirroring `pyproject.toml` / `model_dep_urls.py`. Runtime auto-pip (`ensure_spacy_model`) is **off by default for remote** if you set `DOCINT_AUTO_INSTALL_SPACY_MODEL=0` (recommended when site-packages is read-only). Locally, auto-install defaults **on** when the model is missing. See [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md) §4. If the wheel is still missing, code falls back to `blank:en` (regex-only).
 
 **Batch jobs** (bundle under use-case; each job runnable locally or as DAB task):
 ```
@@ -427,7 +427,9 @@ use_cases/document_intelligence/
 ├── ocr_pipeline.py               # run_ocr(); read PDFs, write OCR text to predictions store
 ├── ner_field_extraction.py       # run_field_extraction(); OCR+spaCy or labels → fields
 ├── spacy_ner_pipeline.py         # Pretrained spaCy + regex; apply-only (no training loop)
-├── predictions_io.py             # Save/load predictions (OCR and fields) to predictions_dir
+├── ensure_spacy_model.py          # check/install en_core_web_sm wheel
+├── model_dep_urls.py             # pinned GitHub (optional HF) wheel URLs
+├── predictions_io.py             # Save/load predictions (OCR and fields) to predictions store
 ├── jobs/
 │   ├── 1_generate_data.py        # Generate prescription PDFs + labels (documents/, labels/)
 │   ├── 2_ocr_extraction.py       # OCR only; write predictions to predictions store
@@ -453,6 +455,8 @@ use_cases/document_intelligence/
 ├── ocr_pipeline.py               # run_ocr(); read PDFs, write OCR text to predictions
 ├── ner_field_extraction.py       # run_field_extraction(); OCR+spaCy or labels → fields
 ├── spacy_ner_pipeline.py         # spaCy + regex; apply-only
+├── ensure_spacy_model.py          # check/install en_core_web_sm (runtime or CLI)
+├── model_dep_urls.py             # pinned wheel URLs
 ├── predictions_io.py             # Save/load predictions (OCR, fields) to predictions_dir
 ├── jobs/
 │   ├── 1_generate_data.py        # Job: generate prescription PDFs + labels

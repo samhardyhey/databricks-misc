@@ -39,7 +39,7 @@ MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 .PHONY: data-dab-validate-generator data-dab-deploy-generator data-dab-run-generator
 .PHONY: data-dab-validate-medallion data-dab-deploy-medallion data-dab-run-medallion
 .PHONY: data-local-clean data-local-e2e use-cases-local-e2e
-.PHONY: doc-intel-local-install doc-intel-local-generate-data doc-intel-local-ocr doc-intel-local-field-extraction doc-intel-local-app-run doc-intel-local-smoke doc-intel-local-generate-pdfs
+.PHONY: doc-intel-local-install doc-intel-local-ensure-spacy-model doc-intel-local-generate-data doc-intel-local-ocr doc-intel-local-field-extraction doc-intel-local-app-run doc-intel-local-smoke doc-intel-local-generate-pdfs
 .PHONY: doc-intel-dab-validate doc-intel-dab-deploy doc-intel-dab-run-generate doc-intel-dab-run-pipeline
 .PHONY: reco-local-install reco-local-data reco-local-run reco-local-e2e reco-local-item-sim-train reco-local-item-sim-apply reco-local-als-train reco-local-als-apply reco-local-lightfm-train reco-local-lightfm-apply reco-local-ranker-train reco-local-ranker-apply reco-local-app-run
 .PHONY: reco-local-smoke reco-build-training-base
@@ -52,7 +52,7 @@ MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 .PHONY: reco-data reco-run reco-install reco-item-sim-train reco-item-sim-apply reco-als-train reco-als-apply reco-lightfm-train reco-lightfm-apply reco-ranker-train reco-ranker-apply reco-app-run
 .PHONY: ai-insights-app-run
 .PHONY: inventory-data inventory-run inventory-install inventory-writeoff-train inventory-writeoff-apply inventory-demand-train inventory-demand-apply inventory-replenishment-train inventory-replenishment-apply
-.PHONY: document-intelligence-install document-intelligence-generate-pdfs document-intelligence-generate-data document-intelligence-ocr document-intelligence-field-extraction document-intelligence-run document-intelligence-app-run document-intelligence-smoke
+.PHONY: document-intelligence-install document-intelligence-ensure-spacy-model document-intelligence-generate-pdfs document-intelligence-generate-data document-intelligence-ocr document-intelligence-field-extraction document-intelligence-run document-intelligence-app-run document-intelligence-smoke
 .PHONY: mlflow-ui mlflow-wipe
 .PHONY: marvelous-mlops-venv marvelous-mlops-fetch-medium marvelous-mlops-fetch-substack marvelous-mlops-fetch-youtube
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
@@ -110,6 +110,7 @@ help:
 	@echo ""
 	@echo "  ## Document intelligence (doc-intel):"
 	@echo "  make doc-intel-local-install        - Install doc-intel deps"
+	@echo "  make doc-intel-local-ensure-spacy-model - pip install en_core_web_sm wheel if missing (ENSURE_SPACY_ARGS=--check-only for CI)"
 	@echo "  make doc-intel-local-generate-data  - Local Job 1: generate PDFs + labels"
 	@echo "  make doc-intel-local-ocr            - Local Job 2: OCR extraction"
 	@echo "  make doc-intel-local-field-extraction - Local Job 3: field extraction"
@@ -366,6 +367,11 @@ document-intelligence-install:
 	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra document_intelligence || .venv/bin/pip install -e ".[document_intelligence]")
 	@echo "Document intelligence deps installed (includes en_core_web_sm via uv optional extra)."
 
+# Ensure en_core_web_sm is loadable (pip install pinned wheel if missing; use --check-only for CI)
+document-intelligence-ensure-spacy-model:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/document_intelligence/ensure_spacy_model.py $(ENSURE_SPACY_ARGS)
+
 # Job 1: generate prescription PDFs + labels (same entrypoint as DAB document_intelligence_generate_job)
 document-intelligence-generate-data:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
@@ -415,6 +421,7 @@ document-intelligence-generate-pdfs: data-local-generate-pdfs
 
 # --- doc-intel (local) ---
 doc-intel-local-install: document-intelligence-install
+doc-intel-local-ensure-spacy-model: document-intelligence-ensure-spacy-model
 doc-intel-local-generate-data: document-intelligence-generate-data
 doc-intel-local-ocr: document-intelligence-ocr
 doc-intel-local-field-extraction: document-intelligence-field-extraction

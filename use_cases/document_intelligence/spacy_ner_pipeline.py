@@ -170,14 +170,6 @@ def extract_fields_from_ocr(config: dict) -> pd.DataFrame:
         logger.info("No OCR JSON under predictions/ocr; spaCy extraction skipped.")
         return ocr_df
 
-    from use_cases.document_intelligence.ensure_spacy_model import ensure_en_core_web_sm
-
-    if not ensure_en_core_web_sm():
-        logger.warning(
-            "spaCy pipeline unavailable (install document_intelligence extra or run ensure_spacy_model.py)."
-        )
-        return pd.DataFrame()
-
     nlp = get_nlp()
     out_rows = []
     for _, row in ocr_df.iterrows():
