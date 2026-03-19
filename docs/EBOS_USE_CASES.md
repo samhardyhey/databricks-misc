@@ -24,7 +24,7 @@ Treat gaps as **future improvements** unless a component is explicitly hardened 
 
 ## 1️⃣ Recommendation Engine for Ordering
 
-**Business Value**: ~$4.9m p.a. | Enterprise-wide (Healthcare, MedTech, Animal Care)
+**Business Value**: Revenue protection, margin improvement, and customer experience | Enterprise-wide (Healthcare, MedTech, Animal Care)
 **Use Case**: Recommend similar products and auto-substitutions to reduce sales leakage and increase margins
 **Current Status**: ✅ **Partial** — Item similarity, ALS, LightFM, ranker implemented under `models/`; DAB jobs and endpoints in place.
 **Local dev**: Develop locally (data gen, training, saving). Optional full-pipeline entrypoint `models/run_reco_smoke.py` runs locally (CSV) or on Databricks; per-model scripts (`models/<name>/train.py`, `predict.py`) and Make targets are the main surface. Data source via config.
@@ -144,7 +144,7 @@ use_cases/recommendation_engine/
 
 ## 2️⃣ Inventory Optimisation
 
-**Business Value**: Direct EBIT + working capital benefits | High value across MedTech, TWC, Healthcare
+**Business Value**: Service level, profitability, and inventory capital efficiency | High value across MedTech, TWC, Healthcare
 **Use Case**: Right product at right place/time/price to drive sales growth and reduce write-offs
 **Current Status**: ✅ **Partial** — Demand forecasting, write-off risk, replenishment under `models/`; DAB jobs in place.
 **Local dev**: Develop locally (data gen, training, saving). Per-model scripts `models/<name>/train.py`, `predict.py` and Make targets.
@@ -187,7 +187,7 @@ The three inventory components are **structurally different**: demand is **forec
 **When you *can* align in MLflow**
 
 - Use **consistent naming prefixes** by task so the UI stays organised, e.g. `forecast_*`, `writeoff_*`, `replenishment_*` (already reflected in separate experiments per component).
-- **Demand vs write-off:** You could add auxiliary **business-shaped** metrics on shared slices (e.g. expected € impact, or calibration on a holdout week) — only if defined carefully — but **do not force** MAPE and F1 into one number.
+- **Demand vs write-off:** You could add auxiliary **business-shaped** metrics on shared slices (e.g. qualitatively aligned impact proxies, or calibration on a holdout week) — only if defined carefully — but **do not force** MAPE and F1 into one number.
 - **Replenishment:** Log **operational summaries** (`below_rop_count`, `total_reorder_qty`, etc.) as metrics; treat them as **KPIs**, not classification metrics.
 
 **Train/test separation (current intent)**
@@ -229,7 +229,7 @@ use_cases/inventory_optimization/
 
 ## 3️⃣ AI Customer Service Agents
 
-**Business Value**: Labour cost reduction + scalability | Cross-business (Healthcare, MedTech, TWC)
+**Business Value**: Operational efficiency and scalability | Cross-business (Healthcare, MedTech, TWC)
 **Use Case**: Automate common queries, improve satisfaction, provide order tracking visibility
 **Current Status**: 🕒 **Future implementation** (planned; not in current delivery scope). There is no `use_cases/customer_service_agent/` tree or customer-service generator in this repo yet—the sections below describe the **intended** design.
 **Local dev**: Deferred until implementation is scheduled.
@@ -362,7 +362,7 @@ databricks-misc/
 
 ## 4️⃣ Document Intelligence (Prescriptions & Ordering)
 
-**Business Value**: Manual labour reduction | High ROI for prescription processing and order validation
+**Business Value**: Process automation | Strong fit for prescription processing and order validation
 **Use Case**: Reduce manual processing of prescription PDFs using AI to interpret, validate, and integrate into downstream ordering systems
 **Current Status**: ✅ **Partial** — PDF generator, OCR, spaCy/rule field extraction (optional), label fallback, annotator; **no trained NER benchmark** in-repo
 **Local dev**: Same patterns as recommendation_engine and inventory_optimization — config-driven local vs remote (DOCINT_BASE_DIR / DOCINT_DATA_SOURCE), modular jobs, single entrypoint; PDF generation, OCR, and annotator run locally with open-source libs (no Spark).

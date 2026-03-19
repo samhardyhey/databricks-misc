@@ -7,7 +7,7 @@ alwaysApply: true
 ### Project Overview
 - Purpose: Implements the **EBOS AI/ML Use Cases** (see docs/EBOS_USE_CASES.md and README.md). Use-cases for healthcare/pharmaceutical distribution on Databricks + Unity Catalog (equal priority).
 - Target Domain: EBOS-style supply chain, logistics, healthcare analytics (recommendation engine, inventory optimisation, document intelligence, customer service agents, insights & analytics).
-- Platform: Databricks free edition - `dbc-f501771e-54b7.cloud.databricks.com`
+- Platform: Databricks (host configured per target in bundle `databricks.yml`)
 - Scope: Shared data foundation (extend healthcare_data_generator/medallion for reuse) plus use-cases under use_cases/<name>/; each use-case has its own DAB bundle where needed.
 
 ### Repo Structure
