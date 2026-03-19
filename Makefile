@@ -32,6 +32,10 @@ DOC_INTEL_PDF_OUTPUT := data/local/prescription_pdfs
 # Local Streamlit: rerun on save + file watcher (override e.g. STREAMLIT_LOCAL_OPTS=--server.fileWatcherType poll for Docker)
 STREAMLIT_LOCAL_OPTS ?= --server.runOnSave true --server.fileWatcherType auto
 
+# uv: Make / IDE tasks often run with a minimal PATH. Widen search (bootstrap-system-tools -> ~/.local/bin; Homebrew, etc.).
+# Override: make data-local-medallion-app-run UV_BIN=/path/to/uv
+UV_BIN ?= $(shell PATH="$(HOME)/.local/bin:$(HOME)/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$$PATH" command -v uv 2>/dev/null | head -n1)
+
 # Marvelous MLOps: optional dependency group `marvelous_mlops` in pyproject.toml (make marvelous-mlops-venv).
 # Ingests public MLOps/Databricks teaching feeds for policy development (see README / marvelous_mlops/README).
 MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
@@ -381,10 +385,12 @@ data-local-dbt-test: data-local-dbt-run
 	@echo "dbt test (duckdb) done."
 
 # Streamlit: medallion layers in local DuckDB (read-only). Do not run alongside data-local-e2e (same DuckDB file).
+# Installs extras via uv only (see UV_BIN — widened PATH so Make finds ~/.local/bin / Homebrew). Override: UV_BIN=/path/to/uv
 data-local-medallion-app-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
 	@test -f $(DATA_LOCAL_DUCKDB_PATH) || (echo "Missing DuckDB at $(DATA_LOCAL_DUCKDB_PATH). Run: make data-local-dbt-run" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra healthcare_medallion_app || $(PY) -m pip install -q -e ".[healthcare_medallion_app]")
+	@test -n "$(strip $(UV_BIN))" || (echo "uv not found. Install: https://docs.astral.sh/uv/  Or: make bootstrap-system-tools  Or set UV_BIN=/path/to/uv" && exit 1)
+	cd $(REPO_ROOT) && "$(UV_BIN)" sync --extra healthcare_medallion_app
 	cd $(REPO_ROOT) && DBT_DUCKDB_PATH=$(DATA_LOCAL_DUCKDB_PATH) $(PY) -m streamlit run data/healthcare_data_medallion/app/app.py $(STREAMLIT_LOCAL_OPTS)
 	@echo "data-local medallion explorer (Streamlit)"
 

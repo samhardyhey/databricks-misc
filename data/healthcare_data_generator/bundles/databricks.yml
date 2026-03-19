@@ -104,3 +104,8 @@ targets:
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE
+    resources:
+      jobs:
+        healthcare_data_generator_job:
+          schedule:
+            pause_status: PAUSED

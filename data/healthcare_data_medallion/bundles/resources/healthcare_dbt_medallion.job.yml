@@ -13,6 +13,7 @@ resources:
         deployment_environment: ${var.tag_environment}
 
       trigger:
+        pause_status: PAUSED
         periodic:
           interval: 1
           unit: DAYS
