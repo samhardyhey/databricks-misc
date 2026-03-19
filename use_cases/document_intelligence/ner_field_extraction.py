@@ -89,9 +89,13 @@ def run_field_extraction(config: dict) -> pd.DataFrame:
                 len(spacy_df),
                 mode,
             )
-            from use_cases.document_intelligence.predictions_io import write_field_output
+            from use_cases.document_intelligence.predictions_io import (
+                write_field_output,
+            )
 
-            write_field_output(config, spacy_df.drop(columns=["extraction_method"], errors="ignore"))
+            write_field_output(
+                config, spacy_df.drop(columns=["extraction_method"], errors="ignore")
+            )
             return spacy_df.drop(columns=["extraction_method"], errors="ignore")
         if mode == "ocr":
             logger.warning(

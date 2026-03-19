@@ -81,7 +81,9 @@ def ensure_en_core_web_sm(
         )
         return False
 
-    url = (wheel_url or os.environ.get("DOCINT_EN_CORE_WEB_SM_WHEEL_URL") or "").strip() or EN_CORE_WEB_SM_WHEEL_GITHUB
+    url = (
+        wheel_url or os.environ.get("DOCINT_EN_CORE_WEB_SM_WHEEL_URL") or ""
+    ).strip() or EN_CORE_WEB_SM_WHEEL_GITHUB
     logger.info("Installing en_core_web_sm wheel: {}", url)
     try:
         subprocess.run(

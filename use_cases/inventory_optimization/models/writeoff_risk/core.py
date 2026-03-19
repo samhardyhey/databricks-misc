@@ -181,7 +181,9 @@ def train_writeoff_risk_classifier(
     feature_cols = [c for c in feature_cols if c not in banned]
 
     if not feature_cols:
-        raise ValueError("No feature columns left after excluding leaky columns; check input schema.")
+        raise ValueError(
+            "No feature columns left after excluding leaky columns; check input schema."
+        )
 
     df = df.dropna(subset=feature_cols + [target_col])
     if len(df) < 20:
@@ -223,12 +225,14 @@ def train_writeoff_risk_classifier(
         if num_cols:
             parts.append(("num", "passthrough", num_cols))
         preprocess = ColumnTransformer(transformers=parts)
-        model: object = Pipeline(
-            [("prep", preprocess), ("clf", model_cls(**model_kw))]
-        )
+        model: object = Pipeline([("prep", preprocess), ("clf", model_cls(**model_kw))])
         model.fit(X_train, y_train)
         pred = model.predict(X_test)
-        proba = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else None
+        proba = (
+            model.predict_proba(X_test)[:, 1]
+            if hasattr(model, "predict_proba")
+            else None
+        )
     else:
         estimator = model_cls(**model_kw)
         model = estimator

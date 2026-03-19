@@ -79,8 +79,14 @@ def test_each_domain_spec_has_genie_and_dashboard_env_vars() -> None:
         if dk:
             seen[dk] = fields
     for key, env_names in (
-        ("healthcare_insights", ("GENIE_HEALTHCARE_SPACE_ID", "HEALTHCARE_DASHBOARD_URL")),
-        ("animal_care_insights", ("GENIE_ANIMAL_CARE_SPACE_ID", "ANIMAL_CARE_DASHBOARD_URL")),
+        (
+            "healthcare_insights",
+            ("GENIE_HEALTHCARE_SPACE_ID", "HEALTHCARE_DASHBOARD_URL"),
+        ),
+        (
+            "animal_care_insights",
+            ("GENIE_ANIMAL_CARE_SPACE_ID", "ANIMAL_CARE_DASHBOARD_URL"),
+        ),
         ("twc_franchise_insights", ("GENIE_TWC_SPACE_ID", "TWC_DASHBOARD_URL")),
     ):
         assert seen[key]["genie_space_env_var"] == env_names[0]

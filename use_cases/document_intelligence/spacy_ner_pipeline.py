@@ -21,7 +21,6 @@ from typing import Any
 import pandas as pd
 from loguru import logger
 
-
 # Rule labels (custom order for overlapping matches: longer/specific first).
 _REGEX_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("MEDICARE_NUMBER", re.compile(r"\b\d{4}\s?\d{5}\s?\d?\b")),
@@ -34,7 +33,12 @@ _REGEX_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
         "AHPRA_NUMBER",
         re.compile(r"\b(?:AHPRA|Ahpra)[\s:]*#?\s*(\d{5,12})\b", re.IGNORECASE),
     ),
-    ("PRESCRIPTION_NUMBER", re.compile(r"\b(?:Rx|RX|Prescription|Script)\s*#?\s*[:\-]?\s*([A-Z0-9\-]{4,})\b", re.I)),
+    (
+        "PRESCRIPTION_NUMBER",
+        re.compile(
+            r"\b(?:Rx|RX|Prescription|Script)\s*#?\s*[:\-]?\s*([A-Z0-9\-]{4,})\b", re.I
+        ),
+    ),
     ("DATE_DMY", re.compile(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b")),
 )
 
@@ -178,7 +182,9 @@ def extract_fields_from_ocr(config: dict) -> pd.DataFrame:
         out_rows.append(flat)
 
     cols_order = ["doc_id"] + [
-        c for c in _flatten_spacy_doc("", nlp) if c != "doc_id" and c != "extraction_method"
+        c
+        for c in _flatten_spacy_doc("", nlp)
+        if c != "doc_id" and c != "extraction_method"
     ]
     df = pd.DataFrame(out_rows)
     if "extraction_method" in df.columns:

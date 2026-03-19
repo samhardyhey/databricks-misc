@@ -13,7 +13,11 @@ from typing import Literal
 
 from utils.env_utils import is_running_on_databricks
 from utils.use_case_utils import get_catalog_schema as _shared_catalog_schema
-from utils.use_case_utils import get_env_str, resolve_data_source, resolve_local_base_dir
+from utils.use_case_utils import (
+    get_env_str,
+    resolve_data_source,
+    resolve_local_base_dir,
+)
 
 _DEFAULT_LOCAL_BASE_DIR = (
     Path(__file__).resolve().parents[2] / "data" / "local" / "prescription_pdfs"
