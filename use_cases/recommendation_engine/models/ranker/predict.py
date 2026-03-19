@@ -11,11 +11,15 @@ from mlflow.exceptions import MlflowException
 
 from use_cases.recommendation_engine.config import apply_mlflow_config, get_config
 from use_cases.recommendation_engine.models.data_loading import load_reco_data
-from use_cases.recommendation_engine.models.feature_engineering import add_negative_samples
+from use_cases.recommendation_engine.models.feature_engineering import (
+    add_negative_samples,
+)
 from use_cases.recommendation_engine.models.ranker.core import rank_candidates
 
 
-def _build_candidate_frame(training_base: pd.DataFrame, products: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+def _build_candidate_frame(
+    training_base: pd.DataFrame, products: pd.DataFrame
+) -> tuple[pd.DataFrame, list[str]]:
     sampled = add_negative_samples(training_base, products, n_neg_per_pos=2)
     merged = sampled.merge(products, on="product_id", how="left")
     feature_cols: list[str] = []
@@ -71,7 +75,9 @@ def main(model_uri: str | None = None, top_k: int = 10) -> pd.DataFrame:
         try:
             model = mlflow.lightgbm.load_model(uri)
         except MlflowException as e:
-            logger.info("Ranker apply skipped: could not load model from '{}': {}", uri, e)
+            logger.info(
+                "Ranker apply skipped: could not load model from '{}': {}", uri, e
+            )
             return pd.DataFrame()
 
         candidates, feature_cols = _build_candidate_frame(training_base, products)

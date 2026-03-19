@@ -25,20 +25,20 @@ from use_cases.recommendation_engine.models.data_loading import load_reco_data
 from use_cases.recommendation_engine.models.feature_engineering import (
     build_product_feature_matrix,
 )
+from use_cases.recommendation_engine.models.item_similarity.core import (
+    ItemSimilarityRecoWrapper,
+    recommend_similar_items,
+    train_item_similarity,
+)
 from use_cases.recommendation_engine.models.reco_split_eval import (
-    RECOMMENDATION_OFFLINE_EVAL_K,
     DEFAULT_VAL_FRACTION,
+    RECOMMENDATION_OFFLINE_EVAL_K,
+    evaluate_prediction_df,
     log_common_reco_eval_params_mlflow,
     offline_max_eval_users,
     purchases_truth,
     standard_offline_metrics,
     temporal_train_val_split,
-    evaluate_prediction_df,
-)
-from use_cases.recommendation_engine.models.item_similarity.core import (
-    ItemSimilarityRecoWrapper,
-    recommend_similar_items,
-    train_item_similarity,
 )
 from utils.mlflow.registry import set_latest_version_alias
 

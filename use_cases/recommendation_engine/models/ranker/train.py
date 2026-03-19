@@ -16,16 +16,19 @@ from use_cases.recommendation_engine.models.feature_engineering import (
     add_negative_samples,
     build_ranker_feature_frame,
 )
-from use_cases.recommendation_engine.models.ranker.core import rank_candidates, train_ranker
+from use_cases.recommendation_engine.models.ranker.core import (
+    rank_candidates,
+    train_ranker,
+)
 from use_cases.recommendation_engine.models.reco_split_eval import (
-    RECOMMENDATION_OFFLINE_EVAL_K,
     DEFAULT_VAL_FRACTION,
+    RECOMMENDATION_OFFLINE_EVAL_K,
+    evaluate_prediction_df,
     log_common_reco_eval_params_mlflow,
     offline_max_eval_users,
     purchases_truth,
     standard_offline_metrics,
     temporal_train_val_split,
-    evaluate_prediction_df,
 )
 from use_cases.recommendation_engine.pipelines.build_training_base import (
     _compute_training_base,
@@ -108,9 +111,7 @@ def main() -> dict:
                 rows = []
                 for u in eval_users:
                     for pid in pids:
-                        rows.append(
-                            {"customer_id": str(u), "product_id": str(pid)}
-                        )
+                        rows.append({"customer_id": str(u), "product_id": str(pid)})
                 cand = pd.DataFrame(rows)
                 cand = cand.merge(
                     training_base,
@@ -132,9 +133,7 @@ def main() -> dict:
                 for c in feature_cols:
                     if c not in scored.columns:
                         scored[c] = 0
-                pred_wide = rank_candidates(
-                    model, scored, feature_cols, top_k=k
-                )
+                pred_wide = rank_candidates(model, scored, feature_cols, top_k=k)
                 pred_df = pred_wide[["customer_id", "product_id"]].copy()
                 raw_ev = evaluate_prediction_df(pred_df, truth, k=k)
                 offline = standard_offline_metrics(raw_ev)

@@ -23,14 +23,14 @@ from use_cases.recommendation_engine.models.feature_engineering import (
     build_interaction_matrix,
 )
 from use_cases.recommendation_engine.models.reco_split_eval import (
-    RECOMMENDATION_OFFLINE_EVAL_K,
     DEFAULT_VAL_FRACTION,
+    RECOMMENDATION_OFFLINE_EVAL_K,
+    evaluate_prediction_df,
     log_common_reco_eval_params_mlflow,
     offline_max_eval_users,
     purchases_truth,
     standard_offline_metrics,
     temporal_train_val_split,
-    evaluate_prediction_df,
 )
 
 
@@ -90,9 +90,7 @@ def main() -> dict:
         truth = purchases_truth(val_int)
         cust_to_code = {str(c): i for i, c in enumerate(cust_cat.categories)}
         prod_categories = list(prod_cat.categories)
-        eval_users = [
-            u for u in truth["customer_id"].unique() if u in cust_to_code
-        ]
+        eval_users = [u for u in truth["customer_id"].unique() if u in cust_to_code]
         max_u = offline_max_eval_users()
         eval_users = eval_users[:max_u] if max_u > 0 else eval_users
         preds: list[dict[str, str]] = []

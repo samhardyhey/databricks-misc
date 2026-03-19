@@ -23,14 +23,14 @@ from use_cases.recommendation_engine.models.lightfm.core import (
     train_lightfm,
 )
 from use_cases.recommendation_engine.models.reco_split_eval import (
-    RECOMMENDATION_OFFLINE_EVAL_K,
     DEFAULT_VAL_FRACTION,
+    RECOMMENDATION_OFFLINE_EVAL_K,
+    evaluate_prediction_df,
     log_common_reco_eval_params_mlflow,
     offline_max_eval_users,
     purchases_truth,
     standard_offline_metrics,
     temporal_train_val_split,
-    evaluate_prediction_df,
 )
 from utils.mlflow.registry import set_latest_version_alias
 
@@ -109,16 +109,16 @@ def main() -> dict:
             k = RECOMMENDATION_OFFLINE_EVAL_K
             truth = purchases_truth(val_int)
             cand_users = [
-                u
-                for u in truth["customer_id"].unique()
-                if u in artifacts.user_id_map
+                u for u in truth["customer_id"].unique() if u in artifacts.user_id_map
             ]
             max_u = offline_max_eval_users()
             cand_users = cand_users[:max_u] if max_u > 0 else cand_users
             reco_df = (
                 recommend_for_users(artifacts, cand_users, k=k)
                 if cand_users
-                else pd.DataFrame(columns=["customer_id", "product_id", "score", "rank"])
+                else pd.DataFrame(
+                    columns=["customer_id", "product_id", "score", "rank"]
+                )
             )
             pred_df = reco_df[["customer_id", "product_id"]].copy()
             raw_eval = evaluate_prediction_df(pred_df, truth, k=k)
