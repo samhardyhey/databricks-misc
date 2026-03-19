@@ -1,0 +1,33 @@
+# Use-case-owned transforms (moved out of medallion dbt): build tables in output_schema.
+# Run before retrain so gold_reco_training_base exists.
+resources:
+  jobs:
+
+    recommendation_engine_build_training_base:
+      name: recommendation_engine_build_training_base
+      description: "Build gold_reco_training_base from medallion silver (use-case transform; run before retrain)"
+
+      schedule:
+        quartz_cron_expression: "0 50 5 * * ?"  # 5:50am; retrain at 6am
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: build_training_base
+          spark_python_task:
+            python_file: use_cases/recommendation_engine/pipelines/build_training_base.py
+          environment_key: transform_env
+
+      environments:
+        - environment_key: transform_env
+          spec:
+            client: "2"
+            env_vars:
+              RECO_DATA_SOURCE: auto
+              RECO_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
+              RECO_OUTPUT_SCHEMA: ${var.output_schema}
+              PYTHONPATH: ${var.workspace_root}
+            dependencies:
+              - pandas>=2.0
+              - loguru>=0.7
+              - pyarrow

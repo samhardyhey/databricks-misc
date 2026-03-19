@@ -36,8 +36,8 @@ MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 .PHONY: doc-intel-local-install doc-intel-local-generate-data doc-intel-local-ocr doc-intel-local-field-extraction doc-intel-local-app-run doc-intel-local-smoke doc-intel-local-generate-pdfs
 .PHONY: doc-intel-dab-validate doc-intel-dab-deploy doc-intel-dab-run-generate doc-intel-dab-run-pipeline
 .PHONY: reco-local-install reco-local-data reco-local-run reco-local-e2e reco-local-item-sim-train reco-local-item-sim-apply reco-local-als-train reco-local-als-apply reco-local-lightfm-train reco-local-lightfm-apply reco-local-app-run
-.PHONY: reco-local-smoke
-.PHONY: reco-dab-validate reco-dab-deploy reco-dab-run-retrain reco-dab-run-apply reco-dab-run-lightfm-retrain reco-dab-run-lightfm-apply
+.PHONY: reco-local-smoke reco-build-training-base
+.PHONY: reco-dab-validate reco-dab-deploy reco-dab-run-build-training-base reco-dab-run-retrain reco-dab-run-apply reco-dab-run-lightfm-retrain reco-dab-run-lightfm-apply
 .PHONY: inventory-local-install inventory-local-data inventory-local-run inventory-local-e2e inventory-local-writeoff-train inventory-local-writeoff-apply inventory-local-demand-train inventory-local-demand-apply inventory-local-replenishment-train inventory-local-replenishment-apply
 .PHONY: inventory-local-smoke
 .PHONY: inventory-dab-validate inventory-dab-deploy inventory-dab-run-demand-retrain inventory-dab-run-writeoff-retrain inventory-dab-run-replenishment-retrain inventory-dab-run-demand-apply inventory-dab-run-writeoff-apply inventory-dab-run-replenishment-apply
@@ -129,6 +129,7 @@ help:
 	@echo "  ## Recommendation engine (reco):"
 	@echo "  make reco-local-install        - Install reco deps"
 	@echo "  make reco-local-data           - Prepare local data/medallion (quick)"
+	@echo "  make reco-build-training-base  - Build gold_reco_training_base from silver (use-case transform)"
 	@echo "  make reco-local-item-sim-train - Train item-similarity model"
 	@echo "  make reco-local-item-sim-apply - Apply item-similarity model"
 	@echo "  make reco-local-als-train      - Train ALS model"
@@ -140,6 +141,7 @@ help:
 	@echo ""
 	@echo "  make reco-dab-validate         - Validate reco bundles (jobs + serving + app)"
 	@echo "  make reco-dab-deploy           - Deploy reco bundles (jobs + serving + app)"
+	@echo "  make reco-dab-run-build-training-base - Run reco build_training_base job"
 	@echo "  make reco-dab-run-retrain      - Run reco retrain job (recommendation_engine_retrain)"
 	@echo "  make reco-dab-run-apply        - Run reco apply job (recommendation_engine_apply)"
 	@echo "  make reco-dab-run-lightfm-retrain - Run LightFM retrain job"
@@ -225,6 +227,7 @@ data-local-generate-quick:
 	@$(MAKE) data-local-generate
 
 # End-to-end local data foundation (clean -> generate -> duckdb -> dbt run -> dbt test)
+# Do not run data-local-e2e, reco-local-e2e, inventory-local-e2e in parallel; they share data/local/medallion.duckdb and will hit DuckDB lock errors.
 data-local-e2e: data-local-clean data-local-generate data-local-duckdb-load data-local-dbt-run data-local-dbt-test
 	@echo "data-local-e2e done."
 
@@ -338,6 +341,12 @@ reco-install:
 
 reco-data: data-local-generate-quick data-local-duckdb-load data-local-dbt-run
 
+# Use-case-owned transform: build gold_reco_training_base from silver (run before train when using catalog or local parquet).
+reco-build-training-base:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	cd $(REPO_ROOT) && RECO_DATA_SOURCE=local DBT_DUCKDB_PATH=$(RECO_LOCAL_DUCKDB_PATH) $(PY) use_cases/recommendation_engine/pipelines/build_training_base.py
+	@echo "reco training base built (data/local/reco/gold_reco_training_base.parquet)."
+
 # Full sequence: generate medallion data → train/log MLflow models → MLflow-load apply
 reco-run: reco-data
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
@@ -422,13 +431,21 @@ inventory-replenishment-train:
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/replenishment/train.py
 
 inventory-replenishment-apply:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/replenishment/predict.py
+
 ai-insights-local-app-run: ai-insights-app-run
 
 # --- reco (local) ---
 reco-local-install: reco-install
 reco-local-data: reco-data
 reco-local-smoke: reco-local-run
-reco-local-e2e: reco-local-run
+# Local e2e: data, use-case transform (gold_reco_training_base), then train/apply smoke.
+reco-local-e2e: reco-local-data reco-build-training-base
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make reco-install" && exit 1)
+	@echo "[reco-local] running train+apply smoke (DuckDB + local training base)..."
+	cd $(REPO_ROOT) && RECO_DATA_SOURCE=local DBT_DUCKDB_PATH=$(RECO_LOCAL_DUCKDB_PATH) $(PY) use_cases/recommendation_engine/models/run_reco_smoke.py
+	@echo "reco-local-e2e done."
 reco-local-item-sim-train: reco-item-sim-train
 reco-local-item-sim-apply: reco-item-sim-apply
 reco-local-als-train: reco-als-train
@@ -456,6 +473,9 @@ reco-dab-deploy:
 	@$(MAKE) dab-deploy BUNDLE=recommendation_engine DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 	@$(MAKE) dab-deploy BUNDLE=recommendation_engine_serving DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 	@$(MAKE) dab-deploy BUNDLE=recommendation_engine_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+reco-dab-run-build-training-base:
+	@$(MAKE) dab-run BUNDLE=recommendation_engine RUN_JOB=recommendation_engine_build_training_base DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
 reco-dab-run-retrain:
 	@$(MAKE) dab-run BUNDLE=recommendation_engine RUN_JOB=recommendation_engine_retrain DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
@@ -601,7 +621,7 @@ endef
 
 # Multi-job bundles: allowed RUN_JOB values (strict).
 define dab_allowed_jobs
-$(if $(filter recommendation_engine,$(1)),recommendation_engine_retrain recommendation_engine_lightfm_retrain recommendation_engine_apply recommendation_engine_lightfm_apply,\
+$(if $(filter recommendation_engine,$(1)),recommendation_engine_build_training_base recommendation_engine_retrain recommendation_engine_lightfm_retrain recommendation_engine_apply recommendation_engine_lightfm_apply,\
 $(if $(filter inventory_optimization,$(1)),inventory_demand_forecasting_retrain inventory_writeoff_risk_retrain inventory_replenishment_retrain inventory_demand_forecasting_apply inventory_writeoff_risk_apply inventory_replenishment_apply,\
 $(if $(filter document_intelligence,$(1)),document_intelligence_generate_job document_intelligence_pipeline_job,\
 )))

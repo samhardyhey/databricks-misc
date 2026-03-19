@@ -15,17 +15,15 @@ def _load_from_duckdb(
     duckdb_path: Path, base_schema: str
 ) -> dict[str, pd.DataFrame | None]:
     """
-    Load interactions, products, orders, training_base from local DuckDB medallion.
-    dbt builds silver/gold in {base_schema}_silver and {base_schema}_gold.
+    Load interactions, products, orders from local DuckDB medallion.
+    training_base: use-case-owned; try data/local/reco/gold_reco_training_base.parquet (from make reco-build-training-base).
     """
     import duckdb  # type: ignore[import-untyped]
 
     out: dict[str, pd.DataFrame | None] = {}
     conn = duckdb.connect(str(duckdb_path), read_only=True)
     silver = f"{base_schema}_silver"
-    gold = f"{base_schema}_gold"
     try:
-        # silver_reco_interactions (may not exist in all medallions; fallback to product_interactions from raw)
         for table, key in [
             (f"{silver}.silver_reco_interactions", "interactions"),
             (f"{silver}.silver_products", "products"),
@@ -45,25 +43,21 @@ def _load_from_duckdb(
                 logger.info("Loaded {} from DuckDB {}", key, table)
             except duckdb.CatalogException:
                 out[key] = None
-        # gold_reco_training_base
-        try:
-            out["training_base"] = conn.execute(
-                f"SELECT * FROM {gold}.gold_reco_training_base"
-            ).fetchdf()
-            logger.info(
-                "Loaded training_base from DuckDB {}.gold_reco_training_base", gold
-            )
-        except duckdb.CatalogException:
-            out["training_base"] = None
+        out["training_base"] = None
     finally:
         conn.close()
+    # Use-case-owned training_base: try local parquet from pipelines/build_training_base.py
+    local_tb_path = Path("data/local/reco/gold_reco_training_base.parquet")
+    if local_tb_path.exists():
+        out["training_base"] = pd.read_parquet(local_tb_path)
+        logger.info("Loaded training_base from {}", local_tb_path)
     return out
 
 
 def _load_from_catalog(
-    spark, *, input_silver_schema: str, input_gold_schema: str
+    spark, *, input_silver_schema: str, output_schema: str
 ) -> dict[str, pd.DataFrame | None]:
-    """Load interactions, products, orders, training_base from Unity Catalog shared medallion."""
+    """Load interactions, products, orders from medallion silver; training_base from use-case output schema."""
     out = {}
     # Interactions (silver)
     table = f"{input_silver_schema}.silver_reco_interactions"
@@ -85,8 +79,8 @@ def _load_from_catalog(
         out["orders"] = df
     except Exception:
         out["orders"] = None
-    # Training base (gold)
-    table = f"{input_gold_schema}.gold_reco_training_base"
+    # Training base: use-case-owned table (built by pipelines/build_training_base.py)
+    table = f"{output_schema}.gold_reco_training_base"
     logger.info("Loading training base from {}", table)
     out["training_base"] = spark.table(table).toPandas()
     return out
@@ -149,7 +143,7 @@ def load_reco_data(
         return _load_from_catalog(
             spark,
             input_silver_schema=cfg["input_silver_schema"],
-            input_gold_schema=cfg["input_gold_schema"],
+            output_schema=cfg["output_schema"],
         )
     # Local: try DuckDB medallion first when configured
     if cfg.get("local_data_source") == "duckdb" and cfg.get("duckdb_path"):

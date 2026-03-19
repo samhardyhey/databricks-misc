@@ -5,7 +5,7 @@ Runs the full local pipeline:
 1) generate prescription PDFs + JSON labels
 2) OCR extraction
 3) field extraction (OCR + proxy NER)
-4) start the Streamlit annotator app (leaves it running)
+4) optionally start the Streamlit annotator app (interactive)
 
 This is a lightweight orchestration wrapper intended for quick verification after changes.
 """
@@ -70,13 +70,15 @@ def main() -> dict:
     cfg = get_config()
     base_dir = Path(cfg["base_dir"])
 
-    # Streamlit dependency check (fail with actionable message).
-    try:
-        import streamlit  # type: ignore[import-not-found]  # noqa: F401
-    except Exception as e:
-        raise RuntimeError(
-            "streamlit is not installed. Run: make document-intelligence-install"
-        ) from e
+    run_streamlit = os.environ.get("DOCINT_SMOKE_RUN_STREAMLIT", "0").strip() == "1"
+    if run_streamlit:
+        # Streamlit dependency check (fail with actionable message).
+        try:
+            import streamlit  # type: ignore[import-not-found]  # noqa: F401
+        except Exception as e:
+            raise RuntimeError(
+                "streamlit is not installed. Run: make document-intelligence-install"
+            ) from e
 
     jobs_dir = Path(__file__).resolve().parent / "jobs"
 
@@ -90,9 +92,10 @@ def main() -> dict:
             f"Smoke failed: expected fields output at {fields_dir} but it does not exist."
         )
 
-    # Start the annotator app (headless). Keep it running as requested.
-    app_path = Path(__file__).resolve().parent / "annotator" / "app.py"
-    _run_streamlit(env=os.environ.copy(), app_path=app_path)
+    if run_streamlit:
+        # Start the annotator app (headless). Intended for interactive review.
+        app_path = Path(__file__).resolve().parent / "annotator" / "app.py"
+        _run_streamlit(env=os.environ.copy(), app_path=app_path)
 
     logger.success("document-intelligence smoke done")
     return {"base_dir": str(base_dir), "fields_dir": str(fields_dir)}

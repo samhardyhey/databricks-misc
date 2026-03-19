@@ -87,22 +87,6 @@ def get_input_silver_schema() -> str:
     return raw
 
 
-def get_input_gold_schema() -> str:
-    """
-    Unity Catalog *input* schema for gold tables (shared medallion).
-    Override with RECO_INPUT_GOLD_SCHEMA.
-    """
-    import os
-
-    raw = os.environ.get("RECO_INPUT_GOLD_SCHEMA", "").strip()
-    if not raw:
-        raise RuntimeError(
-            "RECO_INPUT_GOLD_SCHEMA is required when RECO_DATA_SOURCE=catalog "
-            "(e.g. workspace.healthcare_medallion_dev_gold)."
-        )
-    return raw
-
-
 def get_output_schema() -> str:
     """
     Unity Catalog *output* schema for reco-owned tables.
@@ -159,8 +143,7 @@ def get_config() -> dict:
     - duckdb_path: Path | None (when local and DuckDB file exists)
     - duckdb_medallion_schema: str (base schema for DuckDB, e.g. healthcare_medallion_local)
     - input_silver_schema: str (UC schema for shared medallion silver inputs)
-    - input_gold_schema: str (UC schema for shared medallion gold inputs)
-    - output_schema: str (UC schema for reco-owned outputs)
+    - output_schema: str (UC schema for reco-owned outputs; includes gold_reco_training_base)
     - on_databricks: bool (is_running_on_databricks())
     - mlflow_tracking_uri: str | None
     - mlflow_registry_uri: str | None
@@ -169,11 +152,9 @@ def get_config() -> dict:
     duckdb_path = get_duckdb_path()
 
     input_silver_schema: str | None = None
-    input_gold_schema: str | None = None
     output_schema: str | None = None
     if data_source == "catalog":
         input_silver_schema = get_input_silver_schema()
-        input_gold_schema = get_input_gold_schema()
         output_schema = get_output_schema()
 
     return {
@@ -183,7 +164,6 @@ def get_config() -> dict:
         "duckdb_path": duckdb_path,
         "duckdb_medallion_schema": get_duckdb_medallion_schema(),
         "input_silver_schema": input_silver_schema,
-        "input_gold_schema": input_gold_schema,
         "output_schema": output_schema,
         "on_databricks": is_running_on_databricks(),
         "mlflow_tracking_uri": get_mlflow_tracking_uri(),

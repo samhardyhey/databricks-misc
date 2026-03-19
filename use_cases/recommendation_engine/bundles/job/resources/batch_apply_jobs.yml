@@ -39,7 +39,6 @@ resources:
             env_vars:
               RECO_DATA_SOURCE: auto
               RECO_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
-              RECO_INPUT_GOLD_SCHEMA: ${var.medallion_gold_schema}
               RECO_OUTPUT_SCHEMA: ${var.output_schema}
               PYTHONPATH: ${var.workspace_root}
             dependencies:

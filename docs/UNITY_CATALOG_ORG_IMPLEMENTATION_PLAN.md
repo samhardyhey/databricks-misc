@@ -125,6 +125,14 @@ This avoids duplicating medallion tables into each use-case schema.
 
 ---
 
+## Local vs remote development
+
+- **Local**: Data source is `local` (CSV or DuckDB medallion). No Unity Catalog schema env vars are required. Use-case config exposes `duckdb_path`, `duckdb_medallion_schema`, and leaves `input_*` / `output_schema` unset (or empty). Train/apply code reads from local files or DuckDB and writes to local artifacts (e.g. CSV, MLflow local).
+- **Remote (Databricks)**: Data source is `catalog`. Jobs set `*_INPUT_*_SCHEMA` and `*_OUTPUT_SCHEMA` (e.g. `RECO_INPUT_SILVER_SCHEMA`, `RECO_OUTPUT_SCHEMA`). Code reads from shared medallion schemas and writes to use-case schemas (and UC volumes where applicable).
+- **dbt medallion**: When run on Databricks, the dbt profile uses a base schema (e.g. `healthcare_medallion_dev`). Model config uses `+schema: bronze | silver | gold`. dbt’s default `generate_schema_name` produces layer schemas `healthcare_medallion_<env>_bronze`, `_silver`, `_gold`, so no dbt change is needed for the layer-schema standard.
+
+---
+
 ## Phased migration plan
 
 ### Phase 0 — Inventory & mapping (prepare)
@@ -136,16 +144,16 @@ Deliverables:
   - **Outputs** currently written (tables + schemas).
   - Ownership decision: which outputs belong in medallion vs use-case schema (default: use-case schema).
 
-### Phase 1 — Foundation provisioning (schemas + volumes)
+### Phase 1 — Foundation provisioning (schemas + volumes) — Done
 
 Deliverables:
 
 - `uc_foundation` provisions:
-  - shared raw + medallion schemas (all envs)
+  - shared raw + medallion schemas (all envs), including layer schemas `healthcare_medallion_<env>_{bronze,silver,gold}`
   - use-case output schemas (all envs)
   - doc-intelligence env-scoped schemas + volumes
 
-### Phase 2 — Document intelligence isolation (high priority)
+### Phase 2 — Document intelligence isolation (high priority) — Done
 
 Deliverables:
 
@@ -153,16 +161,16 @@ Deliverables:
 - Doc-intel PDFs always live in `/Volumes/workspace/document_intelligence_<env>/prescription_documents`.
 - No dev/test/prod mixing for doc-intel volumes.
 
-### Phase 3 — Reco outputs → reco schema; Inventory outputs → inventory schema
+### Phase 3 — Reco outputs → reco schema; Inventory outputs → inventory schema — Done
 
 Deliverables:
 
 - Reco:
-  - reads medallion silver/gold from shared schemas
-  - writes all candidate/reco output tables to `workspace.recommendation_engine_<env>`
+  - reads medallion silver/gold from shared schemas (`RECO_INPUT_SILVER_SCHEMA`, `RECO_INPUT_GOLD_SCHEMA`)
+  - writes all candidate/reco output tables to `workspace.recommendation_engine_<env>` (`RECO_OUTPUT_SCHEMA`)
 - Inventory:
-  - reads medallion silver/bronze from shared schemas
-  - writes all scoring/recommendation outputs to `workspace.inventory_optimization_<env>`
+  - reads medallion silver/bronze/gold from shared schemas (`INVENTORY_INPUT_*_SCHEMA`)
+  - writes all scoring/recommendation outputs to `workspace.inventory_optimization_<env>` (`INVENTORY_OUTPUT_SCHEMA`)
 
 ### Phase 4 — Move use-case-flavoured “gold” out of shared medallion
 
@@ -171,10 +179,19 @@ Deliverables (incremental):
 - Keep shared medallion gold limited to broadly reusable datasets.
 - Move use-case-specific feature/training base tables into the owning use-case schema.
 
-Implementation options:
+**Encoding use-case-owned transforms:** Each moved transform is explicitly implemented in the use-case and runnable both locally and remotely:
 
-- dbt mini-project per use-case that reads shared medallion and writes to use-case schema; or
-- Spark/Python tasks within the use-case bundle to compute and write those outputs.
+- **Pipeline script** in `use_cases/<uc>/pipelines/` (e.g. `build_training_base.py`) that reads from medallion (or local DuckDB/CSV) and writes to output_schema (catalog) or a local path (e.g. `data/local/<uc>/…`).
+- **Make target** (e.g. `make reco-build-training-base`) to run the transform locally.
+- **DAB job** in the use-case job bundle (e.g. `recommendation_engine_build_training_base`) so the transform runs on a schedule or as a dependency before retrain.
+
+Downstream code (e.g. data_loading, train scripts) reads these tables from the use-case output schema (catalog) or the local path (local), not from the medallion.
+
+**Phase 4 status**
+
+- **Reco (done):** `gold_reco_training_base` and `gold_reco_candidates` removed from medallion. Reco owns the training-base transform via `pipelines/build_training_base.py`, `make reco-build-training-base`, and DAB job `recommendation_engine_build_training_base`. Training reads from `output_schema.gold_reco_training_base` (catalog) or local parquet (local).
+- **Inventory:** No inventory-specific gold tables exist in the medallion. Inventory reads only silver/bronze and writes all outputs (e.g. `gold_writeoff_risk_scores`, `gold_replenishment_recommendations`) to `output_schema`; no Phase 4 move required.
+- **Remaining medallion gold (broadly reusable):** The shared medallion keeps analytics/BI gold tables: `gold_product_performance`, `gold_pharmacy_performance`, `gold_financial_analytics`, `gold_supply_chain_performance`, `gold_ml_ready_dataset`. None are currently consumed by use-case code. If a use-case later adopts `gold_ml_ready_dataset` (or similar) as a primary input, consider moving that transform into the owning use-case as a pipeline + make + DAB.
 
 ### Phase 5 — Governance hardening (ongoing)
 
@@ -189,15 +206,26 @@ Deliverables:
 
 ---
 
+## Local make targets – operational notes
+
+- **Status:** All local e2e targets run successfully when executed **one at a time**: `data-local-e2e`, `doc-intel-local-e2e`, `reco-local-e2e`, `inventory-local-e2e`.
+- **DuckDB concurrency:** `data-local-e2e`, `reco-local-e2e`, and `inventory-local-e2e` all use the same file `data/local/medallion.duckdb`. Do **not** run these in parallel (e.g. in separate terminals); DuckDB will report a lock conflict. Run them sequentially.
+- **Doc-intel e2e:** By default `doc-intel-local-e2e` does not start the Streamlit app (headless). Set `DOCINT_SMOKE_RUN_STREAMLIT=1` when invoking the smoke script if you want the annotator app to launch.
+
+---
+
 ## Checklist (repeatable per use-case)
 
 For a given use-case `<uc>`:
 
 - [ ] Define `<uc>_<env>` output schema.
-- [ ] Identify shared medallion input tables (silver/gold).
-- [ ] Ensure runtime config distinguishes input namespace(s) vs output namespace.
+- [ ] Identify shared medallion input tables (silver/gold/bronze as needed).
+- [ ] Ensure runtime config distinguishes input namespace(s) vs output namespace; require input/output schema env vars only when `data_source == 'catalog'` (local runs use DuckDB/CSV and do not need them).
 - [ ] Update bundle/job env vars so writes land in `<uc>_<env>`.
 - [ ] Backfill/migrate any existing output tables from shared schemas into `<uc>_<env>`.
+- [ ] Encode use-case-owned transforms as pipeline script + make target + DAB job (see Phase 4).
 - [ ] Apply UC grants (least privilege).
-- [ ] Update dashboards/apps to point to `<uc>_<env>` outputs if they consume them.
+- [ ] Update dashboards/apps to point to `<uc>_<env>` or layer medallion schemas if they consume them.
+
+**Completed for:** recommendation_engine (output schema; gold_reco_training_base moved to pipeline + make reco-build-training-base + DAB job), inventory_optimization, document_intelligence (output schema + volume); ai_powered_insights (dashboards/genie use layer medallion vars).
 
