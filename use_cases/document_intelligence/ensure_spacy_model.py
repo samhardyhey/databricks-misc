@@ -6,8 +6,9 @@ Used by ``spacy_ner_pipeline.get_nlp()`` before ``spacy.load``. Can also run as 
 
 Environment:
 
-- ``DOCINT_AUTO_INSTALL_SPACY_MODEL`` — default ``1`` / ``true``: run ``pip install <wheel>``
-  when the package is missing. Set ``0`` / ``false`` / ``no`` to only check (use blank:en fallback).
+- ``DOCINT_AUTO_INSTALL_SPACY_MODEL`` — default ``1`` / ``true``: install the wheel via
+  ``uv pip install`` when ``uv`` is on PATH, else ``python -m pip install`` (uv-managed venvs often have no pip).
+  Set ``0`` / ``false`` / ``no`` to only check (use blank:en fallback).
 - ``DOCINT_EN_CORE_WEB_SM_WHEEL_URL`` — override wheel URL (default: ``model_dep_urls`` GitHub URL).
 
 Read-only / managed clusters (e.g. Databricks) should bake the wheel into the environment or image;
@@ -18,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 
@@ -59,8 +61,9 @@ def ensure_en_core_web_sm(
     """
     Ensure ``en_core_web_sm`` is usable.
 
-    If missing and ``install`` is true, runs
-    ``sys.executable -m pip install <wheel>`` (default URL from ``model_dep_urls``).
+    If missing and ``install`` is true, installs the wheel via ``uv`` when available
+    (``uv pip install --python sys.executable``), else ``sys.executable -m pip install``
+    (default URL from ``model_dep_urls``).
 
     Returns True if ``spacy.load('en_core_web_sm')`` works after any install attempt.
     """
@@ -85,9 +88,15 @@ def ensure_en_core_web_sm(
         wheel_url or os.environ.get("DOCINT_EN_CORE_WEB_SM_WHEEL_URL") or ""
     ).strip() or EN_CORE_WEB_SM_WHEEL_GITHUB
     logger.info("Installing en_core_web_sm wheel: {}", url)
+    uv_exe = shutil.which("uv")
+    cmd = (
+        [uv_exe, "pip", "install", "--python", sys.executable, "--quiet", url]
+        if uv_exe
+        else [sys.executable, "-m", "pip", "install", "--quiet", url]
+    )
     try:
         subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--quiet", url],
+            cmd,
             check=True,
             timeout=600,
         )
@@ -122,7 +131,10 @@ def main(argv: list[str] | None = None) -> int:
         ok = en_core_web_sm_loadable()
         if not ok:
             logger.warning(
-                "en_core_web_sm is not loadable. Install with: {} -m pip install {}",
+                "en_core_web_sm is not loadable. Install with: uv pip install --python {} {} "
+                "or: {} -m pip install {}",
+                sys.executable,
+                EN_CORE_WEB_SM_WHEEL_GITHUB,
                 sys.executable,
                 EN_CORE_WEB_SM_WHEEL_GITHUB,
             )

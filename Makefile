@@ -33,8 +33,10 @@ DOC_INTEL_PDF_OUTPUT := data/local/prescription_pdfs
 STREAMLIT_LOCAL_OPTS ?= --server.runOnSave true --server.fileWatcherType auto
 
 # uv: Make / IDE tasks often run with a minimal PATH. Widen search (bootstrap-system-tools -> ~/.local/bin; Homebrew, etc.).
-# Override: make data-local-medallion-app-run UV_BIN=/path/to/uv
-UV_BIN ?= $(shell PATH="$(HOME)/.local/bin:$(HOME)/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$$PATH" command -v uv 2>/dev/null | head -n1)
+INSTALL_BIN_DIR ?= $(HOME)/.local/bin
+UV_ENV_PATH := $(INSTALL_BIN_DIR):$(HOME)/.cargo/bin:/opt/homebrew/bin:/usr/local/bin
+# Override: make ... UV_BIN=/path/to/uv
+UV_BIN ?= $(shell PATH="$(UV_ENV_PATH):$$PATH" command -v uv 2>/dev/null | head -n1)
 
 # Marvelous MLOps: optional dependency group `marvelous_mlops` in pyproject.toml (make marvelous-mlops-venv).
 # Ingests public MLOps/Databricks teaching feeds for policy development (see README / marvelous_mlops/README).
@@ -70,6 +72,7 @@ help:
 	@echo "Targets:"
 	@echo "  ## Local env/util"
 	@echo "  make uv-setup / dev-install - **Recommended:** uv venv + sync with dev tools (format, pytest) in one step"
+	@echo "      Requires **uv** on PATH (see UV_ENV_PATH in Makefile; run bootstrap-system-tools if needed)."
 	@echo "  make uv-venv              - Create .venv only (uses UV_BIN/uv if available, else python3 -m venv)"
 	@echo "  make install / uv-sync    - Install project + **dev** extra (autoflake, isort, black, pytest)"
 	@echo "  make uv-dev               - Alias for install (kept for muscle memory)"
@@ -191,13 +194,13 @@ help:
 	@echo "  make reco-dab-run-ranker-retrain  - Run ranker retrain job"
 	@echo "  make reco-dab-run-ranker-apply    - Run ranker apply job"
 
-# --- Environment (databricks-misc): use uv if available, else python3/pip ---
-# Prefer UV_BIN (widen PATH via Makefile) so bootstrap -> uv works in the same Make session.
+# --- Environment (databricks-misc): prefer uv (venv has no pip unless you use stdlib venv fallback) ---
+# Prefer UV_BIN; subshell recipes use UV_ENV_PATH so `uv` resolves like the interactive shell.
 uv-venv:
 	@if [ -n "$(strip $(UV_BIN))" ]; then \
 		cd $(REPO_ROOT) && "$(UV_BIN)" venv; \
-	elif command -v uv >/dev/null 2>&1; then \
-		cd $(REPO_ROOT) && uv venv; \
+	elif PATH="$(UV_ENV_PATH):$$PATH" command -v uv >/dev/null 2>&1; then \
+		cd $(REPO_ROOT) && PATH="$(UV_ENV_PATH):$$PATH" uv venv; \
 	else \
 		cd $(REPO_ROOT) && ((command -v python3.12 >/dev/null 2>&1 && python3.12 -m venv .venv) || (command -v python3.11 >/dev/null 2>&1 && python3.11 -m venv .venv) || python3 -m venv .venv); \
 	fi
@@ -211,12 +214,14 @@ dev-install: uv-setup
 
 uv-sync:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
-	@if [ -n "$(strip $(UV_BIN))" ]; then \
-		cd $(REPO_ROOT) && "$(UV_BIN)" sync --extra dev; \
-	elif command -v uv >/dev/null 2>&1; then \
-		cd $(REPO_ROOT) && uv sync --extra dev; \
+	@cd $(REPO_ROOT) && \
+	if [ -n "$(strip $(UV_BIN))" ]; then \
+		"$(UV_BIN)" sync --extra dev; \
+	elif PATH="$(UV_ENV_PATH):$$PATH" command -v uv >/dev/null 2>&1; then \
+		PATH="$(UV_ENV_PATH):$$PATH" uv sync --extra dev; \
 	else \
-		cd $(REPO_ROOT) && .venv/bin/pip install -e ".[dev]"; \
+		echo "error: uv not found on PATH (uv-managed .venv has no pip). Run: make bootstrap-system-tools"; \
+		echo "      or: export PATH=\"$(UV_ENV_PATH):\$$PATH\""; exit 1; \
 	fi
 	@echo "Deps installed (includes dev: format + pytest)."
 
@@ -265,28 +270,27 @@ test-ai-insights:
 # Default CLI version: bump when you want DAB/CLI parity; override: make bootstrap-system-tools DATABRICKS_CLI_VERSION=0.296.0
 # Install location: ensure $$HOME/.local/bin is on PATH ahead of any legacy /usr/local/bin databricks.
 DATABRICKS_CLI_VERSION ?= 0.295.0
-INSTALL_BIN_DIR ?= $(HOME)/.local/bin
 
 bootstrap-system-tools: bootstrap-system-tools-uv bootstrap-system-tools-databricks
 	@echo ""
 	@echo "bootstrap-system-tools: done."
-	@echo "Add to PATH if needed: export PATH=\"$(INSTALL_BIN_DIR):\$$PATH\""
+	@echo "Add to PATH if needed: export PATH=\"$(UV_ENV_PATH):\$$PATH\""
 	@echo "Then: cd $(REPO_ROOT) && make uv-setup"
 
 bootstrap-system-tools-uv:
 	@echo "[bootstrap] uv (astral install.sh; or self-update if already on PATH)..."
 	@command -v curl >/dev/null 2>&1 || (echo "curl is required" && exit 1)
-	@if command -v uv >/dev/null 2>&1; then \
-		echo "uv already: $$(command -v uv) ($$(uv --version))"; \
-		uv self update || true; \
+	@if PATH="$(UV_ENV_PATH):$$PATH" command -v uv >/dev/null 2>&1; then \
+		echo "uv already: $$(PATH="$(UV_ENV_PATH):$$PATH" command -v uv) ($$(PATH="$(UV_ENV_PATH):$$PATH" uv --version))"; \
+		PATH="$(UV_ENV_PATH):$$PATH" uv self update || true; \
 	else \
 		curl -LsSf https://astral.sh/uv/install.sh | sh; \
 	fi
-	@PATH="$(INSTALL_BIN_DIR):$(HOME)/.cargo/bin:$(HOME)/.local/bin:/opt/homebrew/bin:/usr/local/bin:$$PATH" \
+	@PATH="$(UV_ENV_PATH):$$PATH" \
 		sh -c 'if command -v uv >/dev/null 2>&1; then \
 			echo "[bootstrap] uv verified: $$(command -v uv) — $$(uv --version)"; \
 		else \
-			echo "[bootstrap] uv not on PATH in this shell. Open a new terminal or run: export PATH=\"$(INSTALL_BIN_DIR):$$PATH\""; \
+			echo "[bootstrap] uv not on PATH in this shell. Open a new terminal or run: export PATH=\"$(UV_ENV_PATH):$$PATH\""; \
 		fi'
 
 bootstrap-system-tools-databricks:
@@ -415,19 +419,32 @@ data-local-dbt-test: data-local-dbt-run
 	@echo "dbt test (duckdb) done."
 
 # Streamlit: medallion layers in local DuckDB (read-only). Do not run alongside data-local-e2e (same DuckDB file).
-# Installs extras via uv only (see UV_BIN — widened PATH so Make finds ~/.local/bin / Homebrew). Override: UV_BIN=/path/to/uv
+# Installs extras via `uv sync` (UV_BIN or PATH including UV_ENV_PATH). Override: UV_BIN=/path/to/uv
 data-local-medallion-app-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
 	@test -f $(DATA_LOCAL_DUCKDB_PATH) || (echo "Missing DuckDB at $(DATA_LOCAL_DUCKDB_PATH). Run: make data-local-dbt-run" && exit 1)
-	@test -n "$(strip $(UV_BIN))" || (echo "uv not found. Install: https://docs.astral.sh/uv/  Or: make bootstrap-system-tools  Or set UV_BIN=/path/to/uv" && exit 1)
-	cd $(REPO_ROOT) && "$(UV_BIN)" sync --extra dev --extra healthcare_medallion_app
+	@cd $(REPO_ROOT) && \
+	if [ -n "$(strip $(UV_BIN))" ]; then \
+		"$(UV_BIN)" sync --extra dev --extra healthcare_medallion_app; \
+	elif PATH="$(UV_ENV_PATH):$$PATH" command -v uv >/dev/null 2>&1; then \
+		PATH="$(UV_ENV_PATH):$$PATH" uv sync --extra dev --extra healthcare_medallion_app; \
+	else \
+		echo "uv not found. Install: https://docs.astral.sh/uv/  Or: make bootstrap-system-tools  Or set UV_BIN=/path/to/uv"; exit 1; \
+	fi
 	cd $(REPO_ROOT) && DBT_DUCKDB_PATH=$(DATA_LOCAL_DUCKDB_PATH) $(PY) -m streamlit run data/healthcare_data_medallion/app/app.py $(STREAMLIT_LOCAL_OPTS)
 	@echo "data-local medallion explorer (Streamlit)"
 
 # --- Document intelligence (jobs 1/2/3 + full pipeline + Streamlit app; defaults from config) ---
 document-intelligence-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-setup first" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev --extra document_intelligence || .venv/bin/pip install -e ".[dev,document_intelligence]")
+	@cd $(REPO_ROOT) && \
+	if [ -n "$(strip $(UV_BIN))" ]; then \
+		"$(UV_BIN)" sync --extra dev --extra document_intelligence; \
+	elif PATH="$(UV_ENV_PATH):$$PATH" command -v uv >/dev/null 2>&1; then \
+		PATH="$(UV_ENV_PATH):$$PATH" uv sync --extra dev --extra document_intelligence; \
+	else \
+		echo "error: uv not on PATH (uv venv has no pip). Run: make bootstrap-system-tools"; exit 1; \
+	fi
 	@echo "Document intelligence deps installed (includes en_core_web_sm via uv optional extra)."
 
 # Ensure en_core_web_sm is loadable (pip install pinned wheel if missing; use --check-only for CI)
@@ -514,7 +531,14 @@ doc-intel-dab-run-pipeline:
 # --- Recommendation engine (single entrypoint; RECO_DATA_SOURCE=local|catalog|auto) ---
 reco-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-setup first" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev --extra reco || .venv/bin/pip install -e ".[dev,reco]")
+	@cd $(REPO_ROOT) && \
+	if [ -n "$(strip $(UV_BIN))" ]; then \
+		"$(UV_BIN)" sync --extra dev --extra reco; \
+	elif PATH="$(UV_ENV_PATH):$$PATH" command -v uv >/dev/null 2>&1; then \
+		PATH="$(UV_ENV_PATH):$$PATH" uv sync --extra dev --extra reco; \
+	else \
+		echo "error: uv not on PATH (uv venv has no pip). Run: make bootstrap-system-tools"; exit 1; \
+	fi
 	@echo "Reco deps (implicit, lightgbm, mlflow) installed."
 
 reco-data: data-local-generate-quick data-local-duckdb-load data-local-dbt-run
@@ -574,14 +598,26 @@ reco-app-run:
 # Streamlit app for AI Powered Insights (Genie + domain router)
 ai-insights-app-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
-	@$(PY) -m pip install -r use_cases/ai_powered_insights/app/requirements.txt >/dev/null 2>&1 || true
+	@cd $(REPO_ROOT) && \
+	if [ -n "$(strip $(UV_BIN))" ]; then \
+		"$(UV_BIN)" pip install --python "$(VENV_PY)" -r use_cases/ai_powered_insights/app/requirements.txt >/dev/null 2>&1 || true; \
+	elif PATH="$(UV_ENV_PATH):$$PATH" command -v uv >/dev/null 2>&1; then \
+		PATH="$(UV_ENV_PATH):$$PATH" uv pip install --python "$(VENV_PY)" -r use_cases/ai_powered_insights/app/requirements.txt >/dev/null 2>&1 || true; \
+	else true; fi
 	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/ai_powered_insights/app/app.py $(STREAMLIT_LOCAL_OPTS)
 	@echo "ai-powered-insights app running (Streamlit)"
 
 # --- Inventory optimisation (single entrypoint; INVENTORY_DATA_SOURCE=local|catalog|auto) ---
 inventory-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-setup first" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev --extra inventory || .venv/bin/pip install -e ".[dev,inventory]")
+	@cd $(REPO_ROOT) && \
+	if [ -n "$(strip $(UV_BIN))" ]; then \
+		"$(UV_BIN)" sync --extra dev --extra inventory; \
+	elif PATH="$(UV_ENV_PATH):$$PATH" command -v uv >/dev/null 2>&1; then \
+		PATH="$(UV_ENV_PATH):$$PATH" uv sync --extra dev --extra inventory; \
+	else \
+		echo "error: uv not on PATH (uv venv has no pip). Run: make bootstrap-system-tools"; exit 1; \
+	fi
 	@echo "Inventory deps (scipy, lightgbm) installed."
 
 inventory-data: data-local-generate-quick data-local-duckdb-load data-local-dbt-run
@@ -784,10 +820,17 @@ data-dab-run-medallion:
 	@$(MAKE) dab-run BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
 # --- Marvelous MLOps (optional extra marvelous_mlops in pyproject.toml) ---
-# Use uv pip / pip so we merge into the existing venv without uv sync stripping other extras.
+# Use `uv pip install` so we merge into the existing venv without `uv sync` stripping other extras.
 marvelous-mlops-venv:
 	@test -x $(VENV_PY) || (echo "Run: make uv-setup" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv pip install -e ".[marvelous_mlops]" || $(PY) -m pip install -e ".[marvelous_mlops]")
+	@cd $(REPO_ROOT) && \
+	if [ -n "$(strip $(UV_BIN))" ]; then \
+		"$(UV_BIN)" pip install --python "$(VENV_PY)" -e ".[marvelous_mlops]"; \
+	elif PATH="$(UV_ENV_PATH):$$PATH" command -v uv >/dev/null 2>&1; then \
+		PATH="$(UV_ENV_PATH):$$PATH" uv pip install --python "$(VENV_PY)" -e ".[marvelous_mlops]"; \
+	else \
+		echo "error: uv not on PATH. Run: make bootstrap-system-tools"; exit 1; \
+	fi
 	@echo "Optional extra marvelous_mlops installed. Run: make marvelous-mlops-fetch-medium|fetch-substack|fetch-youtube"
 
 marvelous-mlops-fetch-medium:
