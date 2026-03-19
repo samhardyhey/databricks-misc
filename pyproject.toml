@@ -30,7 +30,12 @@ document_intelligence = [
     "pdfplumber>=0.11.0",
     "streamlit>=1.30.0",
     "spacy>=3.8.0,<3.9",
-    # Packaged English pipeline (aligned with spaCy 3.8.x); avoids a separate `spacy download` step.
+    # English pipeline: install **from GitHub Releases**, not PyPI or `git+` on spacy-models
+    # (Explosion stores binaries as release wheels only; see
+    # https://github.com/explosion/spacy-models#downloading-models ).
+    # Same URL is recorded in use_cases/document_intelligence/model_dep_urls.py for docs/DAB parity.
+    # Optional mirror if releases are blocked: HF serves wheels under spacy/en_core_web_sm
+    # (pin a resolve/ revision and verify wheel Requires-Dist vs spacy above).
     "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
 ]
 dev = [
@@ -43,6 +48,9 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["data", "use_cases", "utils"]

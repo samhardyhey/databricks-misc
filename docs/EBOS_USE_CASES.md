@@ -400,7 +400,7 @@ Ground-truth labels (`labels/`) are used for **evaluation and optional NER train
 **Pipeline (generate predictions, not “training” in the same sense as reco/inventory)**:
 1. **OCR** — `pdfplumber` for PDF → text per page. Write results to predictions store (local JSON under `predictions/ocr/` or UC `silver_doc_pages`).
 2. **Field extraction** — **Applied** NLP on OCR text:
-   - **spaCy** + **`en_core_web_sm`** — both are declared under the **`document_intelligence`** optional extra in `pyproject.toml` (model installed as a pinned wheel via `uv sync --extra document_intelligence`; DAB pipeline env lists the same wheel URL).
+   - **spaCy** + **`en_core_web_sm`** — the wheel is installed from **Explosion’s [GitHub Releases](https://github.com/explosion/spacy-models/releases)** (not PyPI; models are not in the git tree—only release assets). The same URL is in `pyproject.toml` (`document_intelligence` extra), in the DAB pipeline env, and in `use_cases/document_intelligence/model_dep_urls.py`. Optional **Hugging Face** mirror: [`spacy/en_core_web_sm`](https://huggingface.co/spacy/en_core_web_sm) if GitHub is blocked—verify **wheel ↔ spaCy** compatibility before swapping.
    - **Regex / rules** in `spacy_ner_pipeline.py` for AU-oriented patterns (Medicare-style numbers, ABN, phone, Rx/script hints, AHPRA-style text).
    - **No model training or held-out evaluation** in this path — only inference. Env: `DOCINT_FIELD_SOURCE` = `auto` (try OCR+spaCy first) | `ocr` | `labels`.
    - If spaCy/OCR is missing or empty, **`auto` falls back to generator JSON labels** (demo parity with the annotator).
@@ -417,7 +417,7 @@ Ground-truth labels (`labels/`) are used for **evaluation and optional NER train
 - **Local**: DOCINT_BASE_DIR (default e.g. `data/local/prescription_pdfs/`) holds `documents/`, `predictions/` (and optional `labels/`, `annotated/`). All I/O is file-based.
 - **Remote (Databricks)**: When DOCINT_DATA_SOURCE=catalog (or auto on Databricks), read document listing from catalog/volume and write predictions to Unity Catalog tables or configured volume path. Same Python code paths; config switches behaviour.
 
-**Remote / cluster:** Include `spacy` and the **`en_core_web_sm`** wheel in the cluster environment (see `document_intelligence_job.yml` `pipeline_env` dependencies); locally they come from `uv sync --extra document_intelligence`. If the model package is missing, the code falls back to `blank:en` (regex-only entities, no PERSON/ORG from spaCy).
+**Remote / cluster:** Install **`spacy`** plus the **`en_core_web_sm`** wheel URL from **GitHub Releases** on [`explosion/spacy-models`](https://github.com/explosion/spacy-models/releases) in the job environment (`document_intelligence_job.yml` `pipeline_env`), mirroring `pyproject.toml` / `model_dep_urls.py`. See [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md) §4 for mirrors (e.g. Hugging Face) and version checks. If the wheel is missing, code falls back to `blank:en` (regex-only; no spaCy NER).
 
 **Batch jobs** (bundle under use-case; each job runnable locally or as DAB task):
 ```

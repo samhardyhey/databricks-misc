@@ -6,8 +6,9 @@ pipeline when available (`en_core_web_sm`) and enrich with `EntityRuler` regex p
 for AU-style identifiers. If the vocabulary model is missing, fall back to `blank:en`
 with ruler-only entities.
 
-Install (optional extra ``document_intelligence`` in ``pyproject.toml``): ``uv sync --extra document_intelligence``
-    installs ``spacy`` and the ``en_core_web_sm`` wheel as a pinned URL dependency (no separate download step).
+Install: ``uv sync --extra document_intelligence`` (pinned wheel) or at runtime
+    ``ensure_spacy_model.ensure_en_core_web_sm()`` / ``python use_cases/document_intelligence/ensure_spacy_model.py``.
+    See ``model_dep_urls.py`` and https://github.com/explosion/spacy-models#downloading-models
 """
 
 from __future__ import annotations
@@ -42,13 +43,16 @@ def _load_nlp() -> Any:
     import spacy
     from spacy.language import Language
 
+    from use_cases.document_intelligence.ensure_spacy_model import ensure_en_core_web_sm
+
     nlp: Language
-    try:
+    if ensure_en_core_web_sm():
         nlp = spacy.load("en_core_web_sm")
-    except OSError:
+    else:
         logger.warning(
-            "spaCy model en_core_web_sm not installed; run: python -m spacy download en_core_web_sm. "
-            "Using blank English (regex-based fields only; no PERSON/ORG NER)."
+            "en_core_web_sm unavailable after check/install; using blank English "
+            "(regex-based fields only; no PERSON/ORG NER). "
+            "Install manually: python use_cases/document_intelligence/ensure_spacy_model.py"
         )
         nlp = spacy.blank("en")
     return nlp
@@ -161,16 +165,18 @@ def extract_fields_from_ocr(config: dict) -> pd.DataFrame:
     """
     Build the same flat field schema as label-based extraction, using spaCy + rules on OCR text.
     """
-    try:
-        import spacy  # noqa: F401
-    except ImportError:
-        logger.warning("spaCy not installed; install document_intelligence extra + spacy.")
-        return pd.DataFrame()
-
     ocr_df = load_ocr_text_by_doc(config)
     if ocr_df.empty:
         logger.info("No OCR JSON under predictions/ocr; spaCy extraction skipped.")
         return ocr_df
+
+    from use_cases.document_intelligence.ensure_spacy_model import ensure_en_core_web_sm
+
+    if not ensure_en_core_web_sm():
+        logger.warning(
+            "spaCy pipeline unavailable (install document_intelligence extra or run ensure_spacy_model.py)."
+        )
+        return pd.DataFrame()
 
     nlp = get_nlp()
     out_rows = []

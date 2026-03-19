@@ -80,6 +80,8 @@ resources:
               DOCINT_CATALOG_SCHEMA: ${var.docint_catalog_schema}
               DOCINT_DOCUMENTS_VOLUME: ${var.docint_documents_volume}
               PYTHONPATH: ${var.workspace_root}
+            # spaCy models: official distribution is GitHub Release wheels on explosion/spacy-models
+            # (not PyPI). Optional HF mirror: huggingface.co/spacy/en_core_web_sm (verify wheel ↔ spacy pin).
             dependencies:
               - pandas>=2.0
               - loguru>=0.7

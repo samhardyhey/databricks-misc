@@ -53,6 +53,8 @@ Use-cases **read** from medallion; they **own** only the tables below (semantics
 | **document_intelligence** | `document_intelligence_<env>` | `silver_doc_pages`, `silver_doc_fields_extracted`; volume `prescription_documents` | After OCR/field extraction; volume per upload |
 | **ai_powered_insights** | `ai_powered_insights_<env>` | (None yet; dashboards read medallion) | — |
 
+**Document intelligence — spaCy `en_core_web_sm`:** Models are **not** on PyPI. Explosion publishes **`.whl` assets on [GitHub Releases](https://github.com/explosion/spacy-models/releases)** (`explosion/spacy-models`); the git repository does not contain the binaries ([upstream README](https://github.com/explosion/spacy-models/blob/master/README.md)). Local installs use that URL in `pyproject.toml` optional extra `document_intelligence`; Databricks uses the same pattern in `document_intelligence_job.yml` `pipeline_env`. Pinned URLs: `use_cases/document_intelligence/model_dep_urls.py`. If `github.com` is blocked, try Hugging Face [`spacy/en_core_web_sm`](https://huggingface.co/spacy/en_core_web_sm) (`resolve/.../en_core_web_sm-any-py3-none-any.whl`) and **verify** the wheel’s `Requires-Dist: spacy (...)` matches your `spacy` pin.
+
 ---
 
 ## 5. Generator & medallion scope
