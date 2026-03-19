@@ -28,23 +28,31 @@ variables:
     description: Service principal for job run_as and bundle resource permissions
     default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
 
+  workspace_bundle_root:
+    description: Workspace home for bundle.state path; override for SP-owned home (see uc_foundation bundle)
+    default: /Workspace/Users/sam.hardy@ebosgroup.com
+
+  bundle_deploying_user_name:
+    description: Human user for bundle CAN_MANAGE permissions alongside run_as SP
+    default: sam.hardy@ebosgroup.com
+
 targets:
   dev-sp:
     mode: development
     default: true
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: ebos_uc_demo
       tag_environment: dev
       source_schema: healthcare_dev_raw
-      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      workspace_root: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-DATA-GENERATOR-DEV-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
     permissions:
-      - user_name: sam.hardy@ebosgroup.com
+      - user_name: ${var.bundle_deploying_user_name}
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE
@@ -58,17 +66,17 @@ targets:
     mode: development
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: ebos_uc_demo
       tag_environment: test
       source_schema: healthcare_test_raw
-      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      workspace_root: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-DATA-GENERATOR-TEST-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
     permissions:
-      - user_name: sam.hardy@ebosgroup.com
+      - user_name: ${var.bundle_deploying_user_name}
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE
@@ -82,17 +90,17 @@ targets:
     mode: production
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: ebos_uc_demo
       tag_environment: prod
       source_schema: healthcare_prod_raw
-      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      workspace_root: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-DATA-GENERATOR-PROD-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
     permissions:
-      - user_name: sam.hardy@ebosgroup.com
+      - user_name: ${var.bundle_deploying_user_name}
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE

@@ -46,13 +46,24 @@ variables:
     description: Service principal granted CAN_MANAGE on bundle-deployed UC resources (pair with UC table ACLs in platform runbooks)
     default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
 
+  workspace_bundle_root:
+    description: >
+      Workspace home used for bundle.state sync path: {workspace_bundle_root}/.bundle/{bundle}/{target}.
+      Use /Workspace/Users/<email> for personal deploys or /Workspace/Users/<service-principal-uuid>
+      when the SP owns workspace files—must match the account you authenticate as.
+    default: /Workspace/Users/sam.hardy@ebosgroup.com
+
+  bundle_deploying_user_name:
+    description: Human user receiving CAN_MANAGE alongside the service principal on bundle resources
+    default: sam.hardy@ebosgroup.com
+
 targets:
   dev-sp:
     mode: development
     default: true
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
     variables:
       healthcare_raw_schema_name: healthcare_dev_raw
       healthcare_medallion_schema_name: healthcare_medallion_dev
@@ -63,7 +74,7 @@ targets:
       docint_volume_schema_name: document_intelligence_dev
       service_principal_name: <TBD-UC-FOUNDATION-DEV-SP>
     permissions:
-      - user_name: sam.hardy@ebosgroup.com
+      - user_name: ${var.bundle_deploying_user_name}
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE
@@ -72,7 +83,7 @@ targets:
     mode: development
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
     variables:
       healthcare_raw_schema_name: healthcare_test_raw
       healthcare_medallion_schema_name: healthcare_medallion_test
@@ -83,7 +94,7 @@ targets:
       docint_volume_schema_name: document_intelligence_test
       service_principal_name: <TBD-UC-FOUNDATION-TEST-SP>
     permissions:
-      - user_name: sam.hardy@ebosgroup.com
+      - user_name: ${var.bundle_deploying_user_name}
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE
@@ -92,7 +103,7 @@ targets:
     mode: production
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
     variables:
       healthcare_raw_schema_name: healthcare_prod_raw
       healthcare_medallion_schema_name: healthcare_medallion_prod
@@ -103,7 +114,7 @@ targets:
       docint_volume_schema_name: document_intelligence_prod
       service_principal_name: <TBD-UC-FOUNDATION-PROD-SP>
     permissions:
-      - user_name: sam.hardy@ebosgroup.com
+      - user_name: ${var.bundle_deploying_user_name}
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE

@@ -3,12 +3,18 @@ resources:
     recommendation_engine_item_similarity:
       name: recommendation-engine-item-similarity
       tags:
-        business_unit: ebos
-        workload: ds-ml-demo
-        uc_catalog: ebos_uc_demo
-        repository: databricks-misc
-        bundle: recommendation_engine_serving
-        deployment_environment: ${var.tag_environment}
+        - key: business_unit
+          value: ebos
+        - key: workload
+          value: ds-ml-demo
+        - key: uc_catalog
+          value: ebos_uc_demo
+        - key: repository
+          value: databricks-misc
+        - key: bundle
+          value: recommendation_engine_serving
+        - key: deployment_environment
+          value: ${var.tag_environment}
       config:
         served_models:
           - name: item_similarity
@@ -21,17 +27,22 @@ resources:
     recommendation_engine_als:
       name: recommendation-engine-als
       tags:
-        business_unit: ebos
-        workload: ds-ml-demo
-        uc_catalog: ebos_uc_demo
-        repository: databricks-misc
-        bundle: recommendation_engine_serving
-        deployment_environment: ${var.tag_environment}
+        - key: business_unit
+          value: ebos
+        - key: workload
+          value: ds-ml-demo
+        - key: uc_catalog
+          value: ebos_uc_demo
+        - key: repository
+          value: databricks-misc
+        - key: bundle
+          value: recommendation_engine_serving
+        - key: deployment_environment
+          value: ${var.tag_environment}
       config:
         served_models:
           - name: als_recommender
             model_name: ${var.model_schema}.recommendation_engine-als
-            # Use stable alias instead of pinning a numeric version.
             model_version: "@Champion"
             workload_size: Small
             scale_to_zero_enabled: true
@@ -39,17 +50,22 @@ resources:
     recommendation_engine_lightfm:
       name: recommendation-engine-lightfm
       tags:
-        business_unit: ebos
-        workload: ds-ml-demo
-        uc_catalog: ebos_uc_demo
-        repository: databricks-misc
-        bundle: recommendation_engine_serving
-        deployment_environment: ${var.tag_environment}
+        - key: business_unit
+          value: ebos
+        - key: workload
+          value: ds-ml-demo
+        - key: uc_catalog
+          value: ebos_uc_demo
+        - key: repository
+          value: databricks-misc
+        - key: bundle
+          value: recommendation_engine_serving
+        - key: deployment_environment
+          value: ${var.tag_environment}
       config:
         served_models:
           - name: lightfm_recommender
             model_name: ${var.model_schema}.recommendation_engine-lightfm
-            # Use stable alias instead of pinning a numeric version.
             model_version: "@Champion"
             workload_size: Small
             scale_to_zero_enabled: true
@@ -57,12 +73,18 @@ resources:
     recommendation_engine_ranker:
       name: recommendation-engine-ranker
       tags:
-        business_unit: ebos
-        workload: ds-ml-demo
-        uc_catalog: ebos_uc_demo
-        repository: databricks-misc
-        bundle: recommendation_engine_serving
-        deployment_environment: ${var.tag_environment}
+        - key: business_unit
+          value: ebos
+        - key: workload
+          value: ds-ml-demo
+        - key: uc_catalog
+          value: ebos_uc_demo
+        - key: repository
+          value: databricks-misc
+        - key: bundle
+          value: recommendation_engine_serving
+        - key: deployment_environment
+          value: ${var.tag_environment}
       config:
         served_models:
           - name: ranker
@@ -70,4 +92,3 @@ resources:
             model_version: "@Champion"
             workload_size: Small
             scale_to_zero_enabled: true
-

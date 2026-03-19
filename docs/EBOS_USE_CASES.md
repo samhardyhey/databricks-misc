@@ -4,6 +4,19 @@
 
 **Data & platform** (UC layout, data flow, grants, contracts, generator/medallion scope, local dev): [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md).
 
+### Databricks bundle prerequisites (by use-case)
+
+Before `databricks bundle deploy`, align **Unity Catalog** ([DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md): catalog `ebos_uc_demo`, schemas/volume from `uc_foundation`), **service principals** (`run_as` + bundle permissions; replace `<TBD-…>` placeholders per target), and **workspace paths**. All bundles expose **`workspace_bundle_root`** (default `/Workspace/Users/<you>@…`) and **`bundle_deploying_user_name`** for permission grants—override with `--var` when your home path is a service-principal workspace folder or a shared prefix.
+
+| Use-case / bundle | Extra Databricks resources |
+|-------------------|----------------------------|
+| **Shared** (`uc_foundation`, generator, medallion) | UC catalog + schemas + doc-intel volume; warehouse for dbt SQL path in `dbt_profiles/profiles.yml` (update `http_path` per workspace). |
+| **Healthcare medallion (dbt job)** | dbt targets `dev-sp` / `test-sp` / `prod-sp` match CLI profile names; set `DATABRICKS_HOST` and `DATABRICKS_TOKEN` (or SP OAuth per dbt-databricks) consistent with `~/.databrickscfg`—see [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md). |
+| **Recommendation engine** | Medallion silver data; **MLflow** models in UC registry with `@Champion` aliases; **Model Serving** (four endpoints). Streamlit app needs serving **endpoint URLs** in bundle vars when not using defaults. |
+| **Inventory optimization** | Medallion bronze/silver/gold; MLflow for write-off; batch jobs expect registry URIs where configured. |
+| **Document intelligence** | UC volume for PDFs; jobs use serverless + wheel deps (spaCy model URL). Annotator app uses `DOCINT_BASE_DIR` under deployed bundle area by default. |
+| **AI Powered Insights** | **SQL warehouse IDs are mandatory** for `ai_powered_insights_dashboards` (`warehouse_id`) and `ai_powered_insights_genie_spaces` (`sql_warehouse_id`); dashboards also reference **workspace groups** (`analytics-healthcare`, etc.) in resource permissions—create or change names to match your workspace. Genie Space IDs and dashboard URLs for the Streamlit router are bundle variables. |
+
 **Existing Assets**:
 - Healthcare data generator with medallion architecture (bronze/silver/gold)
 - Inventory optimisation: demand forecasting, write-off risk, replenishment under `use_cases/inventory_optimization/models/`

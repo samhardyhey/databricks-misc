@@ -1,5 +1,13 @@
-# This file defines dbt profiles for deployed dbt jobs.
-# Use profile "databricks" for Databricks; use "sqlite" for local medallion (requires dbt-sqlite, DB pre-loaded from CSVs).
+# dbt profiles for healthcare_data_medallion (Databricks + local DuckDB).
+#
+# Target names dev-sp / test-sp / prod-sp align with Databricks CLI profiles in ~/.databrickscfg
+# (e.g. [dev-sp], [test-sp], [prod-sp]). dbt-databricks does not read ~/.databrickscfg directly; use
+# the same host + credentials those profiles would use:
+#   - PAT: set DATABRICKS_HOST and DATABRICKS_TOKEN before `dbt` (mirror the host/token from the matching profile).
+#   - Service principal: prefer auth_type: oauth with client_id / client_secret env vars
+#     (see https://docs.getdbt.com/reference/warehouse-profiles/databricks-profile).
+#
+# SQL warehouse http_path below is demo-specific; update per workspace or move to env/credentials.
 databricks:
   target: dev-sp
   outputs:
@@ -9,24 +17,24 @@ databricks:
       catalog: ebos_uc_demo
       schema: "healthcare_medallion_dev"
       http_path: /sql/1.0/warehouses/2a475c6457a76313
-      host: "{{ env_var('DBT_HOST') }}"
-      token: "{{ env_var('DBT_ACCESS_TOKEN') }}"
+      host: "{{ env_var('DATABRICKS_HOST') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
     test-sp:
       type: databricks
       method: http
       catalog: ebos_uc_demo
       schema: "healthcare_medallion_test"
       http_path: /sql/1.0/warehouses/2a475c6457a76313
-      host: "{{ env_var('DBT_HOST') }}"
-      token: "{{ env_var('DBT_ACCESS_TOKEN') }}"
+      host: "{{ env_var('DATABRICKS_HOST') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
     prod-sp:
       type: databricks
       method: http
       catalog: ebos_uc_demo
       schema: "healthcare_medallion_prod"
       http_path: /sql/1.0/warehouses/2a475c6457a76313
-      host: "{{ env_var('DBT_HOST') }}"
-      token: "{{ env_var('DBT_ACCESS_TOKEN') }}"
+      host: "{{ env_var('DATABRICKS_HOST') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
     # Legacy targets (kept for local or older deploys)
     dev:
       type: databricks
@@ -34,19 +42,18 @@ databricks:
       catalog: ebos_uc_demo
       schema: "healthcare_medallion_dev"
       http_path: /sql/1.0/warehouses/2a475c6457a76313
-      host: "{{ env_var('DBT_HOST') }}"
-      token: "{{ env_var('DBT_ACCESS_TOKEN') }}"
+      host: "{{ env_var('DATABRICKS_HOST') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
     prod:
       type: databricks
       method: http
       catalog: ebos_uc_demo
       schema: "healthcare_medallion_prod"
       http_path: /sql/1.0/warehouses/2a475c6457a76313
-      host: "{{ env_var('DBT_HOST') }}"
-      token: "{{ env_var('DBT_ACCESS_TOKEN') }}"
+      host: "{{ env_var('DATABRICKS_HOST') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN') }}"
 
 # Optional: local medallion (DuckDB). Run from repo root: make data-local-generate then make data-local-dbt-run.
-# Raw tables must exist in DuckDB (e.g. load data/local/*.csv or use DuckDB read_csv_auto views); set source_schema via env or override.
 duckdb:
   target: local
   outputs:

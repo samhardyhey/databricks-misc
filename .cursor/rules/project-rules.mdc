@@ -13,6 +13,7 @@ alwaysApply: true
 ### Repo Structure
 - **data/** — Shared data foundation. Generators (healthcare, prescription PDFs) and medallion. Extended incrementally for use-cases; one medallion, n use-cases on top.
 - **use_cases/** — One subdirectory per EBOS use-case (recommendation_engine, demand_forecasting, inventory_optimization, document_intelligence, customer_service_agent, ranging_consolidation, market_intelligence, franchise_analytics).
+- **bundles/** — Shared DAB packs not scoped to a single `use_cases/<name>/` tree (e.g. `bundles/uc_foundation` for Unity Catalog schemas/volumes and related jobs).
 - **docs/** — EBOS_USE_CASES.md (use-cases spec), MODELLING_OPTIONS.md (alternative / non-EBOS options), LUNCH_AND_LEARN.md (session plan; to be aligned with EBOS).
 
 ### Databricks Bundles (multi-DAB pattern)
@@ -22,8 +23,8 @@ alwaysApply: true
     - keep job resources under `use_cases/<name>/bundles/job/resources/*.yml`
     - `include: resources/*.yml` (relative to the bundle directory).
     - define `sync.paths` (typically repo root) so `use_cases/` and `data/` code is available in the workspace.
-    - declare shared `variables` (e.g. catalog, medallion_schema, workspace_root).
-    - define 3‑env `targets` (`dev-sp`, `test-sp`, `prod-sp`) with `workspace.host`, `workspace.root_path`, per-target `variables` overrides, and optional `resources.jobs.*.schedule.pause_status` plus `run_as.service_principal_name`.
+    - declare shared `variables` (e.g. catalog, medallion_schema, `workspace_bundle_root`, `bundle_deploying_user_name`, job `workspace_root`).
+    - define 3‑env `targets` (`dev-sp`, `test-sp`, `prod-sp`) with `workspace.host`, `workspace.root_path` (typically `${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}`), per-target `variables` overrides, and optional `resources.jobs.*.schedule.pause_status` plus `run_as.service_principal_name`.
   - `bundles/serving/databricks.yml` — optional **endpoints bundle** for model-serving endpoints (per use-case):
     - keep endpoint resources under `use_cases/<name>/bundles/serving/resources/*.yml`
     - `include: resources/*.yml`.
@@ -43,6 +44,16 @@ alwaysApply: true
     - `targets dev-sp/test-sp/prod-sp` — each with `workspace.host`, `workspace.root_path`, `variables` overrides, and optional `resources.jobs.*.schedule.pause_status` and `run_as.service_principal_name`.
   - `example_bundles/endpoints/databricks.yml` shows the same pattern for endpoints bundles.
   - Real use-case bundles (e.g. `use_cases/recommendation_engine/bundles/{job,serving,app}/databricks.yml`, `use_cases/inventory_optimization/bundles/job/databricks.yml`) should follow this structure: bundle metadata, local `resources/*.yml` next to each bundle file, repo-root `sync.paths`, shared `variables`, and 3‑env `targets` (dev-sp/test-sp-prod-sp).
+- **Bundle lifecycle (deploy vs destroy)**:
+  - **`databricks bundle deploy`** (and removing resources from YAML then deploying again) is the normal way to reconcile workspace state with config; orphaned resources defined only in prior deploys can be removed on deploy depending on bundle state.
+  - **`databricks bundle destroy`** removes resources previously deployed for this bundle’s identity (bundle name + **target** + workspace). Use for explicit teardown, env reset, or CI cleanup. **Irreversible** for those resources; the CLI prompts by default.
+  - In YAML, **`lifecycle`** on a resource can prevent it from being destroyed when running `bundle destroy` (see Databricks bundle docs: resources → lifecycle).
+- **Makefile DAB commands (always run from repo root)** — thin wrappers around the Databricks CLI so CI and humans share the same `BUNDLE=` names and targets:
+  - **`make dab-list`** — valid `BUNDLE=` values for the generic targets below.
+  - **`make dab-validate` / `dab-deploy` / `dab-run` / `dab-destroy`** — require `BUNDLE=<name>`; optional **`DAB_TARGET`** (default `dev-sp`), **`DAB_PROFILE`** (defaults to `DAB_TARGET`). See **`make help`** for use-case shortcuts (`reco-dab-deploy`, `doc-intel-dab-destroy`, `foundation-dab-destroy-uc`, etc.).
+  - **`make dab-destroy`** — runs `databricks bundle destroy` from the mapped bundle directory. For non-interactive runs (e.g. CI), set **`DAB_DESTROY_AUTO_APPROVE=1`** to pass **`--auto-approve`**.
+  - **`DATABRICKS_BUNDLE_ENGINE=direct`** — the Makefile forces this for **`uc_foundation`** and **`ai_powered_insights_genie_spaces`** on validate / deploy / **destroy**, matching deploy requirements for those resources.
+  - **Multi-bundle use-cases** (reco, doc-intel, ai-insights) expose destroy shortcuts that run **`dab-destroy`** per bundle in **reverse dependency order** (e.g. app → serving → jobs) so dependents are torn down first.
 
 ### Databricks Apps (Streamlit)
 - We standardise on **Streamlit** for Databricks Apps.

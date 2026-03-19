@@ -20,8 +20,8 @@ MEDALLION_DIR := $(REPO_ROOT)/data/healthcare_data_medallion
 # UC foundation (Unity Catalog schemas/volumes) deploy settings
 UC_FOUNDATION_TARGET ?= dev-sp
 
-# Databricks workspace user for bundle root_path in databricks.yml ( /Workspace/Users/<email>/.bundle/... ).
-# Override if your workspace home differs. See: make dab-workspace-print
+# Default segment for bundle variable workspace_bundle_root = /Workspace/Users/<email> in databricks.yml.
+# Override per deploy: databricks bundle deploy --var workspace_bundle_root=...  See: make dab-workspace-print
 WORKSPACE_USER_EMAIL ?= sam.hardy@ebosgroup.com
 WORKSPACE_BUNDLE_PREFIX := /Workspace/Users/$(WORKSPACE_USER_EMAIL)/.bundle
 
@@ -380,7 +380,7 @@ data-local-dbt-test: data-local-dbt-run
 # --- Document intelligence (jobs 1/2/3 + full pipeline + Streamlit app; defaults from config) ---
 document-intelligence-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra document_intelligence || .venv/bin/pip install -e ".[document_intelligence]")
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev --extra document_intelligence || .venv/bin/pip install -e ".[document_intelligence]")
 	@echo "Document intelligence deps installed (includes en_core_web_sm via uv optional extra)."
 
 # Ensure en_core_web_sm is loadable (pip install pinned wheel if missing; use --check-only for CI)
@@ -467,7 +467,7 @@ doc-intel-dab-run-pipeline:
 # --- Recommendation engine (single entrypoint; RECO_DATA_SOURCE=local|catalog|auto) ---
 reco-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra reco || .venv/bin/pip install -e ".[reco]")
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev --extra reco || .venv/bin/pip install -e ".[reco]")
 	@echo "Reco deps (implicit, lightgbm, mlflow) installed."
 
 reco-data: data-local-generate-quick data-local-duckdb-load data-local-dbt-run
@@ -534,7 +534,7 @@ ai-insights-app-run:
 # --- Inventory optimisation (single entrypoint; INVENTORY_DATA_SOURCE=local|catalog|auto) ---
 inventory-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
-	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra inventory || .venv/bin/pip install -e ".[inventory]")
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra dev --extra inventory || .venv/bin/pip install -e ".[inventory]")
 	@echo "Inventory deps (scipy, lightgbm) installed."
 
 inventory-data: data-local-generate-quick data-local-duckdb-load data-local-dbt-run
@@ -791,7 +791,7 @@ endef
 
 # Multi-job bundles: allowed RUN_JOB values (strict).
 define dab_allowed_jobs
-$(if $(filter recommendation_engine,$(1)),recommendation_engine_build_training_base recommendation_engine_retrain recommendation_engine_lightfm_retrain recommendation_engine_ranker_retrain recommendation_engine_apply recommendation_engine_lightfm_apply recommendation_engine_ranker_apply,\
+$(if $(filter recommendation_engine,$(1)),recommendation_engine_build_training_base recommendation_engine_item_similarity_retrain recommendation_engine_als_retrain recommendation_engine_lightfm_retrain recommendation_engine_ranker_retrain recommendation_engine_retrain recommendation_engine_item_similarity_apply recommendation_engine_als_apply recommendation_engine_lightfm_apply recommendation_engine_ranker_apply recommendation_engine_apply,\
 $(if $(filter inventory_optimization,$(1)),inventory_demand_forecasting_retrain inventory_writeoff_risk_retrain inventory_replenishment_retrain inventory_demand_forecasting_apply inventory_writeoff_risk_apply inventory_replenishment_apply,\
 $(if $(filter document_intelligence,$(1)),document_intelligence_generate_job document_intelligence_pipeline_job,\
 )))
@@ -803,7 +803,10 @@ $(if $(filter uc_foundation ai_powered_insights_genie_spaces,$(1)),1,)
 endef
 
 dab-workspace-print:
-	@echo "$(WORKSPACE_BUNDLE_PREFIX)   (set WORKSPACE_USER_EMAIL if bundle YAML paths must match your Databricks user)"
+	@echo "$(WORKSPACE_BUNDLE_PREFIX)   (WORKSPACE_USER_EMAIL=$(WORKSPACE_USER_EMAIL))"
+	@echo "Bundle workspace home defaults: /Workspace/Users/$(WORKSPACE_USER_EMAIL)"
+	@echo "Override per deploy: databricks bundle deploy --var workspace_bundle_root=/Workspace/Users/you@co.com ..."
+	@echo "Override deploying user in permissions: --var bundle_deploying_user_name=you@co.com"
 
 dab-list:
 	@echo "Available DAB bundles:"

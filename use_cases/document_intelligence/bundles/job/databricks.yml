@@ -21,12 +21,21 @@ variables:
   medallion_schema:
     description: Catalog.schema for document intelligence tables (e.g. ebos_uc_demo.document_intelligence_dev)
     default: ebos_uc_demo.document_intelligence_dev
+
+  workspace_bundle_root:
+    description: Workspace home for bundle.state and default DOCINT_BASE_DIR prefix (see uc_foundation bundle)
+    default: /Workspace/Users/sam.hardy@ebosgroup.com
+
+  bundle_deploying_user_name:
+    description: Human user for bundle CAN_MANAGE permissions alongside run_as SP
+    default: sam.hardy@ebosgroup.com
+
   workspace_root:
     description: Workspace path where bundle is deployed (for PYTHONPATH)
     default: ""
   docint_base_dir:
     description: Local base dir (documents/, predictions/, annotated/). Used when DOCINT_DATA_SOURCE=local.
-    default: /Workspace/Users/sam.hardy@ebosgroup.com/data/local/prescription_pdfs
+    default: ${var.workspace_bundle_root}/data/local/prescription_pdfs
   docint_num_pdfs:
     description: Number of prescription PDFs to generate (DOCINT_NUM_PDFS)
     default: "10"
@@ -49,13 +58,13 @@ targets:
     default: true
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: ebos_uc_demo
       tag_environment: dev
       medallion_schema: ebos_uc_demo.document_intelligence_dev
-      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
-      docint_base_dir: /Workspace/Users/sam.hardy@ebosgroup.com/data/local/prescription_pdfs
+      workspace_root: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
+      docint_base_dir: ${var.workspace_bundle_root}/data/local/prescription_pdfs
       docint_num_pdfs: "10"
       docint_data_source: catalog
       docint_catalog_schema: ebos_uc_demo.document_intelligence_dev
@@ -64,7 +73,7 @@ targets:
     run_as:
       service_principal_name: ${var.service_principal_name}
     permissions:
-      - user_name: sam.hardy@ebosgroup.com
+      - user_name: ${var.bundle_deploying_user_name}
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE
@@ -73,13 +82,13 @@ targets:
     mode: development
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: ebos_uc_demo
       tag_environment: test
       medallion_schema: ebos_uc_demo.document_intelligence_test
-      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
-      docint_base_dir: /Workspace/Users/sam.hardy@ebosgroup.com/data/local/prescription_pdfs
+      workspace_root: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
+      docint_base_dir: ${var.workspace_bundle_root}/data/local/prescription_pdfs
       docint_num_pdfs: "10"
       docint_data_source: catalog
       docint_catalog_schema: ebos_uc_demo.document_intelligence_test
@@ -88,7 +97,7 @@ targets:
     run_as:
       service_principal_name: ${var.service_principal_name}
     permissions:
-      - user_name: sam.hardy@ebosgroup.com
+      - user_name: ${var.bundle_deploying_user_name}
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE
@@ -97,13 +106,13 @@ targets:
     mode: production
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: ebos_uc_demo
       tag_environment: prod
       medallion_schema: ebos_uc_demo.document_intelligence_prod
-      workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
-      docint_base_dir: /Workspace/Users/sam.hardy@ebosgroup.com/data/local/prescription_pdfs
+      workspace_root: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
+      docint_base_dir: ${var.workspace_bundle_root}/data/local/prescription_pdfs
       docint_num_pdfs: "10"
       docint_data_source: catalog
       docint_catalog_schema: ebos_uc_demo.document_intelligence_prod
@@ -112,7 +121,7 @@ targets:
     run_as:
       service_principal_name: ${var.service_principal_name}
     permissions:
-      - user_name: sam.hardy@ebosgroup.com
+      - user_name: ${var.bundle_deploying_user_name}
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE

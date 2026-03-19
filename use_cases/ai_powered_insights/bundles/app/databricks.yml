@@ -10,9 +10,17 @@ sync:
     - ../../../..  # repo root so use_cases/* and data/ are available
 
 variables:
+  workspace_bundle_root:
+    description: Workspace home for bundle.state path; override for SP-owned home (see uc_foundation bundle)
+    default: /Workspace/Users/sam.hardy@ebosgroup.com
+
+  bundle_deploying_user_name:
+    description: Human user for bundle CAN_MANAGE permissions alongside run_as SP
+    default: sam.hardy@ebosgroup.com
+
   app_workspace_root:
     description: Workspace root path for the app bundle
-    default: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+    default: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
   service_principal_name:
     description: Service principal name for this environment (run_as)
     default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
@@ -43,9 +51,9 @@ targets:
     default: true
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
     variables:
-      app_workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      app_workspace_root: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-AI-INSIGHTS-DEV-SP>
       genie_healthcare_space_id: ""
       genie_animal_care_space_id: ""
@@ -56,7 +64,7 @@ targets:
     run_as:
       service_principal_name: ${var.service_principal_name}
     permissions:
-      - user_name: sam.hardy@ebosgroup.com
+      - user_name: ${var.bundle_deploying_user_name}
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE
@@ -65,9 +73,9 @@ targets:
     mode: development
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
     variables:
-      app_workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      app_workspace_root: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-AI-INSIGHTS-TEST-SP>
       genie_healthcare_space_id: ""
       genie_animal_care_space_id: ""
@@ -78,7 +86,7 @@ targets:
     run_as:
       service_principal_name: ${var.service_principal_name}
     permissions:
-      - user_name: sam.hardy@ebosgroup.com
+      - user_name: ${var.bundle_deploying_user_name}
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE
@@ -87,9 +95,9 @@ targets:
     mode: production
     workspace:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
-      root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      root_path: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
     variables:
-      app_workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
+      app_workspace_root: ${var.workspace_bundle_root}/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-AI-INSIGHTS-PROD-SP>
       genie_healthcare_space_id: ""
       genie_animal_care_space_id: ""
@@ -100,7 +108,7 @@ targets:
     run_as:
       service_principal_name: ${var.service_principal_name}
     permissions:
-      - user_name: sam.hardy@ebosgroup.com
+      - user_name: ${var.bundle_deploying_user_name}
         level: CAN_MANAGE
       - service_principal_name: ${var.service_principal_name}
         level: CAN_MANAGE
