@@ -14,6 +14,7 @@ DBT_BIN := $(REPO_ROOT)/.venv/bin/dbt
 
 # Local data: output dirs (data/local is gitignored)
 DATA_LOCAL_DIR := $(REPO_ROOT)/data/local
+DATA_LOCAL_DUCKDB_PATH ?= $(REPO_ROOT)/data/local/medallion.duckdb
 MEDALLION_DIR := $(REPO_ROOT)/data/healthcare_data_medallion
 # MLflow: backend/artifact from utils.mlflow (local vs Databricks); no Makefile override
 
@@ -31,9 +32,9 @@ DOC_INTEL_PDF_OUTPUT := data/local/prescription_pdfs
 # Local Streamlit: rerun on save + file watcher (override e.g. STREAMLIT_LOCAL_OPTS=--server.fileWatcherType poll for Docker)
 STREAMLIT_LOCAL_OPTS ?= --server.runOnSave true --server.fileWatcherType auto
 
-# Marvelous MLOps: separate requirements, use sub-venv (make marvelous-mlops-venv first)
+# Marvelous MLOps: optional dependency group `marvelous_mlops` in pyproject.toml (make marvelous-mlops-venv).
+# Ingests public MLOps/Databricks teaching feeds for policy development (see README / marvelous_mlops/README).
 MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
-MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
 .PHONY: help test test-use-cases test-reco test-inventory test-doc-intel test-ai-insights
 .PHONY: help cleanup clean-local-data format uc-foundation-deploy
@@ -51,13 +52,13 @@ MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 .PHONY: inventory-local-smoke
 .PHONY: inventory-dab-validate inventory-dab-deploy inventory-dab-destroy inventory-dab-run-demand-retrain inventory-dab-run-writeoff-retrain inventory-dab-run-replenishment-retrain inventory-dab-run-demand-apply inventory-dab-run-writeoff-apply inventory-dab-run-replenishment-apply
 .PHONY: ai-insights-local-app-run ai-insights-dab-validate ai-insights-dab-deploy ai-insights-dab-destroy
-.PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
+.PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test data-local-medallion-app-run
 .PHONY: reco-data reco-run reco-install reco-item-sim-train reco-item-sim-apply reco-als-train reco-als-apply reco-lightfm-train reco-lightfm-apply reco-ranker-train reco-ranker-apply reco-app-run
 .PHONY: ai-insights-app-run
 .PHONY: inventory-data inventory-run inventory-install inventory-writeoff-train inventory-writeoff-apply inventory-demand-train inventory-demand-apply inventory-replenishment-train inventory-replenishment-apply
 .PHONY: document-intelligence-install document-intelligence-ensure-spacy-model document-intelligence-generate-pdfs document-intelligence-generate-data document-intelligence-ocr document-intelligence-field-extraction document-intelligence-run document-intelligence-app-run document-intelligence-smoke
 .PHONY: mlflow-ui mlflow-wipe
-.PHONY: marvelous-mlops-venv marvelous-mlops-fetch-medium marvelous-mlops-fetch-substack marvelous-mlops-fetch-youtube
+.PHONY: marvelous-mlops-venv marvelous-mlops-fetch-medium marvelous-mlops-fetch-substack marvelous-mlops-fetch-youtube marvelous-mlops-practice-digest
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
 .PHONY: bootstrap-system-tools bootstrap-system-tools-uv bootstrap-system-tools-databricks
 
@@ -81,8 +82,9 @@ help:
 	@echo "  make mlflow-wipe          - Remove local MLflow DB and artifacts (experiments, runs, registry)"
 	@echo ""
 	@echo "  ## Marvelous MLOps DBX Policy Generation"
-	@echo "  make marvelous-mlops-venv                 - Create .venv and install requirements in marvelous_mlops/"
-	@echo "  make marvelous-mlops-fetch-medium         - Fetch Medium articles"
+	@echo "  make marvelous-mlops-venv                 - Install pyproject optional extra marvelous_mlops into repo .venv"
+	@echo "  make marvelous-mlops-fetch-medium         - Fetch Medium articles (policy-ingestion)"
+	@echo "  make marvelous-mlops-practice-digest      - Build markdown digest from fetched JSON"
 	@echo "  make marvelous-mlops-fetch-substack       - Fetch Substack posts"
 	@echo "  make marvelous-mlops-fetch-youtube        - Fetch YouTube transcripts"
 	@echo ""
@@ -102,6 +104,7 @@ help:
 	@echo "  make data-local-duckdb-load     - Load data/local/*.csv into DuckDB as raw schema (run after generate)"
 	@echo "  make data-local-dbt-run         - Load data/local into DuckDB then run medallion dbt"
 	@echo "  make data-local-dbt-test        - Build medallion (dbt run) then run dbt tests (referential integrity, etc.)"
+	@echo "  make data-local-medallion-app-run - Streamlit: browse raw/bronze/silver/gold tables in DuckDB (after dbt run)"
 	@echo "  make data-local-e2e             - End-to-end local: clean -> generate -> duckdb-load -> dbt-run -> dbt-test"
 	@echo "  make use-cases-local-e2e        - data-local-e2e then reco, inventory, doc-intel local e2e (sequential)"
 	@echo ""
@@ -376,6 +379,14 @@ data-local-dbt-test: data-local-dbt-run
 	@test -x $(DBT_BIN) || (echo "dbt not found. Run: make install" && exit 1)
 	cd $(MEDALLION_DIR) && DBT_PROFILES_DIR=$(MEDALLION_DIR)/dbt_profiles DBT_DUCKDB_PATH=$(REPO_ROOT)/data/local/medallion.duckdb $(DBT_BIN) test --profile duckdb
 	@echo "dbt test (duckdb) done."
+
+# Streamlit: medallion layers in local DuckDB (read-only). Do not run alongside data-local-e2e (same DuckDB file).
+data-local-medallion-app-run:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	@test -f $(DATA_LOCAL_DUCKDB_PATH) || (echo "Missing DuckDB at $(DATA_LOCAL_DUCKDB_PATH). Run: make data-local-dbt-run" && exit 1)
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra healthcare_medallion_app || $(PY) -m pip install -q -e ".[healthcare_medallion_app]")
+	cd $(REPO_ROOT) && DBT_DUCKDB_PATH=$(DATA_LOCAL_DUCKDB_PATH) $(PY) -m streamlit run data/healthcare_data_medallion/app/app.py $(STREAMLIT_LOCAL_OPTS)
+	@echo "data-local medallion explorer (Streamlit)"
 
 # --- Document intelligence (jobs 1/2/3 + full pipeline + Streamlit app; defaults from config) ---
 document-intelligence-install:
@@ -736,24 +747,31 @@ data-dab-destroy-medallion:
 data-dab-run-medallion:
 	@$(MAKE) dab-run BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
-# --- Marvelous MLOps (sub-usecase: own venv and requirements.txt) ---
+# --- Marvelous MLOps (optional extra marvelous_mlops in pyproject.toml) ---
+# Use uv pip / pip so we merge into the existing venv without uv sync stripping other extras.
 marvelous-mlops-venv:
-	cd $(MARVELOUS_MLOPS_DIR) && (command -v uv >/dev/null 2>&1 && uv venv || python3 -m venv .venv) && .venv/bin/pip install -r requirements.txt
-	@echo "marvelous-mlops .venv ready. Run: make marvelous-mlops-fetch-medium|fetch-substack|fetch-youtube"
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
+	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv pip install -e ".[marvelous_mlops]" || $(PY) -m pip install -e ".[marvelous_mlops]")
+	@echo "Optional extra marvelous_mlops installed. Run: make marvelous-mlops-fetch-medium|fetch-substack|fetch-youtube"
 
 marvelous-mlops-fetch-medium:
-	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous-mlops-venv" && exit 1)
-	cd $(MARVELOUS_MLOPS_DIR) && $(MARVELOUS_PY) fetch_medium.py
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make marvelous-mlops-venv" && exit 1)
+	cd $(MARVELOUS_MLOPS_DIR) && $(PY) fetch_medium.py
 	@echo "Medium fetch done."
 
+marvelous-mlops-practice-digest:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make marvelous-mlops-venv" && exit 1)
+	cd $(MARVELOUS_MLOPS_DIR) && $(PY) extract_practice_digest.py
+	@echo "Practice digest: $(MARVELOUS_MLOPS_DIR)/insights/databricks_practice_digest.md"
+
 marvelous-mlops-fetch-substack:
-	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous-mlops-venv" && exit 1)
-	cd $(MARVELOUS_MLOPS_DIR) && $(MARVELOUS_PY) fetch_substack.py
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make marvelous-mlops-venv" && exit 1)
+	cd $(MARVELOUS_MLOPS_DIR) && $(PY) fetch_substack.py
 	@echo "Substack fetch done."
 
 marvelous-mlops-fetch-youtube:
-	@test -x $(MARVELOUS_PY) || (echo "Run: make marvelous-mlops-venv" && exit 1)
-	cd $(MARVELOUS_MLOPS_DIR) && $(MARVELOUS_PY) fetch_youtube.py
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make marvelous-mlops-venv" && exit 1)
+	cd $(MARVELOUS_MLOPS_DIR) && $(PY) fetch_youtube.py
 	@echo "YouTube fetch done."
 
 # --- Databricks Asset Bundles (DAB) ---

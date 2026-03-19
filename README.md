@@ -7,6 +7,16 @@ Implements **EBOS AI/ML use-cases** for healthcare/pharmaceutical distribution o
 
 ---
 
+## Databricks practice notes (policy development)
+
+The **`marvelous_mlops/`** tree is an explicit **policy-development** workstream: it **ingests public MLOps / Databricks teaching material** (starting with the [Marvelous MLOps](https://medium.com/marvelous-mlops) Medium publication, plus optional Substack / YouTube) so we can **summarize and extract practical tips** that inform how we structure bundles, jobs, monitoring, and MLflow usage in this repo.
+
+- **What it is for:** turn third-party best-practice content into concise, repo-relevant guidance—not to ship that content as product, but to keep our conventions and `.cursor` rules aligned with current Databricks patterns.
+- **How to use it:** see [marvelous_mlops/README.md](marvelous_mlops/README.md). From repo root: `make marvelous-mlops-venv` (installs the `marvelous_mlops` optional extra from `pyproject.toml` into the repo `.venv`), then `make marvelous-mlops-fetch-medium` (and digest: `make marvelous-mlops-practice-digest`).
+- **Ethics:** fetchers only use public feeds/pages and rate limit requests; full articles remain on the source sites.
+
+---
+
 ## Layout & stack
 
 - **Use-cases:** `use_cases/<name>/` (recommendation_engine, inventory_optimization, document_intelligence, ai_powered_insights, etc.); each with DAB bundles (job, serving, app) as needed.
@@ -19,11 +29,24 @@ Implements **EBOS AI/ML use-cases** for healthcare/pharmaceutical distribution o
 
 ## Quick start
 
-- **Env:** `make uv-venv`, `make install`, `make uv-dev`.
-- **Smoke tests:** `make test` (nominal pytest per use-case; needs `uv-dev`).
-- **Data (local):** `make data-local-generate-quick`, `make data-local-duckdb-load`, `make data-local-dbt-run`.
-- **Use-case e2e (local):** e.g. `make reco-local-e2e`, `make inventory-local-e2e` — run one at a time (shared DuckDB).
-- **UC foundation:** `make uc-foundation-deploy` (then deploy generator/medallion/use-case bundles).
-- **Bundle workspace paths:** Databricks Asset Bundle `workspace.root_path` values should match your workspace user (see `**/bundles/**/databricks.yml`). Override with `WORKSPACE_USER_EMAIL` where Makefile helpers support it (`make dab-workspace-print`).
+### Local — prototype & test (no Databricks required)
 
-See [Makefile](Makefile) for all targets (`make help`).
+Use this path to exercise generators, medallion (DuckDB + dbt), and use-case Python on your machine. **Do not run local e2e targets in parallel** — they share `data/local/medallion.duckdb` and will contend on locks.
+
+1. **Env:** `make uv-venv`, `make install`, `make uv-dev`.
+2. **Unit/smoke (pytest):** `make test`.
+3. **Data foundation e2e:** `make data-local-e2e` — clean → generate CSVs → DuckDB load → `dbt run` → `dbt test`. (Incremental steps: `make data-local-generate-quick`, `make data-local-duckdb-load`, `make data-local-dbt-run`, `make data-local-dbt-test`.)
+4. **Use-case e2e (after medallion exists):**
+   - Recommendation: `make reco-local-e2e` (includes local data prep, training base, train/apply smoke).
+   - Inventory: `make inventory-local-e2e`.
+   - Document intelligence: `make doc-intel-local-install` then `make doc-intel-local-e2e` (PDF → OCR → field extraction smoke).
+   - **All of the above in order:** `make use-cases-local-e2e` (includes `doc-intel-local-install` before doc-intel e2e).
+5. **Streamlit demos (local only):** `make data-local-medallion-app-run` (browse DuckDB medallion tables after `make data-local-dbt-run`), plus `make reco-local-app-run`, `make doc-intel-local-app-run`, `make ai-insights-local-app-run` (AI insights router needs Genie/dashboard config to be useful).
+
+Per-model local train/apply and other shortcuts: `make help`.
+
+### Remote — Databricks & bundles
+
+Running jobs, apps, and UC-backed pipelines **in a workspace** needs auth (CLI profile / SP), a provisioned catalog and schemas, warehouse IDs where applicable, and **Asset Bundle** deploys — not the local DuckDB path above. Start with [docs/DATA_AND_PLATFORM.md](docs/DATA_AND_PLATFORM.md) and [docs/EBOS_USE_CASES.md](docs/EBOS_USE_CASES.md) (*Databricks bundle prerequisites*). Typical flow: `make uc-foundation-deploy` → valid bundles (`make dab-list`, `make dab-workspace-print`, `make *-dab-deploy`). Bundle paths use `workspace_bundle_root` / `bundle_deploying_user_name` in `**/bundles/**/databricks.yml` (override with `databricks bundle deploy --var ...`).
+
+See [Makefile](Makefile) for full targets (`make help`).

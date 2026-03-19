@@ -65,6 +65,8 @@ Goal: run the **same medallion logic** locally to iterate on dbt and use-case co
 
 **DuckDB** = local DB that can treat CSVs as the raw layer (no extra load job) and run analytical SQL; **local dbt** = same dbt project and medallion layers, pointed at that DuckDB instead of Databricks.
 
+After `make data-local-dbt-run` (or `make data-local-e2e`), **`make data-local-medallion-app-run`** opens a small Streamlit UI (`healthcare_data_medallion/app/`) to inspect raw / bronze / silver / gold tables in `data/local/medallion.duckdb`.
+
 ---
 
 ### 5. End-to-end picture

@@ -1,10 +1,18 @@
-# MLOps Reference Content Aggregator
+# MLOps reference content (Databricks policy development)
+
+This folder supports **policy development** for the parent EBOS/Databricks repo: we **scrape or pull public, RSS/feed-level material** from curated sources—primarily **[Marvelous MLOps on Medium](https://medium.com/marvelous-mlops)**—so maintainers can **summarize and extract practical tips and best practices** for Unity Catalog, Asset Bundles, Model Serving, MLflow, monitoring, and CI/CD. Outputs feed internal docs, Makefile/workflows, and Cursor/project rules; they are **not** a redistribution channel for full article text.
+
+**Workflow:** fetch fresh metadata → run **`extract_practice_digest.py`** (or `make marvelous-mlops-practice-digest` from repo root) → review `insights/` markdown and promote stable guidance into `docs/` or `.cursor/rules/` as needed.
+
+---
+
+## MLOps reference content aggregator
 
 Multi-source content fetcher for MLOps best practices, patterns, and tutorials.
 
 ## Overview
 
-This repository aggregates MLOps-related content from multiple sources:
+This tool aggregates MLOps-related content from multiple sources:
 - **Medium** - Articles from Marvelous MLOps and other publications
 - **Substack** - Newsletter posts from MLOps practitioners
 - **YouTube** - Video transcripts from MLOps channels and presentations
@@ -13,11 +21,12 @@ This repository aggregates MLOps-related content from multiple sources:
 
 ```
 marvelous_mlops/
+├── extract_practice_digest.py # Markdown digest from fetched JSON (policy notes)
 ├── fetch_medium.py           # Fetch Medium articles
 ├── fetch_substack.py         # Fetch Substack posts
 ├── fetch_youtube.py          # Fetch YouTube transcripts
-├── requirements.txt          # Python dependencies
 ├── README.md                 # This file
+├── insights/                 # Generated digests (git-track optional)
 └── sources/                  # Content organized by source
     ├── medium/
     │   ├── metadata.json     # All articles metadata
@@ -36,11 +45,30 @@ marvelous_mlops/
 
 ## Installation
 
+Dependencies are the **`marvelous_mlops`** optional group in the repo root **`pyproject.toml`** (same pattern as `reco`, `document_intelligence`, etc.).
+
+From repo root:
+
 ```bash
-pip install -r requirements.txt
+make marvelous-mlops-venv
 ```
 
+Or with uv: `uv pip install -e ".[marvelous_mlops]"`
+Or: `pip install -e ".[marvelous_mlops]"`
+
+Uses the **shared repo `.venv`** (not a separate virtualenv under this folder).
+
 ## Usage
+
+### Build Databricks practice digest (from already-fetched JSON)
+
+After fetching, generate a single markdown file of **extracted bullets and plain-text summaries** (best for scanning before updating repo policy):
+
+```bash
+python extract_practice_digest.py
+```
+
+From repo root: `make marvelous-mlops-practice-digest` (requires `make marvelous-mlops-venv` first).
 
 ### Fetch Medium Articles
 
@@ -70,9 +98,9 @@ python fetch_youtube.py
 
 ### Medium (Active) ✓
 
-**Publication:** Marvelous MLOps  
-**URL:** https://medium.com/marvelous-mlops  
-**Last Fetched:** 2026-03-11  
+**Publication:** Marvelous MLOps
+**URL:** https://medium.com/marvelous-mlops
+**Last Fetched:** 2026-03-11
 **Articles:** 10
 
 **Key Topics:**
@@ -161,11 +189,11 @@ This aggregated content is useful for:
 
 ## Next Steps
 
-1. **Configure Substack sources** - Identify relevant MLOps newsletters
-2. **Add YouTube channels** - Databricks talks, conference presentations, tutorials
-3. **Automate updates** - Schedule periodic fetches (e.g., weekly cron job)
-4. **Build search index** - Add semantic search capabilities (e.g., embeddings + vector DB)
-5. **Create web interface** - Simple UI for browsing aggregated content
+1. **Promote digest into repo policy** - Fold recurring themes from `insights/` into `docs/` and `.cursor/rules/` where they clarify Databricks bundles, UC, or MLflow usage.
+2. **Configure Substack sources** - Identify relevant MLOps newsletters
+3. **Add YouTube channels** - Databricks talks, conference presentations, tutorials
+4. **Automate updates** - Schedule periodic fetches (e.g., weekly cron job)
+5. **Build search index** - Optional embeddings + vector DB for RAG over digests
 6. **Add RSS aggregator** - Monitor multiple sources automatically
 
 ## License
