@@ -2,6 +2,74 @@
 resources:
   jobs:
 
+    recommendation_engine_item_similarity_apply:
+      name: recommendation_engine_item_similarity_apply
+      description: "Batch application of item similarity (registry Champion by default)"
+
+      schedule:
+        quartz_cron_expression: "0 32 6 * * ?"  # daily 6:32am
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: apply_item_similarity
+          spark_python_task:
+            python_file: use_cases/recommendation_engine/models/item_similarity/predict.py
+          environment_key: apply_env
+
+      environments:
+        - environment_key: apply_env
+          spec:
+            client: "2"
+            env_vars:
+              RECO_DATA_SOURCE: auto
+              RECO_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
+              RECO_OUTPUT_SCHEMA: ${var.output_schema}
+              PYTHONPATH: ${var.workspace_root}
+              ITEM_SIMILARITY_MODEL_URI: models:/recommendation_engine-item_similarity@Champion
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - joblib
+              - implicit
+              - lightgbm>=4.0
+              - mlflow
+
+    recommendation_engine_als_apply:
+      name: recommendation_engine_als_apply
+      description: "Batch application of ALS recommender"
+
+      schedule:
+        quartz_cron_expression: "0 35 6 * * ?"  # daily 6:35am
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: apply_als
+          spark_python_task:
+            python_file: use_cases/recommendation_engine/models/als/predict.py
+          environment_key: apply_env
+
+      environments:
+        - environment_key: apply_env
+          spec:
+            client: "2"
+            env_vars:
+              RECO_DATA_SOURCE: auto
+              RECO_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
+              RECO_OUTPUT_SCHEMA: ${var.output_schema}
+              PYTHONPATH: ${var.workspace_root}
+              ALS_MODEL_URI: models:/recommendation_engine-als@Champion
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - joblib
+              - implicit
+              - lightgbm>=4.0
+              - mlflow
+
     recommendation_engine_lightfm_apply:
       name: recommendation_engine_lightfm_apply
       description: "Batch application of LightFM recommender to generate recommendations"
@@ -16,18 +84,72 @@ resources:
           spark_python_task:
             python_file: use_cases/recommendation_engine/models/lightfm/predict.py
           environment_key: apply_env
-    recommendation_engine_apply:
-      name: recommendation_engine_apply
-      description: "Batch application of recommendation engine to generate candidate recommendations (future gold_reco_candidates)"
+
+      environments:
+        - environment_key: apply_env
+          spec:
+            client: "2"
+            env_vars:
+              RECO_DATA_SOURCE: auto
+              RECO_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
+              RECO_OUTPUT_SCHEMA: ${var.output_schema}
+              PYTHONPATH: ${var.workspace_root}
+              LIGHTFM_MODEL_URI: models:/recommendation_engine-lightfm@Champion
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - joblib
+              - implicit
+              - lightgbm>=4.0
+              - mlflow
+
+    recommendation_engine_ranker_apply:
+      name: recommendation_engine_ranker_apply
+      description: "Batch application of ranker (RECO_RANKER_MODEL_URI defaults to registry Champion; override per target if needed)"
 
       schedule:
-        quartz_cron_expression: "0 30 6 * * ?"  # daily 6:30am
+        quartz_cron_expression: "0 50 6 * * ?"  # daily 6:50am
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: apply_ranker
+          spark_python_task:
+            python_file: use_cases/recommendation_engine/models/ranker/predict.py
+          environment_key: apply_env_ranker
+
+      environments:
+        - environment_key: apply_env_ranker
+          spec:
+            client: "2"
+            env_vars:
+              RECO_DATA_SOURCE: auto
+              RECO_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
+              RECO_OUTPUT_SCHEMA: ${var.output_schema}
+              PYTHONPATH: ${var.workspace_root}
+              RECO_RANKER_MODEL_URI: models:/recommendation_engine-ranker@Champion
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - joblib
+              - implicit
+              - lightgbm>=4.0
+              - mlflow
+
+    recommendation_engine_apply:
+      name: recommendation_engine_apply
+      description: "Integration / smoke: run_reco_smoke apply path. Prefer per-model apply jobs for production."
+
+      schedule:
+        quartz_cron_expression: "0 55 6 * * ?"  # after per-model apply jobs
         timezone_id: Australia/Sydney
         pause_status: PAUSED
 
       tasks:
         - task_key: apply_recommendation_engine
-          # Uses run_reco_smoke.py so training/logging + MLflow load/apply are exercised locally too.
+          # Uses run_reco_smoke.py so training/logging + MLflow load/apply are exercised in one job.
           spark_python_task:
             python_file: use_cases/recommendation_engine/models/run_reco_smoke.py
           environment_key: apply_env

@@ -2,7 +2,7 @@ bundle:
   name: recommendation_engine_serving
 
 include:
-  - ../../resources/serving/*.yml
+  - resources/*.yml
 
 sync:
   paths:
@@ -32,6 +32,11 @@ targets:
       service_principal_name: <TBD-RECO-SERVING-DEV-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   test-sp:
     mode: development
@@ -44,6 +49,11 @@ targets:
       service_principal_name: <TBD-RECO-SERVING-TEST-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   prod-sp:
     mode: production
@@ -56,4 +66,9 @@ targets:
       service_principal_name: <TBD-RECO-SERVING-PROD-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 

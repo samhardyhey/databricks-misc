@@ -1,9 +1,13 @@
 """
-Read/write predictions for document intelligence (local file paths only).
+Read/write predictions for document intelligence.
 
-Local: write OCR output to predictions_dir/ocr/, field extraction to predictions_dir/fields/
-(one JSON per doc; fields use nested schema for annotator).
-Catalog: jobs write to UC tables via Spark; this module does not handle catalog writes.
+When ``config["data_source"] == "local"``:
+- OCR → ``predictions_dir/ocr/`` (JSON per doc)
+- fields → ``predictions_dir/fields/`` (JSON per doc)
+
+When ``data_source == "catalog"`` (Databricks + UC): the same logical rows are written with
+``_write_catalog_table`` to ``<catalog_schema>.<table_doc_pages>`` and
+``<catalog_schema>.<table_doc_fields_extracted>``.
 """
 
 import json
@@ -13,15 +17,32 @@ import pandas as pd
 from loguru import logger
 
 
+def _write_catalog_table(config: dict, df: pd.DataFrame, table_name: str) -> None:
+    """Write a pandas DataFrame to a Unity Catalog table when running on Databricks."""
+    if df.empty:
+        return
+    try:
+        from pyspark.sql import SparkSession
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Catalog write skipped (pyspark unavailable): {}", e)
+        return
+
+    spark = SparkSession.builder.getOrCreate()
+    full_table = f"{config['catalog_schema']}.{table_name}"
+    spark_df = spark.createDataFrame(df)
+    spark_df.write.mode("overwrite").saveAsTable(full_table)
+    logger.info("Wrote {} rows to {}", len(df), full_table)
+
+
 def write_ocr_output(config: dict, ocr_df: pd.DataFrame) -> None:
     """
-    Write OCR result to predictions_dir/ocr/ (local only).
-    One JSON per doc: { "doc_id": "...", "pages": [ {"page": 1, "text": "..."}, ... ] }.
-    No-op when data_source != 'local' or df is empty.
+    Persist OCR rows: catalog → UC table ``table_doc_pages``; local → one JSON per doc under
+    ``predictions_dir/ocr/`` with ``{ "doc_id", "pages": [ {"page", "text"}, ... ] }``.
     """
-    if config.get("data_source") != "local":
-        return
     if ocr_df.empty:
+        return
+    if config.get("data_source") == "catalog":
+        _write_catalog_table(config, ocr_df, config["table_doc_pages"])
         return
     out_dir: Path = config["predictions_dir"] / "ocr"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -80,13 +101,13 @@ def _str(v: object) -> str:
 
 def write_field_output(config: dict, fields_df: pd.DataFrame) -> None:
     """
-    Write field extraction result to predictions_dir/fields/ (local only).
-    One JSON per doc with nested schema (patient, doctor, facility, medication) for annotator.
-    No-op when data_source != 'local' or df is empty.
+    Persist field-extraction rows: catalog → UC ``table_doc_fields_extracted``; local → one nested
+    JSON per doc under ``predictions_dir/fields/`` (annotator-friendly schema).
     """
-    if config.get("data_source") != "local":
-        return
     if fields_df.empty:
+        return
+    if config.get("data_source") == "catalog":
+        _write_catalog_table(config, fields_df, config["table_doc_fields_extracted"])
         return
     out_dir: Path = config["predictions_dir"] / "fields"
     out_dir.mkdir(parents=True, exist_ok=True)

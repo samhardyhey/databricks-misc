@@ -9,7 +9,9 @@ This directory holds the **shared data foundation** for EBOS use cases: syntheti
 | Path                            | Role                                                                                                                                                                              |
 | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **healthcare_data_generator/**  | Python (pandas + Faker). Produces pharmacies, hospitals, products, orders, inventory, supply_chain_events (and later suppliers, warehouses, etc.). Output: CSVs or Unity Catalog. |
+| **healthcare_data_generator/bundles/** | DAB: `databricks.yml` + `resources/*.yml` (same layout as `use_cases/*/bundles/job/`). Deploy raw generator jobs to Databricks.                                                  |
 | **healthcare_data_medallion/**  | dbt project. Bronze → silver → gold on healthcare raw tables; sources in `src/models/sources.yml`, profile in `dbt_profiles/profiles.yml`.                                        |
+| **healthcare_data_medallion/bundles/** | DAB: `databricks.yml` + `resources/*.yml` for the chained dbt job (bronze → silver → gold).                                                                                        |
 | **prescription_pdf_generator/** | Synthetic prescription PDFs + JSON labels (files); no UC tables.                                                                                                                  |
 | **local/**                      | Gitignored. Local generator output (CSVs) and optional local DB (e.g. `medallion.duckdb`) for local dbt.                                                                          |
 

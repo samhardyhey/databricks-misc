@@ -1,12 +1,10 @@
-# Healthcare data medallion (dbt) bundle.
-# See https://docs.databricks.com/dev-tools/bundles/index.html
+# Healthcare data medallion (dbt) — bundle layout matches use-case DABs: databricks.yml + resources/*.yml under bundles/.
 bundle:
   name: healthcare_data_medallion
   uuid: e89aa3be-8264-4e6a-9d9d-4ea072233ff9
 
 include:
-  - ../resources/*.yml
-  - ../resources/*/*.yml
+  - resources/*.yml
 
 sync:
   paths:
@@ -22,6 +20,12 @@ variables:
   medallion_schema:
     description: Schema for medallion output (e.g. healthcare_medallion_dev)
     default: healthcare_medallion_dev
+  workspace_root:
+    description: Workspace path where bundle is deployed
+    default: ""
+  service_principal_name:
+    description: Service principal for job run_as and bundle resource permissions
+    default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
 
 targets:
   dev-sp:
@@ -34,6 +38,16 @@ targets:
       catalog: workspace
       source_schema: healthcare_dev_raw
       medallion_schema: healthcare_medallion_dev
+      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      service_principal_name: <TBD-DATA-MEDALLION-DEV-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
+
   test-sp:
     mode: development
     workspace:
@@ -43,6 +57,15 @@ targets:
       catalog: workspace
       source_schema: healthcare_test_raw
       medallion_schema: healthcare_medallion_test
+      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      service_principal_name: <TBD-DATA-MEDALLION-TEST-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   prod-sp:
     mode: production
@@ -53,7 +76,12 @@ targets:
       catalog: workspace
       source_schema: healthcare_prod_raw
       medallion_schema: healthcare_medallion_prod
+      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      service_principal_name: <TBD-DATA-MEDALLION-PROD-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
     permissions:
-      - user_name: samhardyhey@gmail.com
+      - user_name: sam.hardy@ebosgroup.com
         level: CAN_MANAGE
-
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE

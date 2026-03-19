@@ -16,7 +16,7 @@ resources:
       tasks:
         - task_key: generate_healthcare_data
           spark_python_task:
-            python_file: ../src/generate_catalog_data_static.py
+            python_file: data/healthcare_data_generator/src/generate_catalog_data_static.py
           environment_key: default
 
       environments:
@@ -26,6 +26,7 @@ resources:
             env_vars:
               CATALOG_NAME: ${var.catalog}
               SCHEMA_NAME: ${var.source_schema}
+              PYTHONPATH: ${var.workspace_root}
             dependencies:
               - faker>=24.0.0
               - pandas>=2.2.0

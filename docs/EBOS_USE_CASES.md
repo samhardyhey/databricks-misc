@@ -1,6 +1,6 @@
 # EBOS AI/ML use cases
 
-**Use-cases:** Equal priority; implementation order may vary. **Infrastructure:** Databricks + Unity Catalog. **Repo layout:** Use-cases under `use_cases/<name>/` with DAB bundles (jobs, endpoints, apps) per use-case or data component.
+**Use-cases:** Equal priority; implementation order may vary. **Infrastructure:** Databricks + Unity Catalog. **Repo layout:** Use-cases under `use_cases/<name>/` with DAB bundles (jobs, endpoints, apps) per use-case or data component. Each bundle’s `databricks.yml` uses **`include: resources/*.yml`** next to that file (job/serving/app resources live in a sibling `resources/` directory under the same bundle folder).
 
 **Data & platform** (UC layout, data flow, grants, contracts, generator/medallion scope, local dev): [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md).
 
@@ -66,13 +66,13 @@ Use dbt for shared, stable, coarse-grained building blocks; do all model-specifi
 **Data:** Reco reads from medallion silver (e.g. silver_reco_interactions, silver_products, silver_orders); use-case-owned tables (e.g. gold_reco_training_base, gold_item_similarity_candidates) live in `recommendation_engine_<env>`. See [DATA_AND_PLATFORM.md](DATA_AND_PLATFORM.md).
 
 **Training workflow** (scheduled weekly; DAB bundle under use-case):
-- Jobs live in `use_cases/recommendation_engine/bundles/job/resources/` (retrain_jobs.yml, batch_apply_jobs.yml). Each model (item_similarity, als, lightfm, ranker) has retrain and batch-apply jobs; entrypoints are `models/<name>/train.py` and `models/<name>/predict.py`. Optional full-pipeline entrypoint: `models/run_reco_smoke.py`. Serving endpoints in `bundles/serving/resources/reco_endpoints.yml`.
+- Jobs live in `use_cases/recommendation_engine/bundles/job/resources/` (retrain_jobs.yml, batch_apply_jobs.yml, transform_jobs.yml). **Each model** (item_similarity, ALS, LightFM, ranker) has its own **retrain** and **batch-apply** job calling `models/<name>/train.py` and `models/<name>/predict.py`. **`recommendation_engine_retrain`** / **`recommendation_engine_apply`** run `models/run_reco_smoke.py` as an optional **integration/smoke** path (scheduled after per-model jobs). Serving endpoints in `bundles/serving/resources/reco_endpoints.yml`.
 
-**Serving Endpoint** (real-time API):
-- Databricks Model Serving endpoint: `recommendation-engine-prod`
+**Serving endpoints** (real-time API):
+- **One Model Serving endpoint per model family** (item similarity, ALS, LightFM, ranker), e.g. `recommendation-engine-item-similarity`, `recommendation-engine-als`, `recommendation-engine-lightfm`, `recommendation-engine-ranker`. This is intentional: each registered model is deployed separately; **callers** (ordering systems, Streamlit demo, or a future router) choose the endpoint or compose results—there is no single unified multi-model endpoint in this repo.
 - Input: `{"customer_id": "C123", "context": {"cart": ["P456"], "out_of_stock": "P789"}}`
 - Output: `[{"product_id": "P999", "score": 0.87, "reason": "similar_therapeutic_class", "margin": 0.15}]`
-- Fallback logic: if customer has no history → item-similarity only
+- Fallback logic is currently implemented at the application/orchestration layer rather than a single endpoint contract.
 - SLA: <100ms p95 latency
 
 **Application Workflow**:
@@ -110,7 +110,7 @@ use_cases/recommendation_engine/
 │   ├── item_similarity/        # core.py, train.py, predict.py
 │   ├── als/                    # core.py, train.py, predict.py
 │   ├── lightfm/                # core.py, train.py, predict.py
-│   └── ranker/                 # core.py (train/predict via run_reco or per-model TBD)
+│   └── ranker/                 # core.py, train.py, predict.py (+ DAB retrain/apply jobs)
 └── app/                        # Databricks App (Streamlit)
 ```
 
@@ -192,8 +192,8 @@ use_cases/inventory_optimization/
 
 **Business Value**: Labour cost reduction + scalability | Cross-business (Healthcare, MedTech, TWC)
 **Use Case**: Automate common queries, improve satisfaction, provide order tracking visibility
-**Current Status**: ⚠️ Not implemented
-**Local dev**: Cannot be developed locally easily; pass on local development for now.
+**Current Status**: 🕒 **Future implementation** (planned; not in current delivery scope). There is no `use_cases/customer_service_agent/` tree or customer-service generator in this repo yet—the sections below describe the **intended** design.
+**Local dev**: Deferred until implementation is scheduled.
 
 ### Data Requirements
 
@@ -336,7 +336,7 @@ Document intelligence is **not** a classic train-then-batch-score modelling use 
 2. **Generate predictions** — Run OCR and NER/field extraction on those documents. Output is **model predictions** (OCR text per page, extracted prescription fields per document), not training labels.
 3. **Save predictions** — Persist predictions in a known location so the next step and the annotator can consume them.
    - **Local**: e.g. `predictions/ocr/` (per-doc or combined) and `predictions/fields/` (extracted fields as JSON or table).
-   - **Remote**: e.g. Unity Catalog tables (silver_doc_pages, silver_doc_fields_extracted) or blob/volume paths; config switches via DOCINT_DATA_SOURCE.
+   - **Remote (catalog mode)**: when `DOCINT_DATA_SOURCE` resolves to `catalog` on Databricks, OCR and field outputs are written to Unity Catalog tables (`silver_doc_pages`, `silver_doc_fields_extracted` by default; overridable via env). Implemented in `predictions_io.py` (`write_ocr_output` / `write_field_output`). PDFs for remote runs are expected on the configured UC volume path (`get_config()` / `DOCINT_DOCUMENTS_VOLUME`).
 4. **Review predictions (annotator)** — The annotator is an **application** that loads **saved predictions** (and the original PDFs), displays them side-by-side for human review, and allows corrections. Corrected data is saved (e.g. `annotated/` or gold_doc_labels) for downstream use and optionally for future model training.
 
 Ground-truth labels (`labels/`) are used for **evaluation and optional NER training**, not as the primary input to the annotator in the main flow; the annotator’s primary input is **predictions** produced by the pipeline.
@@ -437,8 +437,8 @@ Data: prescription PDFs from `data/prescription_pdf_generator/`.
 2. Animal Care market intelligence automation
 3. TWC franchise reporting & store-level recommendations
 
-**Current Status**: ⚠️ Not implemented
-**Local dev**: Can be developed locally for most part.
+**Current Status**: ✅ **Partial** — Streamlit router (`use_cases/ai_powered_insights/app/`), DAB bundles under `use_cases/ai_powered_insights/bundles/{app,genie_spaces,dashboards}/`. **Not deploy-ready by default:** Genie Space IDs, SQL warehouse ID, service principal names (`<TBD-...>` in bundle variables), and dashboard deep-link URLs must be set per workspace—see those YAML files and `technical_design.md`.
+**Local dev**: Streamlit app runs locally; Genie/dashboard resources target Databricks.
 
 **New (proposed) UX layer**: Databricks Genie + Streamlit “data chat”
 - Build multiple domain-specific Genie Spaces (Healthcare, Animal Care, TWC) rather than one large general-purpose space.

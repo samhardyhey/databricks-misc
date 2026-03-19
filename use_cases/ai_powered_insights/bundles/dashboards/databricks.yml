@@ -1,3 +1,4 @@
+# SQL dashboard definitions: align catalog/schema variables with medallion; replace <TBD-...> run_as per env.
 bundle:
   name: ai_powered_insights_dashboards
   uuid: 9a4c2f2f-4d9b-4d7a-9b12-0f0d5e2f6c33
@@ -41,6 +42,11 @@ targets:
       service_principal_name: <TBD-AI-INSIGHTS-DEV-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   test-sp:
     mode: development
@@ -55,6 +61,11 @@ targets:
       service_principal_name: <TBD-AI-INSIGHTS-TEST-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   prod-sp:
     mode: production
@@ -69,4 +80,9 @@ targets:
       service_principal_name: <TBD-AI-INSIGHTS-PROD-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 

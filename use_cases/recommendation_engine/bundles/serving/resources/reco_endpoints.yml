@@ -33,3 +33,13 @@ resources:
             workload_size: Small
             scale_to_zero_enabled: true
 
+    recommendation_engine_ranker:
+      name: recommendation-engine-ranker
+      config:
+        served_models:
+          - name: ranker
+            model_name: ${var.model_schema}.recommendation_engine-ranker
+            model_version: "@Champion"
+            workload_size: Small
+            scale_to_zero_enabled: true
+

@@ -36,6 +36,9 @@ variables:
   docint_documents_volume:
     description: UC managed volume path for prescription PDFs (e.g. /Volumes/workspace/document_intelligence_dev/prescription_documents)
     default: /Volumes/workspace/document_intelligence_dev/prescription_documents
+  service_principal_name:
+    description: Service principal for job run_as and bundle resource permissions
+    default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
 
 targets:
   dev-sp:
@@ -53,6 +56,14 @@ targets:
       docint_data_source: catalog
       docint_catalog_schema: workspace.document_intelligence_dev
       docint_documents_volume: /Volumes/workspace/document_intelligence_dev/prescription_documents
+      service_principal_name: <TBD-DOCINT-JOB-DEV-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   test-sp:
     mode: development
@@ -68,6 +79,14 @@ targets:
       docint_data_source: catalog
       docint_catalog_schema: workspace.document_intelligence_test
       docint_documents_volume: /Volumes/workspace/document_intelligence_test/prescription_documents
+      service_principal_name: <TBD-DOCINT-JOB-TEST-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   prod-sp:
     mode: production
@@ -83,3 +102,11 @@ targets:
       docint_data_source: catalog
       docint_catalog_schema: workspace.document_intelligence_prod
       docint_documents_volume: /Volumes/workspace/document_intelligence_prod/prescription_documents
+      service_principal_name: <TBD-DOCINT-JOB-PROD-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE

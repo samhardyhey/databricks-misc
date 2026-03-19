@@ -2,6 +2,8 @@
 
 Single reference for **where data lives** (Unity Catalog layout, data flow), **who can access it** (grants), **what use-cases read/write** (contracts), and **how data is produced** (generator/medallion scope, local dev). Use-case specs (modelling, apps) are in [EBOS_USE_CASES.md](EBOS_USE_CASES.md).
 
+**Databricks Asset Bundles:** Each jobs/serving/app bundle keeps `databricks.yml` beside a **`resources/`** folder; the bundle file uses `include: resources/*.yml` so all job/endpoint/app definitions in that folder are loaded (no `../../resources/...` indirection). **Data** components use the same pattern: `data/healthcare_data_generator/bundles/{databricks.yml,resources/*.yml}` and the same for `healthcare_data_medallion`. Targets use **`run_as.service_principal_name`** plus **`permissions`** for `sam.hardy@ebosgroup.com` and the same SP (`CAN_MANAGE` on bundle-managed resources where the bundle API supports it). **Unity Catalog** table/volume ACLs for those principals must still be applied via grants/runbooks (`make uc-foundation-deploy`, `databricks grants`, etc.)—bundle permissions do not replace UC governance.
+
 ---
 
 ## 1. Unity Catalog layout
@@ -23,6 +25,8 @@ Single reference for **where data lives** (Unity Catalog layout, data flow), **w
 **Config pattern:** Each use-case has **input** namespaces (medallion schemas) and **output** namespace (use-case schema). Env vars only required when `data_source == 'catalog'` (e.g. `RECO_INPUT_SILVER_SCHEMA`, `RECO_OUTPUT_SCHEMA`).
 
 **Local vs remote:** Local = DuckDB/CSV, no UC env vars; remote = catalog, jobs set input/output schema env vars. dbt produces layer schemas (`healthcare_medallion_<env>_silver` etc.) by default.
+
+**Job ordering (DAB):** Multi-step pipelines inside one job use task **`depends_on`** (e.g. medallion dbt bronze→silver→gold; doc-intel OCR→field extraction). **Across** jobs, ordering is mostly **staggered schedules** (e.g. `healthcare_data_medallion` before use-case retrains; `recommendation_engine_build_training_base` before per-model reco retrains). **Document intelligence** keeps **generate** and **pipeline** as **separate jobs** on purpose (upload/ingestion timing mirrors real-world variability). For hard guarantees between bundles, use a Databricks **orchestration job** / **Workflows** that triggers jobs in sequence.
 
 ---
 
@@ -57,7 +61,7 @@ Use-cases **read** from medallion; they **own** only the tables below (semantics
 
 **Healthcare medallion** (`data/healthcare_data_medallion/`): dbt bronze → silver → gold for all healthcare tables. Sources from raw; writes to `healthcare_medallion_<env>_{bronze,silver,gold}`. Shared gold stays analytics-only (e.g. gold_product_performance, gold_ml_ready_dataset); use-case-specific gold (e.g. reco training base) lives in use-case pipelines, not medallion.
 
-**Other data:** Customer service and document-intelligence have (or will have) separate generators/medallions where the domain is orthogonal; see [EBOS_USE_CASES.md](EBOS_USE_CASES.md) and `data/README.md` for layout.
+**Other data:** **Customer service** (use case §3 in EBOS) is deferred—no generator/module in repo yet. Document intelligence uses the prescription PDF generator and optional UC tables/volumes; see [EBOS_USE_CASES.md](EBOS_USE_CASES.md) and `data/README.md` for layout.
 
 **Local dev:** `make data-local-generate-quick`, `make data-local-duckdb-load`, `make data-local-dbt-run`. One DuckDB file (`data/local/medallion.duckdb`); do not run data/reco/inventory e2e in parallel (lock). Doc-intel: file-based under DOCINT_BASE_DIR.
 

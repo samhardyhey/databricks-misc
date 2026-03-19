@@ -30,7 +30,8 @@ alwaysApply: true
   - `bundles/app/databricks.yml` — optional **apps/interactive bundle** (e.g. Streamlit Databricks Apps) for demos/ops UIs:
     - keep app resources under `use_cases/<name>/bundles/app/resources/*.yml`
     - `include: resources/*.yml`.
-- **Data bundles** (`data/<component>/bundles/databricks.yml`):
+- **Data bundles** (`data/<component>/bundles/databricks.yml`, same shape as use-case bundles):
+  - `include: resources/*.yml` with job resources in `data/<component>/bundles/resources/*.yml`; `sync.paths` to repo root (`../../..` from `bundles/`).
   - `data/healthcare_data_generator/bundles/databricks.yml` — generator jobs for raw synthetic data.
   - `data/healthcare_data_medallion/bundles/databricks.yml` — dbt medallion bundle (bronze/silver/gold).
 - **Example bundle structure (reference only)**:

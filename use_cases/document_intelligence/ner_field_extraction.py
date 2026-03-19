@@ -92,7 +92,7 @@ def run_field_extraction(config: dict) -> pd.DataFrame:
         len(df),
         len(df.columns),
     )
-    if config.get("data_source") == "local" and not df.empty:
+    if not df.empty:
         from use_cases.document_intelligence.predictions_io import write_field_output
 
         write_field_output(config, df)

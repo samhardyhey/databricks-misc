@@ -17,6 +17,24 @@ resources:
             python_file: use_cases/inventory_optimization/jobs/1_demand_forecasting.py
           environment_key: apply_env
 
+      environments:
+        - environment_key: apply_env
+          spec:
+            client: "2"
+            env_vars:
+              INVENTORY_DATA_SOURCE: auto
+              INVENTORY_INPUT_BRONZE_SCHEMA: ${var.medallion_bronze_schema}
+              INVENTORY_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
+              INVENTORY_INPUT_GOLD_SCHEMA: ${var.medallion_gold_schema}
+              INVENTORY_OUTPUT_SCHEMA: ${var.output_schema}
+              PYTHONPATH: ${var.workspace_root}
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - scipy>=1.10
+              - lightgbm>=4.0
+
     inventory_writeoff_risk_apply:
       name: inventory_writeoff_risk_apply
       description: "Batch scoring of inventory write-off risk (e.g. write gold_writeoff_risk_scores table)"
@@ -32,6 +50,24 @@ resources:
           spark_python_task:
             python_file: use_cases/inventory_optimization/jobs/2_writeoff_risk_model.py
           environment_key: apply_env
+
+      environments:
+        - environment_key: apply_env
+          spec:
+            client: "2"
+            env_vars:
+              INVENTORY_DATA_SOURCE: auto
+              INVENTORY_INPUT_BRONZE_SCHEMA: ${var.medallion_bronze_schema}
+              INVENTORY_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
+              INVENTORY_INPUT_GOLD_SCHEMA: ${var.medallion_gold_schema}
+              INVENTORY_OUTPUT_SCHEMA: ${var.output_schema}
+              PYTHONPATH: ${var.workspace_root}
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - scipy>=1.10
+              - lightgbm>=4.0
 
     inventory_replenishment_apply:
       name: inventory_replenishment_apply

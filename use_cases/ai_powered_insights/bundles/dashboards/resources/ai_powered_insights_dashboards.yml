@@ -2,7 +2,7 @@ resources:
   dashboards:
     healthcare_ops_dashboard:
       display_name: "Healthcare Ranging Overview"
-      file_path: ../../../src/dashboards/healthcare_ops.lvdash.json
+      file_path: use_cases/ai_powered_insights/src/dashboards/healthcare_ops.lvdash.json
       warehouse_id: ${var.warehouse_id}
       permissions:
         - group_name: analytics-healthcare
@@ -10,7 +10,7 @@ resources:
 
     animal_care_ops_dashboard:
       display_name: "Animal Care Market Intelligence Overview"
-      file_path: ../../../src/dashboards/animal_care_ops.lvdash.json
+      file_path: use_cases/ai_powered_insights/src/dashboards/animal_care_ops.lvdash.json
       warehouse_id: ${var.warehouse_id}
       permissions:
         - group_name: analytics-animal-care
@@ -18,7 +18,7 @@ resources:
 
     twc_ops_dashboard:
       display_name: "TWC Franchise Reporting Overview"
-      file_path: ../../../src/dashboards/twc_ops.lvdash.json
+      file_path: use_cases/ai_powered_insights/src/dashboards/twc_ops.lvdash.json
       warehouse_id: ${var.warehouse_id}
       permissions:
         - group_name: analytics-twc

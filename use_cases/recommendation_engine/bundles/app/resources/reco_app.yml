@@ -11,6 +11,7 @@ resources:
             RECO_ENDPOINT_URL_ITEM_SIMILARITY: ${var.reco_endpoint_url_item_similarity}
             RECO_ENDPOINT_URL_ALS: ${var.reco_endpoint_url_als}
             RECO_ENDPOINT_URL_LIGHTFM: ${var.reco_endpoint_url_lightfm}
+            RECO_ENDPOINT_URL_RANKER: ${var.reco_endpoint_url_ranker}
           dependencies:
             - -r use_cases/recommendation_engine/app/requirements.txt
 

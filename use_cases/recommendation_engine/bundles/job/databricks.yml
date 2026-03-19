@@ -43,6 +43,11 @@ targets:
       service_principal_name: <TBD-RECO-DEV-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   test-sp:
     mode: development
@@ -57,6 +62,11 @@ targets:
       service_principal_name: <TBD-RECO-TEST-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   prod-sp:
     mode: production
@@ -71,4 +81,9 @@ targets:
       service_principal_name: <TBD-RECO-PROD-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 

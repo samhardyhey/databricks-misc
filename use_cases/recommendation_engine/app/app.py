@@ -80,6 +80,9 @@ def main() -> None:
     default_lightfm_url = (
         os.environ.get("RECO_ENDPOINT_URL_LIGHTFM", "").strip() or default_endpoint_url
     )
+    default_ranker_url = (
+        os.environ.get("RECO_ENDPOINT_URL_RANKER", "").strip() or default_endpoint_url
+    )
 
     with st.sidebar:
         st.markdown("**Environment**")
@@ -96,6 +99,7 @@ def main() -> None:
                 "Item Similarity",
                 "ALS",
                 "LightFM",
+                "Ranker",
                 "Compare All",
             ],
             index=0,
@@ -111,6 +115,7 @@ def main() -> None:
             lightfm_url = st.text_input(
                 "LightFM endpoint URL", value=default_lightfm_url
             )
+            ranker_url = st.text_input("Ranker endpoint URL", value=default_ranker_url)
 
         st.markdown("**Input payload**")
         if "customer_id" not in st.session_state:
@@ -151,6 +156,7 @@ def main() -> None:
             "Item Similarity": item_similarity_url,
             "ALS": als_url,
             "LightFM": lightfm_url,
+            "Ranker": ranker_url,
         }
 
         def _has_url(url: str) -> bool:

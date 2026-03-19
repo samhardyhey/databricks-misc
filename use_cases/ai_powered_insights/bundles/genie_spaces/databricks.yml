@@ -1,3 +1,4 @@
+# Genie Space resources: set sql_warehouse_id and service principal per target before relying on deploy.
 bundle:
   name: ai_powered_insights_genie_spaces
   uuid: 3a6a5b2e-7ad3-4d9b-9a9e-1a0c7d0b1b1a
@@ -45,6 +46,11 @@ targets:
       sql_warehouse_id: ""
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   test-sp:
     mode: development
@@ -60,6 +66,11 @@ targets:
       sql_warehouse_id: ""
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   prod-sp:
     mode: production
@@ -75,4 +86,9 @@ targets:
       sql_warehouse_id: ""
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 

@@ -2,6 +2,72 @@
 resources:
   jobs:
 
+    recommendation_engine_item_similarity_retrain:
+      name: recommendation_engine_item_similarity_retrain
+      description: "Retrain item-to-item similarity model (sklearn / MLflow)"
+
+      schedule:
+        quartz_cron_expression: "0 5 6 * * ?"  # daily 6:05am (after build_training_base ~5:50)
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: retrain_item_similarity
+          spark_python_task:
+            python_file: use_cases/recommendation_engine/models/item_similarity/train.py
+          environment_key: retrain_env
+
+      environments:
+        - environment_key: retrain_env
+          spec:
+            client: "2"
+            env_vars:
+              RECO_DATA_SOURCE: auto
+              RECO_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
+              RECO_OUTPUT_SCHEMA: ${var.output_schema}
+              PYTHONPATH: ${var.workspace_root}
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - joblib
+              - implicit
+              - lightgbm>=4.0
+              - mlflow
+
+    recommendation_engine_als_retrain:
+      name: recommendation_engine_als_retrain
+      description: "Retrain ALS collaborative filtering model"
+
+      schedule:
+        quartz_cron_expression: "0 8 6 * * ?"  # daily 6:08am
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: retrain_als
+          spark_python_task:
+            python_file: use_cases/recommendation_engine/models/als/train.py
+          environment_key: retrain_env
+
+      environments:
+        - environment_key: retrain_env
+          spec:
+            client: "2"
+            env_vars:
+              RECO_DATA_SOURCE: auto
+              RECO_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
+              RECO_OUTPUT_SCHEMA: ${var.output_schema}
+              PYTHONPATH: ${var.workspace_root}
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - joblib
+              - implicit
+              - lightgbm>=4.0
+              - mlflow
+
     recommendation_engine_lightfm_retrain:
       name: recommendation_engine_lightfm_retrain
       description: "Retrain LightFM recommender for recommendation engine"
@@ -16,12 +82,64 @@ resources:
           spark_python_task:
             python_file: use_cases/recommendation_engine/models/lightfm/train.py
           environment_key: retrain_env
-    recommendation_engine_retrain:
-      name: recommendation_engine_retrain
-      description: "Retrain recommendation engine models (item_similarity, ALS, ranker) and log to MLflow"
+
+      environments:
+        - environment_key: retrain_env
+          spec:
+            client: "2"
+            env_vars:
+              RECO_DATA_SOURCE: auto
+              RECO_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
+              RECO_OUTPUT_SCHEMA: ${var.output_schema}
+              PYTHONPATH: ${var.workspace_root}
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - joblib
+              - implicit
+              - lightgbm>=4.0
+              - mlflow
+
+    recommendation_engine_ranker_retrain:
+      name: recommendation_engine_ranker_retrain
+      description: "Retrain ranker recommender for recommendation engine"
 
       schedule:
-        quartz_cron_expression: "0 0 6 * * ?"  # daily 6am
+        quartz_cron_expression: "0 20 6 * * ?"  # daily 6:20am
+        timezone_id: Australia/Sydney
+        pause_status: PAUSED
+
+      tasks:
+        - task_key: retrain_ranker
+          spark_python_task:
+            python_file: use_cases/recommendation_engine/models/ranker/train.py
+          environment_key: retrain_env
+
+      environments:
+        - environment_key: retrain_env
+          spec:
+            client: "2"
+            env_vars:
+              RECO_DATA_SOURCE: auto
+              RECO_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
+              RECO_OUTPUT_SCHEMA: ${var.output_schema}
+              PYTHONPATH: ${var.workspace_root}
+            dependencies:
+              - pandas>=2.0
+              - scikit-learn>=1.3
+              - loguru>=0.7
+              - joblib
+              - implicit
+              - lightgbm>=4.0
+              - mlflow
+
+    recommendation_engine_retrain:
+      name: recommendation_engine_retrain
+      description: "Integration / smoke: run_reco_smoke (all models). Prefer per-model retrain jobs for production."
+
+      schedule:
+        quartz_cron_expression: "0 25 6 * * ?"  # after per-model retrains; optional CI/nightly smoke
         timezone_id: Australia/Sydney
         pause_status: PAUSED
 

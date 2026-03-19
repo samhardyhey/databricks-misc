@@ -1,3 +1,4 @@
+# AI Powered Insights — Streamlit app bundle. Replace <TBD-...> service principal and set Genie/dashboard URLs when deploying.
 bundle:
   name: ai_powered_insights_app
 
@@ -54,6 +55,11 @@ targets:
       twc_dashboard_url: ""
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   test-sp:
     mode: development
@@ -71,6 +77,11 @@ targets:
       twc_dashboard_url: ""
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   prod-sp:
     mode: production
@@ -88,4 +99,9 @@ targets:
       twc_dashboard_url: ""
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 

@@ -5,7 +5,7 @@ bundle:
   uuid: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
 
 include:
-  - ../../resources/*.yml
+  - resources/*.yml
 
 sync:
   paths:
@@ -51,6 +51,11 @@ targets:
       service_principal_name: <TBD-INVENTORY-DEV-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   test-sp:
     mode: development
@@ -67,6 +72,11 @@ targets:
       service_principal_name: <TBD-INVENTORY-TEST-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 
   prod-sp:
     mode: production
@@ -83,4 +93,9 @@ targets:
       service_principal_name: <TBD-INVENTORY-PROD-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
 

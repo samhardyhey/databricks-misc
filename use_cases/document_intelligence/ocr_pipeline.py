@@ -63,7 +63,7 @@ def run_ocr(config: dict) -> pd.DataFrame:
     logger.info(
         "OCR extracted {} rows from {} documents", len(df), df["doc_id"].nunique()
     )
-    if config.get("data_source") == "local" and not df.empty:
+    if not df.empty:
         from use_cases.document_intelligence.predictions_io import write_ocr_output
 
         write_ocr_output(config, df)

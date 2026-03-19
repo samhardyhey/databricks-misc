@@ -1,16 +1,15 @@
-# Healthcare data generator bundle.
-# See https://docs.databricks.com/dev-tools/bundles/index.html
+# Healthcare data generator — bundle layout matches use-case DABs: databricks.yml + resources/*.yml under bundles/.
+# Deploy from this directory: databricks bundle deploy -t dev-sp
 bundle:
   name: healthcare_data_generator
   uuid: ebbc066e-3105-4f82-b446-4d5b1a31d23a
 
 include:
-  - ../resources/*.yml
-  - ../resources/*/*.yml
+  - resources/*.yml
 
 sync:
   paths:
-    - ../../..  # repo root
+    - ../../..  # repo root (data/healthcare_data_generator/bundles -> repo)
 
 variables:
   catalog:
@@ -19,6 +18,12 @@ variables:
   source_schema:
     description: Schema for raw healthcare tables (e.g. healthcare_dev_raw)
     default: healthcare_dev_raw
+  workspace_root:
+    description: Workspace path where bundle is deployed (for PYTHONPATH when needed)
+    default: ""
+  service_principal_name:
+    description: Service principal for job run_as and bundle resource permissions
+    default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
 
 targets:
   dev-sp:
@@ -30,6 +35,15 @@ targets:
     variables:
       catalog: workspace
       source_schema: healthcare_dev_raw
+      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      service_principal_name: <TBD-DATA-GENERATOR-DEV-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
     resources:
       jobs:
         healthcare_data_generator_job:
@@ -44,6 +58,15 @@ targets:
     variables:
       catalog: workspace
       source_schema: healthcare_test_raw
+      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      service_principal_name: <TBD-DATA-GENERATOR-TEST-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
+    permissions:
+      - user_name: sam.hardy@ebosgroup.com
+        level: CAN_MANAGE
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
     resources:
       jobs:
         healthcare_data_generator_job:
@@ -58,7 +81,12 @@ targets:
     variables:
       catalog: workspace
       source_schema: healthcare_prod_raw
+      workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
+      service_principal_name: <TBD-DATA-GENERATOR-PROD-SP>
+    run_as:
+      service_principal_name: ${var.service_principal_name}
     permissions:
-      - user_name: samhardyhey@gmail.com
+      - user_name: sam.hardy@ebosgroup.com
         level: CAN_MANAGE
-
+      - service_principal_name: ${var.service_principal_name}
+        level: CAN_MANAGE
