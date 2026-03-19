@@ -29,26 +29,33 @@ MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
 .PHONY: help cleanup clean-local-data format uc-foundation-deploy
 .PHONY: dab-list dab-validate dab-deploy dab-run
-.PHONY: dab-validate-recommendation_engine dab-deploy-recommendation_engine dab-run-recommendation_engine
-.PHONY: dab-validate-inventory_optimization dab-deploy-inventory_optimization dab-run-inventory_optimization
-.PHONY: dab-validate-document_intelligence dab-deploy-document_intelligence dab-run-document_intelligence
-.PHONY: dab-validate-ai_powered_insights dab-deploy-ai_powered_insights
-.PHONY: document-intelligence-install document-intelligence-generate-pdfs document-intelligence-generate-data document-intelligence-ocr document-intelligence-field-extraction document-intelligence-run document-intelligence-app-run
-.PHONY: document-intelligence-smoke
+.PHONY: foundation-dab-validate-uc foundation-dab-deploy-uc
+.PHONY: data-dab-validate-generator data-dab-deploy-generator data-dab-run-generator
+.PHONY: data-dab-validate-medallion data-dab-deploy-medallion data-dab-run-medallion
+.PHONY: data-local-clean data-local-e2e
+.PHONY: doc-intel-local-install doc-intel-local-generate-data doc-intel-local-ocr doc-intel-local-field-extraction doc-intel-local-app-run doc-intel-local-smoke doc-intel-local-generate-pdfs
+.PHONY: doc-intel-dab-validate doc-intel-dab-deploy doc-intel-dab-run-generate doc-intel-dab-run-pipeline
+.PHONY: reco-local-install reco-local-data reco-local-run reco-local-e2e reco-local-item-sim-train reco-local-item-sim-apply reco-local-als-train reco-local-als-apply reco-local-lightfm-train reco-local-lightfm-apply reco-local-app-run
+.PHONY: reco-local-smoke
+.PHONY: reco-dab-validate reco-dab-deploy reco-dab-run-retrain reco-dab-run-apply reco-dab-run-lightfm-retrain reco-dab-run-lightfm-apply
+.PHONY: inventory-local-install inventory-local-data inventory-local-run inventory-local-e2e inventory-local-writeoff-train inventory-local-writeoff-apply inventory-local-demand-train inventory-local-demand-apply inventory-local-replenishment-train inventory-local-replenishment-apply
+.PHONY: inventory-local-smoke
+.PHONY: inventory-dab-validate inventory-dab-deploy inventory-dab-run-demand-retrain inventory-dab-run-writeoff-retrain inventory-dab-run-replenishment-retrain inventory-dab-run-demand-apply inventory-dab-run-writeoff-apply inventory-dab-run-replenishment-apply
+.PHONY: ai-insights-local-app-run ai-insights-dab-validate ai-insights-dab-deploy
 .PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
-.PHONY: reco-data reco-run reco-install reco-item-sim-train reco-item-sim-apply reco-als-train reco-als-apply reco-app-run
+.PHONY: reco-data reco-run reco-install reco-item-sim-train reco-item-sim-apply reco-als-train reco-als-apply reco-lightfm-train reco-lightfm-apply reco-app-run
 .PHONY: ai-insights-app-run
 .PHONY: inventory-data inventory-run inventory-install inventory-writeoff-train inventory-writeoff-apply inventory-demand-train inventory-demand-apply inventory-replenishment-train inventory-replenishment-apply
+.PHONY: document-intelligence-install document-intelligence-generate-pdfs document-intelligence-generate-data document-intelligence-ocr document-intelligence-field-extraction document-intelligence-run document-intelligence-app-run document-intelligence-smoke
 .PHONY: mlflow-ui mlflow-wipe
 .PHONY: marvelous-mlops-venv marvelous-mlops-fetch-medium marvelous-mlops-fetch-substack marvelous-mlops-fetch-youtube
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
 
 help:
 	@echo "Targets:"
+	@echo "  ## Local env/util"
 	@echo "  make uv-venv              - Create .venv (uses uv if available, else python3 -m venv)"
 	@echo "  make uv-sync / install     - Install deps; use install then uv-dev for dev tools"
-	@echo "  make reco-install          - Install reco use-case deps (implicit, lightgbm, mlflow)"
-	@echo "  make inventory-install    - Install inventory use-case deps (scipy, lightgbm)"
 	@echo "  make uv-dev               - Install dev deps (autoflake, isort, black)"
 	@echo "  make uv-activate          - Print activate command for .venv"
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
@@ -56,79 +63,87 @@ help:
 	@echo "  make mlflow-ui            - Start MLflow UI (utils.mlflow, local only); http://localhost:5001"
 	@echo "  make mlflow-wipe          - Remove local MLflow DB and artifacts (experiments, runs, registry)"
 	@echo ""
-	@echo "  Local (data generation / medallion):"
-	@echo "  make clean-local-data           - Remove data/local/, test_output/, doc-intel PDFs, medallion target/logs (start again)"
-	@echo "  make data-local-generate        - Generate healthcare CSVs to data/local/ (default sizes)"
-	@echo "  make data-local-generate-quick  - Generate healthcare CSVs to data/local/ (small sizes)"
-	@echo "  make data-local-generate-pdfs   - Generate prescription PDFs (data/local/prescription_pdfs/)"
-	@echo "  make data-local-duckdb-load     - Load data/local/*.csv into DuckDB as raw schema (run after generate)"
-	@echo "  make data-local-dbt-run         - Load data/local into DuckDB then run medallion dbt (run data-local-generate-quick first if no CSVs)"
-	@echo "  make data-local-dbt-test        - Build medallion (dbt run) then run dbt tests (referential integrity, etc.)"
-	@echo ""
-	@echo "  Recommendation engine (full sequence: data → train/log → apply; RECO_DATA_SOURCE=local|catalog|auto):"
-	@echo "  make reco-install                  - Install reco deps (implicit, lightgbm, mlflow)"
-	@echo "  make reco-data                     - Generate healthcare CSVs to data/local/ (alias for data-local-generate-quick)"
-	@echo "  make reco-run                      - Full sequence: reco-data → train+log (run_reco_smoke.py) → batch apply (item_sim + ALS + LightFM)"
-	@echo "  make reco-item-sim-train           - Train item-similarity model only"
-	@echo "  make reco-item-sim-apply           - Apply item-similarity model (set ITEM_SIMILARITY_MODEL_URI for runs:/<run_id>/model)"
-	@echo "  make reco-als-train                - Train ALS model only"
-	@echo "  make reco-als-apply                - Apply ALS model (set ALS_MODEL_URI for runs:/<run_id>/model)"
-	@echo "  make reco-app-run                  - Run recommendation Streamlit app locally"
-	@echo "  make ai-insights-app-run           - Run AI Powered Insights (Genie + router) Streamlit app locally"
-	@echo "  Inventory optimisation (full sequence: data → train+apply; INVENTORY_DATA_SOURCE=local|catalog|auto):"
-	@echo "  make inventory-install             - Install inventory use-case deps (scipy, lightgbm)"
-	@echo "  make inventory-data                - Generate healthcare CSVs (alias for data-local-generate-quick)"
-	@echo "  make inventory-run                 - Full sequence: inventory-data → run_inventory_smoke.py (train write-off + replenishment, apply)"
-	@echo "  make inventory-writeoff-train      - Train write-off risk classifier"
-	@echo "  make inventory-writeoff-apply      - Apply write-off risk classifier to latest data"
-	@echo "  make inventory-demand-train        - Train demand forecasting models"
-	@echo "  make inventory-demand-apply        - Apply demand forecasting models to generate forecasts"
-	@echo "  make inventory-replenishment-train - Train/recompute replenishment policy"
-	@echo "  make inventory-replenishment-apply - Apply replenishment policy to generate recommendations"
-	@echo ""
-	@echo "UC foundation (Unity Catalog schemas/volumes):"
-	@echo "  make uc-foundation-deploy        - Deploy bundles/uc_foundation to $(UC_FOUNDATION_TARGET)"
-	@echo ""
-	@echo "Databricks Asset Bundles (DAB):"
-	@echo "  make dab-list                   - List available DAB bundle names"
-	@echo "  make dab-validate BUNDLE=<name> DAB_TARGET=<dev-sp|test-sp|prod-sp>"
-	@echo "  make dab-deploy   BUNDLE=<name> DAB_TARGET=<dev-sp|test-sp|prod-sp>"
-	@echo "  make dab-run      BUNDLE=<name> RUN_JOB=<job-name> DAB_TARGET=<dev-sp|test-sp|prod-sp> (strict)"
-	@echo ""
-	@echo "Use-case DAB (bundle sets):"
-	@echo "  Recommendation engine:"
-	@echo "    make dab-validate-recommendation_engine"
-	@echo "    make dab-deploy-recommendation_engine"
-	@echo "    make dab-run-recommendation_engine RUN_JOB=<job-name>"
-	@echo "      allowed RUN_JOB: recommendation_engine_retrain recommendation_engine_lightfm_retrain recommendation_engine_apply recommendation_engine_lightfm_apply"
-	@echo "  Inventory optimisation:"
-	@echo "    make dab-validate-inventory_optimization"
-	@echo "    make dab-deploy-inventory_optimization"
-	@echo "    make dab-run-inventory_optimization RUN_JOB=<job-name>"
-	@echo "      allowed RUN_JOB: inventory_demand_forecasting_retrain inventory_writeoff_risk_retrain inventory_replenishment_retrain inventory_demand_forecasting_apply inventory_writeoff_risk_apply inventory_replenishment_apply"
-	@echo "  Document intelligence:"
-	@echo "    make dab-validate-document_intelligence"
-	@echo "    make dab-deploy-document_intelligence"
-	@echo "    make dab-run-document_intelligence RUN_JOB=<job-name>"
-	@echo "      allowed RUN_JOB: document_intelligence_generate_job document_intelligence_pipeline_job"
-	@echo "  AI Powered Insights:"
-	@echo "    make dab-validate-ai_powered_insights"
-	@echo "    make dab-deploy-ai_powered_insights"
-	@echo "  Document intelligence (prescription PDFs; jobs map to DAB 1/2/3):"
-	@echo "  make document-intelligence-install             - Install doc-intel deps (pdfplumber, loguru, faker, reportlab)"
-	@echo "  make document-intelligence-generate-data      - Job 1: generate PDFs + labels (defaults; override DOCINT_NUM_PDFS and DOCINT_SEED via env)"
-	@echo "  make document-intelligence-ocr                 - Job 2: OCR extraction → predictions/ocr/"
-	@echo "  make document-intelligence-field-extraction    - Job 3: field extraction → predictions/fields/"
-	@echo "  make document-intelligence-run                 - Full pipeline (OCR + field extraction) over local data/local/prescription_pdfs/"
-	@echo "  make document-intelligence-app-run             - Run Streamlit annotator (review predictions) locally"
-	@echo "  make document-intelligence-smoke             - Local smoke: generate → ocr → fields → start Streamlit briefly"
-	@echo "  make document-intelligence-generate-pdfs       - Alias: generate PDFs via raw script (uses generator defaults)"
-	@echo ""
-	@echo "  Marvelous MLOps (separate venv; run marvelous-mlops-venv first):"
+	@echo "  ## Marvelous MLOps DBX Policy Generation"
 	@echo "  make marvelous-mlops-venv                 - Create .venv and install requirements in marvelous_mlops/"
 	@echo "  make marvelous-mlops-fetch-medium         - Fetch Medium articles"
 	@echo "  make marvelous-mlops-fetch-substack       - Fetch Substack posts"
 	@echo "  make marvelous-mlops-fetch-youtube        - Fetch YouTube transcripts"
+	@echo ""
+	@echo "  ## UC foundation (Unity Catalog schemas/volumes):"
+	@echo "  make uc-foundation-deploy        - Deploy bundles/uc_foundation to $(UC_FOUNDATION_TARGET) (compat)"
+	@echo "  make foundation-dab-validate-uc  - Validate UC foundation bundle (DAB)"
+	@echo "  make foundation-dab-deploy-uc    - Deploy UC foundation bundle (DAB)"
+	@echo ""
+	@echo "  ## Data foundation"
+	@echo "  make data-local-clean           - Remove data/local/, test_output/, doc-intel PDFs, medallion target/logs (start again)"
+	@echo "  make data-local-generate        - Generate healthcare CSVs to data/local/ (default sizes)"
+	@echo "  make data-local-duckdb-load     - Load data/local/*.csv into DuckDB as raw schema (run after generate)"
+	@echo "  make data-local-dbt-run         - Load data/local into DuckDB then run medallion dbt"
+	@echo "  make data-local-dbt-test        - Build medallion (dbt run) then run dbt tests (referential integrity, etc.)"
+	@echo "  make data-local-e2e             - End-to-end local: clean -> generate -> duckdb-load -> dbt-run -> dbt-test"
+	@echo ""
+	@echo "  make data-dab-validate-generator - Validate healthcare data generator bundle"
+	@echo "  make data-dab-deploy-generator   - Deploy healthcare data generator bundle"
+	@echo "  make data-dab-run-generator      - Run healthcare data generator job bundle"
+	@echo "  make data-dab-validate-medallion - Validate healthcare medallion (dbt) bundle"
+	@echo "  make data-dab-deploy-medallion   - Deploy healthcare medallion (dbt) bundle"
+	@echo "  make data-dab-run-medallion      - Run healthcare medallion (dbt) job bundle"
+	@echo ""
+	@echo "  **AI Powered Insights (ai-insights):"
+	@echo "  make ai-insights-local-app-run      - Run Streamlit router app locally"
+	@echo "  make ai-insights-dab-validate       - Validate AI Insights bundles (app + dashboards + genie spaces)"
+	@echo "  make ai-insights-dab-deploy         - Deploy AI Insights bundles (app + dashboards + genie spaces)"
+	@echo ""
+	@echo "  **Document intelligence (doc-intel):"
+	@echo "  make doc-intel-local-install        - Install doc-intel deps"
+	@echo "  make doc-intel-local-generate-data  - Local Job 1: generate PDFs + labels"
+	@echo "  make doc-intel-local-ocr            - Local Job 2: OCR extraction"
+	@echo "  make doc-intel-local-field-extraction - Local Job 3: field extraction"
+	@echo "  make doc-intel-local-app-run        - Local Streamlit annotator"
+	@echo "  make doc-intel-local-e2e            - Local end-to-end test"
+	@echo "  make doc-intel-dab-validate         - Validate doc-intel bundles (jobs + annotator app)"
+	@echo "  make doc-intel-dab-deploy           - Deploy doc-intel bundles (jobs + annotator app)"
+	@echo "  make doc-intel-dab-run-generate     - Run remote Job 1 (document_intelligence_generate_job)"
+	@echo "  make doc-intel-dab-run-pipeline     - Run remote pipeline job (document_intelligence_pipeline_job)"
+	@echo ""
+	@echo "  ## Inventory optimisation (inventory):"
+	@echo "  make inventory-local-install        - Install inventory deps"
+	@echo "  make inventory-local-data           - Prepare local data/medallion (quick)"
+	@echo "  make inventory-local-writeoff-train - Train write-off risk classifier"
+	@echo "  make inventory-local-writeoff-apply - Apply write-off risk classifier"
+	@echo "  make inventory-local-demand-train   - Train demand forecasting models"
+	@echo "  make inventory-local-demand-apply   - Apply demand forecasting models"
+	@echo "  make inventory-local-replenishment-train - Recompute replenishment policy"
+	@echo "  make inventory-local-replenishment-apply - Apply replenishment policy"
+	@echo "  make inventory-local-e2e            - Local end-to-end pipeline"
+	@echo ""
+	@echo "  make inventory-dab-validate         - Validate inventory job bundle"
+	@echo "  make inventory-dab-deploy           - Deploy inventory job bundle"
+	@echo "  make inventory-dab-run-demand-retrain       - Run demand forecasting retrain job"
+	@echo "  make inventory-dab-run-writeoff-retrain     - Run writeoff risk retrain job"
+	@echo "  make inventory-dab-run-replenishment-retrain - Run replenishment retrain job"
+	@echo "  make inventory-dab-run-demand-apply         - Run demand forecasting apply job"
+	@echo "  make inventory-dab-run-writeoff-apply       - Run writeoff risk apply job"
+	@echo "  make inventory-dab-run-replenishment-apply  - Run replenishment apply job"
+	@echo ""
+	@echo "  ## Recommendation engine (reco):"
+	@echo "  make reco-local-install        - Install reco deps"
+	@echo "  make reco-local-data           - Prepare local data/medallion (quick)"
+	@echo "  make reco-local-item-sim-train - Train item-similarity model"
+	@echo "  make reco-local-item-sim-apply - Apply item-similarity model"
+	@echo "  make reco-local-als-train      - Train ALS model"
+	@echo "  make reco-local-als-apply      - Apply ALS model"
+	@echo "  make reco-local-lightfm-train  - Train LightFM model"
+	@echo "  make reco-local-lightfm-apply  - Apply LightFM model"
+	@echo "  make reco-local-app-run        - Run reco Streamlit app locally"
+	@echo "  make reco-local-e2e            - Local end-to-end pipeline"
+	@echo ""
+	@echo "  make reco-dab-validate         - Validate reco bundles (jobs + serving + app)"
+	@echo "  make reco-dab-deploy           - Deploy reco bundles (jobs + serving + app)"
+	@echo "  make reco-dab-run-retrain      - Run reco retrain job (recommendation_engine_retrain)"
+	@echo "  make reco-dab-run-apply        - Run reco apply job (recommendation_engine_apply)"
+	@echo "  make reco-dab-run-lightfm-retrain - Run LightFM retrain job"
+	@echo "  make reco-dab-run-lightfm-apply   - Run LightFM apply job"
 
 # --- Environment (databricks-misc): use uv if available, else python3/pip ---
 uv-venv:
@@ -180,7 +195,10 @@ cleanup:
 clean-local-data:
 	rm -rf $(DATA_LOCAL_DIR) $(REPO_ROOT)/test_output $(REPO_ROOT)/$(DOC_INTEL_PDF_OUTPUT) $(REPO_ROOT)/prescription_pdfs 2>/dev/null || true
 	rm -rf $(MEDALLION_DIR)/.databricks $(MEDALLION_DIR)/logs $(MEDALLION_DIR)/target $(MEDALLION_DIR)/dbt_packages 2>/dev/null || true
-	@echo "Local data removed. Run make data-local-generate-quick (or data-local-generate) then data-local-duckdb-load and data-local-dbt-run to start again."
+	@echo "Local data removed. Next: make data-local-generate then data-local-duckdb-load and data-local-dbt-run (or just make data-local-e2e)."
+
+# Canonical local clean (compat wrapper keeps working)
+data-local-clean: clean-local-data
 
 # --- Format (autoflake -> isort -> black); requires make uv-dev ---
 FMT_ARGS ?= data use_cases
@@ -204,8 +222,11 @@ data-local-generate:
 
 data-local-generate-quick:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
-	cd $(REPO_ROOT) && $(PY) data/healthcare_data_generator/src/generate_local.py -o $(DATA_LOCAL_DIR) --quick
-	@echo "Healthcare CSVs (quick) in $(DATA_LOCAL_DIR)/"
+	@$(MAKE) data-local-generate
+
+# End-to-end local data foundation (clean -> generate -> duckdb -> dbt run -> dbt test)
+data-local-e2e: data-local-clean data-local-generate data-local-duckdb-load data-local-dbt-run data-local-dbt-test
+	@echo "data-local-e2e done."
 
 data-local-generate-pdfs:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
@@ -279,6 +300,35 @@ document-intelligence-smoke:
 
 # Alias: generate PDFs via raw generator script (alternative to job 1)
 document-intelligence-generate-pdfs: data-local-generate-pdfs
+
+# ============================
+# Canonical use-case targets
+# ============================
+
+# --- doc-intel (local) ---
+doc-intel-local-install: document-intelligence-install
+doc-intel-local-generate-data: document-intelligence-generate-data
+doc-intel-local-ocr: document-intelligence-ocr
+doc-intel-local-field-extraction: document-intelligence-field-extraction
+doc-intel-local-app-run: document-intelligence-app-run
+doc-intel-local-smoke: document-intelligence-smoke
+doc-intel-local-e2e: doc-intel-local-smoke
+doc-intel-local-generate-pdfs: document-intelligence-generate-pdfs
+
+# --- doc-intel (DAB) ---
+doc-intel-dab-validate:
+	@$(MAKE) dab-validate BUNDLE=document_intelligence DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-validate BUNDLE=document_intelligence_annotator_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+doc-intel-dab-deploy:
+	@$(MAKE) dab-deploy BUNDLE=document_intelligence DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-deploy BUNDLE=document_intelligence_annotator_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+doc-intel-dab-run-generate:
+	@$(MAKE) dab-run BUNDLE=document_intelligence RUN_JOB=document_intelligence_generate_job DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+doc-intel-dab-run-pipeline:
+	@$(MAKE) dab-run BUNDLE=document_intelligence RUN_JOB=document_intelligence_pipeline_job DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
 # --- Recommendation engine (single entrypoint; RECO_DATA_SOURCE=local|catalog|auto) ---
 reco-install:
@@ -372,8 +422,118 @@ inventory-replenishment-train:
 	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/replenishment/train.py
 
 inventory-replenishment-apply:
-	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
-	cd $(REPO_ROOT) && $(PY) use_cases/inventory_optimization/models/replenishment/predict.py
+ai-insights-local-app-run: ai-insights-app-run
+
+# --- reco (local) ---
+reco-local-install: reco-install
+reco-local-data: reco-data
+reco-local-run: reco-run
+reco-local-smoke: reco-local-run
+reco-local-e2e: reco-local-run
+reco-local-item-sim-train: reco-item-sim-train
+reco-local-item-sim-apply: reco-item-sim-apply
+reco-local-als-train: reco-als-train
+reco-local-als-apply: reco-als-apply
+reco-local-lightfm-train: reco-lightfm-train
+reco-local-lightfm-apply: reco-lightfm-apply
+reco-local-app-run: reco-app-run
+
+# --- reco (DAB) ---
+reco-dab-validate:
+	@$(MAKE) dab-validate BUNDLE=recommendation_engine DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-validate BUNDLE=recommendation_engine_serving DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-validate BUNDLE=recommendation_engine_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+reco-dab-deploy:
+	@$(MAKE) dab-deploy BUNDLE=recommendation_engine DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-deploy BUNDLE=recommendation_engine_serving DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-deploy BUNDLE=recommendation_engine_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+reco-dab-run-retrain:
+	@$(MAKE) dab-run BUNDLE=recommendation_engine RUN_JOB=recommendation_engine_retrain DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+reco-dab-run-apply:
+	@$(MAKE) dab-run BUNDLE=recommendation_engine RUN_JOB=recommendation_engine_apply DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+reco-dab-run-lightfm-retrain:
+	@$(MAKE) dab-run BUNDLE=recommendation_engine RUN_JOB=recommendation_engine_lightfm_retrain DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+reco-dab-run-lightfm-apply:
+	@$(MAKE) dab-run BUNDLE=recommendation_engine RUN_JOB=recommendation_engine_lightfm_apply DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+# --- inventory (local) ---
+inventory-local-install: inventory-install
+inventory-local-data: inventory-data
+inventory-local-run: inventory-run
+inventory-local-smoke: inventory-local-run
+inventory-local-e2e: inventory-local-run
+inventory-local-writeoff-train: inventory-writeoff-train
+inventory-local-writeoff-apply: inventory-writeoff-apply
+inventory-local-demand-train: inventory-demand-train
+inventory-local-demand-apply: inventory-demand-apply
+inventory-local-replenishment-train: inventory-replenishment-train
+inventory-local-replenishment-apply: inventory-replenishment-apply
+
+# --- inventory (DAB) ---
+inventory-dab-validate:
+	@$(MAKE) dab-validate BUNDLE=inventory_optimization DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+inventory-dab-deploy:
+	@$(MAKE) dab-deploy BUNDLE=inventory_optimization DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+inventory-dab-run-demand-retrain:
+	@$(MAKE) dab-run BUNDLE=inventory_optimization RUN_JOB=inventory_demand_forecasting_retrain DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+inventory-dab-run-writeoff-retrain:
+	@$(MAKE) dab-run BUNDLE=inventory_optimization RUN_JOB=inventory_writeoff_risk_retrain DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+inventory-dab-run-replenishment-retrain:
+	@$(MAKE) dab-run BUNDLE=inventory_optimization RUN_JOB=inventory_replenishment_retrain DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+inventory-dab-run-demand-apply:
+	@$(MAKE) dab-run BUNDLE=inventory_optimization RUN_JOB=inventory_demand_forecasting_apply DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+inventory-dab-run-writeoff-apply:
+	@$(MAKE) dab-run BUNDLE=inventory_optimization RUN_JOB=inventory_writeoff_risk_apply DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+inventory-dab-run-replenishment-apply:
+	@$(MAKE) dab-run BUNDLE=inventory_optimization RUN_JOB=inventory_replenishment_apply DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+# --- ai-insights (DAB) ---
+ai-insights-dab-validate:
+	@$(MAKE) dab-validate BUNDLE=ai_powered_insights_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-validate BUNDLE=ai_powered_insights_dashboards DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-validate BUNDLE=ai_powered_insights_genie_spaces DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+ai-insights-dab-deploy:
+	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_dashboards DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_genie_spaces DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+# --- foundation/data (DAB) ---
+foundation-dab-validate-uc:
+	@$(MAKE) dab-validate BUNDLE=uc_foundation DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+foundation-dab-deploy-uc:
+	@$(MAKE) dab-deploy BUNDLE=uc_foundation DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+data-dab-validate-generator:
+	@$(MAKE) dab-validate BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+data-dab-deploy-generator:
+	@$(MAKE) dab-deploy BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+data-dab-run-generator:
+	@$(MAKE) dab-run BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+data-dab-validate-medallion:
+	@$(MAKE) dab-validate BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+data-dab-deploy-medallion:
+	@$(MAKE) dab-deploy BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+data-dab-run-medallion:
+	@$(MAKE) dab-run BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
 # --- Marvelous MLOps (sub-usecase: own venv and requirements.txt) ---
 marvelous-mlops-venv:
@@ -596,6 +756,42 @@ dab-deploy-ai_powered_insights:
 	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_dashboards DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_genie_spaces DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+# --- Foundation/data DAB wrappers (shared) ---
+
+dab-validate-uc_foundation:
+	@$(MAKE) dab-validate BUNDLE=uc_foundation DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-deploy-uc_foundation:
+	@$(MAKE) dab-deploy BUNDLE=uc_foundation DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-validate-healthcare_data_generator:
+	@$(MAKE) dab-validate BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-deploy-healthcare_data_generator:
+	@$(MAKE) dab-deploy BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-run-healthcare_data_generator:
+	@$(MAKE) dab-run BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-validate-healthcare_data_medallion:
+	@$(MAKE) dab-validate BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-deploy-healthcare_data_medallion:
+	@$(MAKE) dab-deploy BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-run-healthcare_data_medallion:
+	@$(MAKE) dab-run BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+# --- Consistent "reco" naming for reco DAB bundle set ---
+
+dab-validate-reco: dab-validate-recommendation_engine
+
+dab-deploy-reco: dab-deploy-recommendation_engine
+
+dab-run-reco:
+	@test -n "$(strip $(RUN_JOB))" || (echo "Usage: make dab-run-reco RUN_JOB=<job-name> [DAB_TARGET=...]" && exit 1)
+	@$(MAKE) dab-run-recommendation_engine RUN_JOB=$(RUN_JOB) DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
 # Optional convenience: keep your old UC foundation deploy target name,
 # but route it through dab-deploy to reuse the bundle framework.
