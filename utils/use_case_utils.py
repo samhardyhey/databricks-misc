@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from utils.env_utils import is_running_on_databricks
 from utils.mlflow.config import (
@@ -80,6 +80,64 @@ def get_catalog_schema(
 
 def get_local_data_source(*, duckdb_path: Path | None) -> Literal["duckdb", "csv"]:
     return "duckdb" if duckdb_path is not None else "csv"
+
+
+def require_env_non_empty(env_var: str, *, detail: str) -> str:
+    """
+    Return stripped env value or raise RuntimeError referencing env_var.
+    Use for Unity Catalog schema variables required in catalog mode.
+    """
+    raw = os.environ.get(env_var, "").strip()
+    if not raw:
+        raise RuntimeError(f"{env_var} is required {detail}")
+    return raw
+
+
+def resolve_local_base_dir(
+    *,
+    primary_env: str,
+    fallback_env: str = "LOCAL_DATA_PATH",
+    default_path: Path,
+) -> Path:
+    """
+    Prefer primary_env, else fallback_env with default_path when unset.
+    Doc intelligence and similar: DOCINT_BASE_DIR vs LOCAL_DATA_PATH.
+    """
+    p = os.environ.get(primary_env) or os.environ.get(
+        fallback_env, str(default_path.resolve())
+    )
+    return Path(p).resolve()
+
+
+def get_env_str(name: str, default: str) -> str:
+    """Strip env or default (non-empty default preserved)."""
+    return (os.environ.get(name) or default).strip()
+
+
+def build_medallion_use_case_config(
+    *,
+    data_source: Literal["local", "catalog"],
+    local_data_dir: Path,
+    local_data_source: Literal["duckdb", "csv"],
+    duckdb_path: Path | None,
+    duckdb_medallion_schema: str,
+    uc_schema_fields: dict[str, str | None],
+) -> dict[str, Any]:
+    """
+    Assemble the standard reco/inventory-style config dict (local DuckDB/CSV vs UC + MLflow).
+    uc_schema_fields: use-case-specific nullable UC keys (e.g. input_silver_schema, output_schema).
+    """
+    return {
+        "data_source": data_source,
+        "local_data_dir": local_data_dir,
+        "local_data_source": local_data_source,
+        "duckdb_path": duckdb_path,
+        "duckdb_medallion_schema": duckdb_medallion_schema,
+        **uc_schema_fields,
+        "on_databricks": is_running_on_databricks(),
+        "mlflow_tracking_uri": _get_mlflow_tracking_uri(),
+        "mlflow_registry_uri": _get_mlflow_registry_uri(),
+    }
 
 
 # --- MLflow (centralized) ---

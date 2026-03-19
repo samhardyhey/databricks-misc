@@ -7,21 +7,16 @@ MLflow: see utils.mlflow.config (local SQLite vs Databricks workspace).
 from pathlib import Path
 from typing import Literal
 
-from utils.env_utils import is_running_on_databricks
 from utils.use_case_utils import apply_mlflow_config as _apply_mlflow_config
 from utils.use_case_utils import (
+    build_medallion_use_case_config,
     ensure_experiment_artifact_root as _ensure_experiment_artifact_root,
-)
-from utils.use_case_utils import get_catalog_schema as _get_catalog_schema
-from utils.use_case_utils import (
+    get_catalog_schema as _get_catalog_schema,
     get_duckdb_medallion_schema as _get_duckdb_medallion_schema,
-)
-from utils.use_case_utils import get_duckdb_path as _get_duckdb_path
-from utils.use_case_utils import get_local_data_dir as _get_local_data_dir
-from utils.use_case_utils import get_local_data_source as _get_local_data_source
-from utils.use_case_utils import (
-    get_mlflow_registry_uri,
-    get_mlflow_tracking_uri,
+    get_duckdb_path as _get_duckdb_path,
+    get_local_data_dir as _get_local_data_dir,
+    get_local_data_source as _get_local_data_source,
+    require_env_non_empty,
     resolve_data_source,
 )
 
@@ -78,15 +73,11 @@ def get_input_silver_schema() -> str:
     Unity Catalog *input* schema for silver tables (shared medallion).
     Override with INVENTORY_INPUT_SILVER_SCHEMA.
     """
-    import os
-
-    raw = os.environ.get("INVENTORY_INPUT_SILVER_SCHEMA", "").strip()
-    if not raw:
-        raise RuntimeError(
-            "INVENTORY_INPUT_SILVER_SCHEMA is required when INVENTORY_DATA_SOURCE=catalog "
-            "(e.g. workspace.healthcare_medallion_dev_silver)."
-        )
-    return raw
+    return require_env_non_empty(
+        "INVENTORY_INPUT_SILVER_SCHEMA",
+        detail="when INVENTORY_DATA_SOURCE=catalog "
+        "(e.g. workspace.healthcare_medallion_dev_silver).",
+    )
 
 
 def get_input_bronze_schema() -> str:
@@ -94,15 +85,11 @@ def get_input_bronze_schema() -> str:
     Unity Catalog *input* schema for bronze tables (shared medallion).
     Override with INVENTORY_INPUT_BRONZE_SCHEMA.
     """
-    import os
-
-    raw = os.environ.get("INVENTORY_INPUT_BRONZE_SCHEMA", "").strip()
-    if not raw:
-        raise RuntimeError(
-            "INVENTORY_INPUT_BRONZE_SCHEMA is required when INVENTORY_DATA_SOURCE=catalog "
-            "(e.g. workspace.healthcare_medallion_dev_bronze)."
-        )
-    return raw
+    return require_env_non_empty(
+        "INVENTORY_INPUT_BRONZE_SCHEMA",
+        detail="when INVENTORY_DATA_SOURCE=catalog "
+        "(e.g. workspace.healthcare_medallion_dev_bronze).",
+    )
 
 
 def get_input_gold_schema() -> str:
@@ -110,15 +97,11 @@ def get_input_gold_schema() -> str:
     Unity Catalog *input* schema for gold tables (shared medallion) when needed.
     Override with INVENTORY_INPUT_GOLD_SCHEMA.
     """
-    import os
-
-    raw = os.environ.get("INVENTORY_INPUT_GOLD_SCHEMA", "").strip()
-    if not raw:
-        raise RuntimeError(
-            "INVENTORY_INPUT_GOLD_SCHEMA is required when INVENTORY_DATA_SOURCE=catalog "
-            "(e.g. workspace.healthcare_medallion_dev_gold)."
-        )
-    return raw
+    return require_env_non_empty(
+        "INVENTORY_INPUT_GOLD_SCHEMA",
+        detail="when INVENTORY_DATA_SOURCE=catalog "
+        "(e.g. workspace.healthcare_medallion_dev_gold).",
+    )
 
 
 def get_output_schema() -> str:
@@ -126,19 +109,14 @@ def get_output_schema() -> str:
     Unity Catalog *output* schema for inventory_optimization owned tables.
     Override with INVENTORY_OUTPUT_SCHEMA.
     """
-    import os
-
-    raw = os.environ.get("INVENTORY_OUTPUT_SCHEMA", "").strip()
-    if not raw:
-        raise RuntimeError(
-            "INVENTORY_OUTPUT_SCHEMA is required when INVENTORY_DATA_SOURCE=catalog "
-            "(e.g. workspace.inventory_optimization_dev)."
-        )
-    return raw
+    return require_env_non_empty(
+        "INVENTORY_OUTPUT_SCHEMA",
+        detail="when INVENTORY_DATA_SOURCE=catalog "
+        "(e.g. workspace.inventory_optimization_dev).",
+    )
 
 
-# MLflow tracking/artifact/experiment: delegated to utils.mlflow.config (local vs Databricks)
-# get_mlflow_tracking_uri, get_mlflow_artifact_root, ensure_experiment_artifact_root imported above
+# MLflow fields on get_config() come from build_medallion_use_case_config (utils.use_case_utils).
 
 
 def get_config() -> dict:
@@ -157,31 +135,29 @@ def get_config() -> dict:
     """
     data_source = get_data_source()
     duckdb_path = get_duckdb_path()
-
-    input_silver_schema: str | None = None
-    input_bronze_schema: str | None = None
-    input_gold_schema: str | None = None
-    output_schema: str | None = None
     if data_source == "catalog":
-        input_silver_schema = get_input_silver_schema()
-        input_bronze_schema = get_input_bronze_schema()
-        input_gold_schema = get_input_gold_schema()
-        output_schema = get_output_schema()
+        uc = {
+            "input_silver_schema": get_input_silver_schema(),
+            "input_bronze_schema": get_input_bronze_schema(),
+            "input_gold_schema": get_input_gold_schema(),
+            "output_schema": get_output_schema(),
+        }
+    else:
+        uc = {
+            "input_silver_schema": None,
+            "input_bronze_schema": None,
+            "input_gold_schema": None,
+            "output_schema": None,
+        }
 
-    return {
-        "data_source": data_source,
-        "local_data_dir": get_local_data_dir(),
-        "local_data_source": get_local_data_source(),
-        "duckdb_path": duckdb_path,
-        "duckdb_medallion_schema": get_duckdb_medallion_schema(),
-        "input_silver_schema": input_silver_schema,
-        "input_bronze_schema": input_bronze_schema,
-        "input_gold_schema": input_gold_schema,
-        "output_schema": output_schema,
-        "on_databricks": is_running_on_databricks(),
-        "mlflow_tracking_uri": get_mlflow_tracking_uri(),
-        "mlflow_registry_uri": get_mlflow_registry_uri(),
-    }
+    return build_medallion_use_case_config(
+        data_source=data_source,
+        local_data_dir=get_local_data_dir(),
+        local_data_source=get_local_data_source(),
+        duckdb_path=duckdb_path,
+        duckdb_medallion_schema=get_duckdb_medallion_schema(),
+        uc_schema_fields=uc,
+    )
 
 
 def apply_mlflow_config(config: dict | None = None) -> None:

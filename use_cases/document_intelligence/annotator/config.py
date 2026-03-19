@@ -6,20 +6,14 @@ Aligns with the document intelligence pipeline: same base dir (DOCINT_BASE_DIR).
 - Save corrections to annotated/labels/. No ground-truth labels — prediction-only.
 """
 
-import os
 from pathlib import Path
 
-# Repo root for default base dir (annotator/config.py -> parents[3] = repo root)
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-_DEFAULT_BASE_DIR = _REPO_ROOT / "data" / "local" / "prescription_pdfs"
+from use_cases.document_intelligence.config import get_local_base_dir
 
 
 def get_base_dir() -> Path:
-    """Base directory (documents/, predictions/, annotated/). Override with DOCINT_BASE_DIR or LOCAL_DATA_PATH."""
-    p = os.environ.get("DOCINT_BASE_DIR") or os.environ.get(
-        "LOCAL_DATA_PATH", str(_DEFAULT_BASE_DIR)
-    )
-    return Path(p).resolve()
+    """Same as document_intelligence.get_local_base_dir; kept for annotator callers."""
+    return get_local_base_dir()
 
 
 BASE_DIR = get_base_dir()

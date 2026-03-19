@@ -7,20 +7,19 @@ MLflow: see utils.mlflow.config (local SQLite vs Databricks workspace).
 from pathlib import Path
 from typing import Literal
 
-from utils.env_utils import is_running_on_databricks
 from utils.use_case_utils import apply_mlflow_config as _apply_mlflow_config
 from utils.use_case_utils import (
+    build_medallion_use_case_config,
     ensure_experiment_artifact_root as _ensure_experiment_artifact_root,
-)
-from utils.use_case_utils import get_catalog_schema as _get_catalog_schema
-from utils.use_case_utils import (
+    get_catalog_schema as _get_catalog_schema,
     get_duckdb_medallion_schema as _get_duckdb_medallion_schema,
+    get_duckdb_path as _get_duckdb_path,
+    get_local_data_dir as _get_local_data_dir,
+    get_local_data_source as _get_local_data_source,
+    get_mlflow_registry_uri as _get_mlflow_registry_uri,
+    require_env_non_empty,
+    resolve_data_source,
 )
-from utils.use_case_utils import get_duckdb_path as _get_duckdb_path
-from utils.use_case_utils import get_local_data_dir as _get_local_data_dir
-from utils.use_case_utils import get_local_data_source as _get_local_data_source
-from utils.use_case_utils import get_mlflow_registry_uri as _get_mlflow_registry_uri
-from utils.use_case_utils import get_mlflow_tracking_uri, resolve_data_source
 
 DataSource = Literal["local", "catalog", "auto"]
 
@@ -76,15 +75,11 @@ def get_input_silver_schema() -> str:
     Unity Catalog *input* schema for silver tables (shared medallion).
     Override with RECO_INPUT_SILVER_SCHEMA.
     """
-    import os
-
-    raw = os.environ.get("RECO_INPUT_SILVER_SCHEMA", "").strip()
-    if not raw:
-        raise RuntimeError(
-            "RECO_INPUT_SILVER_SCHEMA is required when RECO_DATA_SOURCE=catalog "
-            "(e.g. workspace.healthcare_medallion_dev_silver)."
-        )
-    return raw
+    return require_env_non_empty(
+        "RECO_INPUT_SILVER_SCHEMA",
+        detail="when RECO_DATA_SOURCE=catalog "
+        "(e.g. workspace.healthcare_medallion_dev_silver).",
+    )
 
 
 def get_output_schema() -> str:
@@ -92,19 +87,14 @@ def get_output_schema() -> str:
     Unity Catalog *output* schema for reco-owned tables.
     Override with RECO_OUTPUT_SCHEMA.
     """
-    import os
-
-    raw = os.environ.get("RECO_OUTPUT_SCHEMA", "").strip()
-    if not raw:
-        raise RuntimeError(
-            "RECO_OUTPUT_SCHEMA is required when RECO_DATA_SOURCE=catalog "
-            "(e.g. workspace.recommendation_engine_dev)."
-        )
-    return raw
+    return require_env_non_empty(
+        "RECO_OUTPUT_SCHEMA",
+        detail="when RECO_DATA_SOURCE=catalog "
+        "(e.g. workspace.recommendation_engine_dev).",
+    )
 
 
-# MLflow tracking/artifact/experiment helpers: delegated to shared config (local vs Databricks)
-# get_mlflow_tracking_uri, get_mlflow_artifact_root, ensure_experiment_artifact_root imported above
+# MLflow tracking/artifact/experiment: see utils.mlflow.config and build_medallion_use_case_config.
 
 
 def get_mlflow_registry_uri() -> str | None:
@@ -150,22 +140,19 @@ def get_config() -> dict:
     """
     data_source = get_data_source()
     duckdb_path = get_duckdb_path()
-
-    input_silver_schema: str | None = None
-    output_schema: str | None = None
     if data_source == "catalog":
-        input_silver_schema = get_input_silver_schema()
-        output_schema = get_output_schema()
+        uc = {
+            "input_silver_schema": get_input_silver_schema(),
+            "output_schema": get_output_schema(),
+        }
+    else:
+        uc = {"input_silver_schema": None, "output_schema": None}
 
-    return {
-        "data_source": data_source,
-        "local_data_dir": get_local_data_dir(),
-        "local_data_source": get_local_data_source(),
-        "duckdb_path": duckdb_path,
-        "duckdb_medallion_schema": get_duckdb_medallion_schema(),
-        "input_silver_schema": input_silver_schema,
-        "output_schema": output_schema,
-        "on_databricks": is_running_on_databricks(),
-        "mlflow_tracking_uri": get_mlflow_tracking_uri(),
-        "mlflow_registry_uri": get_mlflow_registry_uri(),
-    }
+    return build_medallion_use_case_config(
+        data_source=data_source,
+        local_data_dir=get_local_data_dir(),
+        local_data_source=get_local_data_source(),
+        duckdb_path=duckdb_path,
+        duckdb_medallion_schema=get_duckdb_medallion_schema(),
+        uc_schema_fields=uc,
+    )
