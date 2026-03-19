@@ -16,8 +16,8 @@ variables:
     description: Unity Catalog for document medallion (future extension)
     default: workspace
   medallion_schema:
-    description: Catalog.schema for document intelligence tables (e.g. workspace.document_intelligence_medallion_dev)
-    default: workspace.document_intelligence_medallion_dev
+    description: Catalog.schema for document intelligence tables (e.g. workspace.document_intelligence_dev)
+    default: workspace.document_intelligence_dev
   workspace_root:
     description: Workspace path where bundle is deployed (for PYTHONPATH)
     default: ""
@@ -32,10 +32,10 @@ variables:
     default: catalog
   docint_catalog_schema:
     description: Unity Catalog schema for doc intelligence tables (e.g. silver_doc_pages, silver_doc_fields_extracted)
-    default: workspace.document_intelligence_medallion_dev
+    default: workspace.document_intelligence_dev
   docint_documents_volume:
-    description: UC managed volume path for prescription PDFs (e.g. /Volumes/workspace/document_intelligence/prescription_documents)
-    default: /Volumes/workspace/document_intelligence/prescription_documents
+    description: UC managed volume path for prescription PDFs (e.g. /Volumes/workspace/document_intelligence_dev/prescription_documents)
+    default: /Volumes/workspace/document_intelligence_dev/prescription_documents
 
 targets:
   dev-sp:
@@ -46,13 +46,13 @@ targets:
       root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
-      medallion_schema: workspace.document_intelligence_medallion_dev
+      medallion_schema: workspace.document_intelligence_dev
       workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
       docint_base_dir: /Workspace/Users/samhardyhey@gmail.com/data/local/prescription_pdfs
       docint_num_pdfs: "10"
       docint_data_source: catalog
-      docint_catalog_schema: workspace.document_intelligence_medallion_dev
-      docint_documents_volume: /Volumes/workspace/document_intelligence/prescription_documents
+      docint_catalog_schema: workspace.document_intelligence_dev
+      docint_documents_volume: /Volumes/workspace/document_intelligence_dev/prescription_documents
 
   test-sp:
     mode: development
@@ -61,13 +61,13 @@ targets:
       root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
-      medallion_schema: workspace.document_intelligence_medallion_test
+      medallion_schema: workspace.document_intelligence_test
       workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
       docint_base_dir: /Workspace/Users/samhardyhey@gmail.com/data/local/prescription_pdfs
       docint_num_pdfs: "10"
       docint_data_source: catalog
-      docint_catalog_schema: workspace.document_intelligence_medallion_test
-      docint_documents_volume: /Volumes/workspace/document_intelligence/prescription_documents
+      docint_catalog_schema: workspace.document_intelligence_test
+      docint_documents_volume: /Volumes/workspace/document_intelligence_test/prescription_documents
 
   prod-sp:
     mode: production
@@ -76,10 +76,10 @@ targets:
       root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
-      medallion_schema: workspace.document_intelligence_medallion_prod
+      medallion_schema: workspace.document_intelligence_prod
       workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
       docint_base_dir: /Workspace/Users/samhardyhey@gmail.com/data/local/prescription_pdfs
       docint_num_pdfs: "10"
       docint_data_source: catalog
-      docint_catalog_schema: workspace.document_intelligence_medallion_prod
-      docint_documents_volume: /Volumes/workspace/document_intelligence/prescription_documents
+      docint_catalog_schema: workspace.document_intelligence_prod
+      docint_documents_volume: /Volumes/workspace/document_intelligence_prod/prescription_documents

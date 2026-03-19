@@ -18,13 +18,27 @@ variables:
     description: Base Unity Catalog schema for medallion outputs (environment-specific)
     default: healthcare_medallion_dev
 
-  docint_volume_schema_name:
-    description: Unity Catalog schema used as the parent namespace for document-intelligence volumes
-    default: document_intelligence
+  # Use-case output schemas (environment-specific). Use-cases read from shared medallion
+  # but write all owned outputs into these schemas.
+  recommendation_engine_schema_name:
+    description: Output schema for recommendation_engine owned tables
+    default: recommendation_engine_dev
 
-  docint_medallion_schema_name:
-    description: Unity Catalog schema used for document-intelligence prediction tables
-    default: document_intelligence_medallion_dev
+  inventory_optimization_schema_name:
+    description: Output schema for inventory_optimization owned tables
+    default: inventory_optimization_dev
+
+  ai_powered_insights_schema_name:
+    description: Output schema for ai_powered_insights owned tables
+    default: ai_powered_insights_dev
+
+  document_intelligence_schema_name:
+    description: Output schema for document_intelligence owned tables
+    default: document_intelligence_dev
+
+  docint_volume_schema_name:
+    description: Unity Catalog schema used as the parent namespace for document-intelligence volumes (env-scoped)
+    default: document_intelligence_dev
 
 targets:
   dev-sp:
@@ -36,7 +50,11 @@ targets:
     variables:
       healthcare_raw_schema_name: healthcare_dev_raw
       healthcare_medallion_schema_name: healthcare_medallion_dev
-      docint_medallion_schema_name: document_intelligence_medallion_dev
+      recommendation_engine_schema_name: recommendation_engine_dev
+      inventory_optimization_schema_name: inventory_optimization_dev
+      ai_powered_insights_schema_name: ai_powered_insights_dev
+      document_intelligence_schema_name: document_intelligence_dev
+      docint_volume_schema_name: document_intelligence_dev
 
   test-sp:
     mode: development
@@ -46,7 +64,11 @@ targets:
     variables:
       healthcare_raw_schema_name: healthcare_test_raw
       healthcare_medallion_schema_name: healthcare_medallion_test
-      docint_medallion_schema_name: document_intelligence_medallion_test
+      recommendation_engine_schema_name: recommendation_engine_test
+      inventory_optimization_schema_name: inventory_optimization_test
+      ai_powered_insights_schema_name: ai_powered_insights_test
+      document_intelligence_schema_name: document_intelligence_test
+      docint_volume_schema_name: document_intelligence_test
 
   prod-sp:
     mode: production
@@ -56,5 +78,9 @@ targets:
     variables:
       healthcare_raw_schema_name: healthcare_prod_raw
       healthcare_medallion_schema_name: healthcare_medallion_prod
-      docint_medallion_schema_name: document_intelligence_medallion_prod
+      recommendation_engine_schema_name: recommendation_engine_prod
+      inventory_optimization_schema_name: inventory_optimization_prod
+      ai_powered_insights_schema_name: ai_powered_insights_prod
+      document_intelligence_schema_name: document_intelligence_prod
+      docint_volume_schema_name: document_intelligence_prod
 

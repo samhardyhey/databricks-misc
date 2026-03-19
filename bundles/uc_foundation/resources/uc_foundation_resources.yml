@@ -28,15 +28,30 @@ resources:
       catalog_name: ${var.catalog_name}
       comment: Medallion gold layer namespace
 
+    recommendation_engine:
+      name: ${var.recommendation_engine_schema_name}
+      catalog_name: ${var.catalog_name}
+      comment: recommendation_engine owned outputs (features, candidates, recommendations, evaluations)
+
+    inventory_optimization:
+      name: ${var.inventory_optimization_schema_name}
+      catalog_name: ${var.catalog_name}
+      comment: inventory_optimization owned outputs (scores, recommendations, evaluations)
+
+    ai_powered_insights:
+      name: ${var.ai_powered_insights_schema_name}
+      catalog_name: ${var.catalog_name}
+      comment: ai_powered_insights owned outputs (marts for dashboards/genie)
+
+    document_intelligence:
+      name: ${var.document_intelligence_schema_name}
+      catalog_name: ${var.catalog_name}
+      comment: document_intelligence owned outputs (prediction tables, labels, evaluation)
+
     document_intelligence_volume_namespace:
       name: ${var.docint_volume_schema_name}
       catalog_name: ${var.catalog_name}
-      comment: Parent schema for document-intelligence managed volumes
-
-    document_intelligence_medallion:
-      name: ${var.docint_medallion_schema_name}
-      catalog_name: ${var.catalog_name}
-      comment: Document-intelligence prediction tables namespace
+      comment: Parent schema for document-intelligence managed volumes (env-scoped)
 
   volumes:
     prescription_documents:

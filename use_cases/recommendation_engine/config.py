@@ -71,6 +71,54 @@ def get_catalog_schema() -> str:
     return _get_catalog_schema(env_var_name="RECO_CATALOG_SCHEMA")
 
 
+def get_input_silver_schema() -> str:
+    """
+    Unity Catalog *input* schema for silver tables (shared medallion).
+    Override with RECO_INPUT_SILVER_SCHEMA.
+    """
+    import os
+
+    raw = os.environ.get("RECO_INPUT_SILVER_SCHEMA", "").strip()
+    if not raw:
+        raise RuntimeError(
+            "RECO_INPUT_SILVER_SCHEMA is required when RECO_DATA_SOURCE=catalog "
+            "(e.g. workspace.healthcare_medallion_dev_silver)."
+        )
+    return raw
+
+
+def get_input_gold_schema() -> str:
+    """
+    Unity Catalog *input* schema for gold tables (shared medallion).
+    Override with RECO_INPUT_GOLD_SCHEMA.
+    """
+    import os
+
+    raw = os.environ.get("RECO_INPUT_GOLD_SCHEMA", "").strip()
+    if not raw:
+        raise RuntimeError(
+            "RECO_INPUT_GOLD_SCHEMA is required when RECO_DATA_SOURCE=catalog "
+            "(e.g. workspace.healthcare_medallion_dev_gold)."
+        )
+    return raw
+
+
+def get_output_schema() -> str:
+    """
+    Unity Catalog *output* schema for reco-owned tables.
+    Override with RECO_OUTPUT_SCHEMA.
+    """
+    import os
+
+    raw = os.environ.get("RECO_OUTPUT_SCHEMA", "").strip()
+    if not raw:
+        raise RuntimeError(
+            "RECO_OUTPUT_SCHEMA is required when RECO_DATA_SOURCE=catalog "
+            "(e.g. workspace.recommendation_engine_dev)."
+        )
+    return raw
+
+
 # MLflow tracking/artifact/experiment helpers: delegated to shared config (local vs Databricks)
 # get_mlflow_tracking_uri, get_mlflow_artifact_root, ensure_experiment_artifact_root imported above
 
@@ -110,7 +158,9 @@ def get_config() -> dict:
     - local_data_source: 'duckdb' | 'csv' (when data_source == 'local': prefer DuckDB medallion)
     - duckdb_path: Path | None (when local and DuckDB file exists)
     - duckdb_medallion_schema: str (base schema for DuckDB, e.g. healthcare_medallion_local)
-    - catalog_schema: str (used when data_source == 'catalog')
+    - input_silver_schema: str (UC schema for shared medallion silver inputs)
+    - input_gold_schema: str (UC schema for shared medallion gold inputs)
+    - output_schema: str (UC schema for reco-owned outputs)
     - on_databricks: bool (is_running_on_databricks())
     - mlflow_tracking_uri: str | None
     - mlflow_registry_uri: str | None
@@ -123,7 +173,9 @@ def get_config() -> dict:
         "local_data_source": get_local_data_source(),
         "duckdb_path": duckdb_path,
         "duckdb_medallion_schema": get_duckdb_medallion_schema(),
-        "catalog_schema": get_catalog_schema(),
+        "input_silver_schema": get_input_silver_schema(),
+        "input_gold_schema": get_input_gold_schema(),
+        "output_schema": get_output_schema(),
         "on_databricks": is_running_on_databricks(),
         "mlflow_tracking_uri": get_mlflow_tracking_uri(),
         "mlflow_registry_uri": get_mlflow_registry_uri(),
