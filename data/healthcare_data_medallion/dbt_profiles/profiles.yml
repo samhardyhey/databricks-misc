@@ -6,7 +6,7 @@ databricks:
     dev-sp:
       type: databricks
       method: http
-      catalog: workspace
+      catalog: ebos_uc_demo
       schema: "healthcare_medallion_dev"
       http_path: /sql/1.0/warehouses/2a475c6457a76313
       host: "{{ env_var('DBT_HOST') }}"
@@ -14,7 +14,7 @@ databricks:
     test-sp:
       type: databricks
       method: http
-      catalog: workspace
+      catalog: ebos_uc_demo
       schema: "healthcare_medallion_test"
       http_path: /sql/1.0/warehouses/2a475c6457a76313
       host: "{{ env_var('DBT_HOST') }}"
@@ -22,7 +22,7 @@ databricks:
     prod-sp:
       type: databricks
       method: http
-      catalog: workspace
+      catalog: ebos_uc_demo
       schema: "healthcare_medallion_prod"
       http_path: /sql/1.0/warehouses/2a475c6457a76313
       host: "{{ env_var('DBT_HOST') }}"
@@ -31,7 +31,7 @@ databricks:
     dev:
       type: databricks
       method: http
-      catalog: workspace
+      catalog: ebos_uc_demo
       schema: "healthcare_medallion_dev"
       http_path: /sql/1.0/warehouses/2a475c6457a76313
       host: "{{ env_var('DBT_HOST') }}"
@@ -39,7 +39,7 @@ databricks:
     prod:
       type: databricks
       method: http
-      catalog: workspace
+      catalog: ebos_uc_demo
       schema: "healthcare_medallion_prod"
       http_path: /sql/1.0/warehouses/2a475c6457a76313
       host: "{{ env_var('DBT_HOST') }}"

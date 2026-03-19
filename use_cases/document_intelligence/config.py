@@ -18,9 +18,9 @@ from utils.use_case_utils import get_env_str, resolve_data_source, resolve_local
 _DEFAULT_LOCAL_BASE_DIR = (
     Path(__file__).resolve().parents[2] / "data" / "local" / "prescription_pdfs"
 )
-_DEFAULT_CATALOG_SCHEMA = "workspace.document_intelligence_dev"
+_DEFAULT_CATALOG_SCHEMA = "ebos_uc_demo.document_intelligence_dev"
 _DEFAULT_DOCUMENTS_VOLUME_PATH = (
-    "/Volumes/workspace/document_intelligence_dev/prescription_documents"
+    "/Volumes/ebos_uc_demo/document_intelligence_dev/prescription_documents"
 )
 
 DataSource = Literal["local", "catalog", "auto"]

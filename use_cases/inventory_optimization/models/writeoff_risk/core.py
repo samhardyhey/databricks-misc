@@ -107,6 +107,36 @@ def build_writeoff_risk_features(
     return inv
 
 
+# When the label is a direct function of days_until_expiry, that column must not be in X.
+_EXCLUDE_FROM_FEATURES = {
+    "will_expire_30d": {"days_until_expiry"},
+}
+
+
+def default_writeoff_feature_columns(df: pd.DataFrame) -> list[str]:
+    """Non-leaky numeric/categorical columns for ``will_expire_30d`` (demo / inventory snapshot)."""
+    base = [
+        "current_stock",
+        "stock_pct",
+        "forecast_demand_30d",
+        "turnover_rate",
+        "month",
+    ]
+    out = [c for c in base if c in df.columns]
+    for c in ("therapeutic_category", "category"):
+        if c in df.columns and c not in out:
+            out.append(c)
+    return out
+
+
+def writeoff_inference_feature_columns(
+    df: pd.DataFrame, target_col: str = "will_expire_30d"
+) -> list[str]:
+    """Match train-time feature selection for batch scoring (excludes leaky columns for target)."""
+    banned = _EXCLUDE_FROM_FEATURES.get(target_col, set())
+    return [c for c in default_writeoff_feature_columns(df) if c not in banned]
+
+
 def train_writeoff_risk_classifier(
     features_df: pd.DataFrame,
     target_col: str = "will_expire_30d",
@@ -115,10 +145,19 @@ def train_writeoff_risk_classifier(
     random_state: int = 42,
 ):
     """
-    Train binary classifier for 'will expire in next 30 days'.
-    Returns (model, feature_cols_used, metrics_dict).
+    Train binary classifier for ``will_expire_30d`` (label built from ``days_until_expiry`` elsewhere).
+
+    **Feature hygiene:** ``days_until_expiry`` is excluded from training features when the target is
+    ``will_expire_30d``, since the label is defined from the same quantity (avoids trivial leakage).
+    For production, prefer labels derived from historical write-off events at an explicit as-of date.
     """
-    from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+    from sklearn.metrics import (
+        accuracy_score,
+        average_precision_score,
+        f1_score,
+        precision_score,
+        recall_score,
+    )
     from sklearn.model_selection import train_test_split
 
     try:
@@ -136,19 +175,23 @@ def train_writeoff_risk_classifier(
     if target_col not in df.columns:
         raise ValueError(f"Target column {target_col} not in DataFrame")
 
-    default_features = [
-        "days_until_expiry",
-        "current_stock",
-        "stock_pct",
-        "forecast_demand_30d",
-        "turnover_rate",
-        "month",
-    ]
-    feature_cols = feature_cols or [c for c in default_features if c in df.columns]
+    banned = _EXCLUDE_FROM_FEATURES.get(target_col, set())
+    if feature_cols is None:
+        feature_cols = default_writeoff_feature_columns(df)
+    feature_cols = [c for c in feature_cols if c not in banned]
+
+    if not feature_cols:
+        raise ValueError("No feature columns left after excluding leaky columns; check input schema.")
+
     df = df.dropna(subset=feature_cols + [target_col])
     if len(df) < 20:
         logger.warning("Very few rows after dropna; consider relaxing features")
-    X = df[feature_cols]
+
+    X = df[feature_cols].copy()
+    for c in X.columns:
+        if X[c].dtype not in (object,) and str(X[c].dtype) != "category":
+            X[c] = pd.to_numeric(X[c], errors="coerce").fillna(0.0)
+
     y = df[target_col].astype(int)
     X_train, X_test, y_train, y_test = train_test_split(
         X,
@@ -158,18 +201,56 @@ def train_writeoff_risk_classifier(
         stratify=y if y.nunique() > 1 else None,
     )
 
-    model = model_cls(**model_kw)
+    obj_cols = [
+        c
+        for c in feature_cols
+        if X_train[c].dtype == object or str(X_train[c].dtype) == "category"
+    ]
+    num_cols = [c for c in feature_cols if c not in obj_cols]
 
-    model.fit(X_train, y_train)
-    pred = model.predict(X_test)
+    if obj_cols:
+        from sklearn.compose import ColumnTransformer
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import OrdinalEncoder
+
+        parts = [
+            (
+                "cat",
+                OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1),
+                obj_cols,
+            ),
+        ]
+        if num_cols:
+            parts.append(("num", "passthrough", num_cols))
+        preprocess = ColumnTransformer(transformers=parts)
+        model: object = Pipeline(
+            [("prep", preprocess), ("clf", model_cls(**model_kw))]
+        )
+        model.fit(X_train, y_train)
+        pred = model.predict(X_test)
+        proba = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else None
+    else:
+        estimator = model_cls(**model_kw)
+        model = estimator
+        model.fit(X_train, y_train)
+        pred = model.predict(X_test)
+        proba = (
+            model.predict_proba(X_test)[:, 1]
+            if hasattr(model, "predict_proba")
+            else None
+        )
+
     metrics = {
         "accuracy": float(accuracy_score(y_test, pred)),
         "f1": float(f1_score(y_test, pred, zero_division=0)),
         "precision": float(precision_score(y_test, pred, zero_division=0)),
         "recall": float(recall_score(y_test, pred, zero_division=0)),
+        "positive_rate_holdout": float(y_test.mean()),
     }
+    if proba is not None:
+        metrics["pr_auc"] = float(average_precision_score(y_test, proba))
     logger.info("Write-off risk classifier metrics: {}", metrics)
-    return model, feature_cols, metrics
+    return model, list(feature_cols), metrics
 
 
 def predict_writeoff_risk(
@@ -178,7 +259,12 @@ def predict_writeoff_risk(
     feature_cols: list[str],
 ) -> pd.Series:
     """Predict probability or class for write-off risk."""
-    X = features_df[feature_cols].fillna(0)
+    X = features_df[feature_cols].copy()
+    for c in X.columns:
+        if X[c].dtype == object or str(X[c].dtype) == "category":
+            X[c] = X[c].astype(str).replace({"nan": "", "None": ""})
+        else:
+            X[c] = pd.to_numeric(X[c], errors="coerce").fillna(0.0)
     if hasattr(model, "predict_proba"):
         return pd.Series(model.predict_proba(X)[:, 1], index=features_df.index)
     return pd.Series(model.predict(X), index=features_df.index)

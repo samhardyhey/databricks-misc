@@ -5,6 +5,13 @@ resources:
     recommendation_engine_item_similarity_retrain:
       name: recommendation_engine_item_similarity_retrain
       description: "Retrain item-to-item similarity model (sklearn / MLflow)"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 5 6 * * ?"  # daily 6:05am (after build_training_base ~5:50)
@@ -38,6 +45,13 @@ resources:
     recommendation_engine_als_retrain:
       name: recommendation_engine_als_retrain
       description: "Retrain ALS collaborative filtering model"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 8 6 * * ?"  # daily 6:08am
@@ -71,6 +85,13 @@ resources:
     recommendation_engine_lightfm_retrain:
       name: recommendation_engine_lightfm_retrain
       description: "Retrain LightFM recommender for recommendation engine"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 15 6 * * ?"  # daily 6:15am
@@ -104,6 +125,13 @@ resources:
     recommendation_engine_ranker_retrain:
       name: recommendation_engine_ranker_retrain
       description: "Retrain ranker recommender for recommendation engine"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 20 6 * * ?"  # daily 6:20am
@@ -137,6 +165,13 @@ resources:
     recommendation_engine_retrain:
       name: recommendation_engine_retrain
       description: "Integration / smoke: run_reco_smoke (all models). Prefer per-model retrain jobs for production."
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 25 6 * * ?"  # after per-model retrains; optional CI/nightly smoke

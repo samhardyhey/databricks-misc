@@ -14,13 +14,16 @@ sync:
 variables:
   catalog:
     description: Unity Catalog for medallion (reco reads from medallion schema)
-    default: workspace
+    default: ebos_uc_demo
+  tag_environment:
+    description: Deployment tier for job tags (dev / test / prod)
+    default: dev
   medallion_silver_schema:
-    description: Shared medallion silver schema (inputs), e.g. workspace.healthcare_medallion_dev_silver
-    default: workspace.healthcare_medallion_dev_silver
+    description: Shared medallion silver schema (inputs), e.g. ebos_uc_demo.healthcare_medallion_dev_silver
+    default: ebos_uc_demo.healthcare_medallion_dev_silver
   output_schema:
-    description: Reco-owned output schema, e.g. workspace.recommendation_engine_dev
-    default: workspace.recommendation_engine_dev
+    description: Reco-owned output schema, e.g. ebos_uc_demo.recommendation_engine_dev
+    default: ebos_uc_demo.recommendation_engine_dev
   workspace_root:
     description: Workspace path where bundle is deployed (for PYTHONPATH)
     default: ""
@@ -36,9 +39,10 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
-      medallion_silver_schema: workspace.healthcare_medallion_dev_silver
-      output_schema: workspace.recommendation_engine_dev
+      catalog: ebos_uc_demo
+      tag_environment: dev
+      medallion_silver_schema: ebos_uc_demo.healthcare_medallion_dev_silver
+      output_schema: ebos_uc_demo.recommendation_engine_dev
       workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-RECO-DEV-SP>
     run_as:
@@ -55,9 +59,10 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
-      medallion_silver_schema: workspace.healthcare_medallion_test_silver
-      output_schema: workspace.recommendation_engine_test
+      catalog: ebos_uc_demo
+      tag_environment: test
+      medallion_silver_schema: ebos_uc_demo.healthcare_medallion_test_silver
+      output_schema: ebos_uc_demo.recommendation_engine_test
       workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-RECO-TEST-SP>
     run_as:
@@ -74,9 +79,10 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
-      medallion_silver_schema: workspace.healthcare_medallion_prod_silver
-      output_schema: workspace.recommendation_engine_prod
+      catalog: ebos_uc_demo
+      tag_environment: prod
+      medallion_silver_schema: ebos_uc_demo.healthcare_medallion_prod_silver
+      output_schema: ebos_uc_demo.recommendation_engine_prod
       workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-RECO-PROD-SP>
     run_as:

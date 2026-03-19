@@ -3,6 +3,13 @@ resources:
   jobs:
     healthcare_data_generator_job:
       name: healthcare_data_generator_job
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: healthcare_data_generator
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         # Run this job every 15 minutes to simulate high-frequency system

@@ -14,7 +14,7 @@ prompts:
     default: /sql/1.0/warehouses/2a475c6457a76313
   catalog:
     hint: 'initial catalog'
-    default: workspace
+    default: ebos_uc_demo
   schema:
     hint: 'default schema where dbt will build objects'
     default: default

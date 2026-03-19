@@ -26,6 +26,7 @@ from use_cases.inventory_optimization.models.data_loading import load_inventory_
 from use_cases.inventory_optimization.models.writeoff_risk.core import (
     build_writeoff_risk_features,
     predict_writeoff_risk,
+    writeoff_inference_feature_columns,
 )
 from utils.env_utils import is_running_on_databricks
 
@@ -91,18 +92,7 @@ def main(model_uri: Optional[str] = None) -> pd.DataFrame:
         if spark is not None:
             spark.stop()
         return pd.DataFrame()
-    feature_cols = [
-        c
-        for c in [
-            "days_until_expiry",
-            "current_stock",
-            "stock_pct",
-            "forecast_demand_30d",
-            "turnover_rate",
-            "month",
-        ]
-        if c in features_df.columns
-    ]
+    feature_cols = writeoff_inference_feature_columns(features_df)
     scores = predict_writeoff_risk(model, features_df, feature_cols)
     out = features_df.copy()
     out["writeoff_risk_score"] = scores

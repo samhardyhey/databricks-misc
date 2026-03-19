@@ -8,10 +8,10 @@ Single reference for **where data lives** (Unity Catalog layout, data flow), **w
 
 ## 1. Unity Catalog layout
 
-- **Catalog:** `workspace` (single catalog for now).
+- **Catalog:** `ebos_uc_demo` — shared Unity Catalog for **demonstration / multi-use-case** artefacts (not per-project prod isolation). Create the catalog in the workspace if it does not exist before first deploy.
 - **Shared (platform):** Raw `healthcare_<env>_raw`; medallion `healthcare_medallion_<env>_{bronze,silver,gold}`. Use-case code **never** writes here; they only read.
 - **Use-case schemas:** `recommendation_engine_<env>`, `inventory_optimization_<env>`, `ai_powered_insights_<env>`, `document_intelligence_<env>`. Each use-case writes only to its own schema.
-- **Volumes:** Doc-intel PDFs in `/Volumes/workspace/document_intelligence_<env>/prescription_documents` (env-scoped).
+- **Volumes:** Doc-intel PDFs in `/Volumes/ebos_uc_demo/document_intelligence_<env>/prescription_documents` (env-scoped).
 
 **Provisioning:** `bundles/uc_foundation/` creates all schemas and the doc-intel volume. Deploy first: `make uc-foundation-deploy` (override target with `UC_FOUNDATION_TARGET=test-sp`).
 

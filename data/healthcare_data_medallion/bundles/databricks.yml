@@ -12,8 +12,11 @@ sync:
 
 variables:
   catalog:
-    description: Unity Catalog for medallion output
-    default: workspace
+    description: Unity Catalog for medallion output (demonstration shared catalog)
+    default: ebos_uc_demo
+  tag_environment:
+    description: Deployment tier for job tags (dev / test / prod)
+    default: dev
   source_schema:
     description: Schema containing raw healthcare tables (e.g. healthcare_dev_raw)
     default: healthcare_dev_raw
@@ -35,7 +38,8 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
+      catalog: ebos_uc_demo
+      tag_environment: dev
       source_schema: healthcare_dev_raw
       medallion_schema: healthcare_medallion_dev
       workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
@@ -54,7 +58,8 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
+      catalog: ebos_uc_demo
+      tag_environment: test
       source_schema: healthcare_test_raw
       medallion_schema: healthcare_medallion_test
       workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
@@ -73,7 +78,8 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
+      catalog: ebos_uc_demo
+      tag_environment: prod
       source_schema: healthcare_prod_raw
       medallion_schema: healthcare_medallion_prod
       workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}

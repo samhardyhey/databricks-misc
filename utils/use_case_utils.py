@@ -22,7 +22,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Defaults (can be overridden via env vars)
 DEFAULT_LOCAL_DATA_DIR = _REPO_ROOT / "data" / "local"
-DEFAULT_CATALOG_SCHEMA = "workspace.healthcare_medallion"
+DEFAULT_CATALOG_SCHEMA = "ebos_uc_demo.healthcare_medallion"
 DEFAULT_DUCKDB_MEDALLION_SCHEMA = "healthcare_medallion_local"
 DEFAULT_DUCKDB_PATH = DEFAULT_LOCAL_DATA_DIR / "medallion.duckdb"
 

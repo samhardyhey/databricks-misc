@@ -1,17 +1,19 @@
 """
 Field extraction / structuring for prescription documents.
 
-MVP behaviour:
-- Load JSON labels from config["labels_dir"] (ground truth) or config["annotated_dir"]
-  when present.
-- Flatten them into a tabular structure that mirrors the target gold_doc_labels schema.
+1. **OCR + spaCy (preferred in ``auto``)** — When ``predictions/ocr/*.json`` exists and
+   spaCy is installed, run ``spacy_ner_pipeline.extract_fields_from_ocr`` (pretrained
+   ``en_core_web_sm`` NER + AU-style regex helpers). No trained model in-repo; this is
+   *apply* only.
 
-Later this module can be extended with actual NER / parsing models that read from
-OCR output and write predicted fields; the interface (run_field_extraction) stays
-the same so jobs and orchestration do not change.
+2. **Labels fallback** — Load JSON labels from ``labels_dir`` / ``annotated_dir`` for
+   demos or when OCR/spaCy is unavailable.
+
+``DOCINT_FIELD_SOURCE``: ``auto`` (default) | ``ocr`` | ``labels``.
 """
 
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -70,11 +72,34 @@ def _flatten_label(doc_id: str, data: dict) -> dict:
 
 def run_field_extraction(config: dict) -> pd.DataFrame:
     """
-    Build a tabular view of prescription fields from labels/annotations.
-
-    Prefers annotated_dir (if it exists and has labels/) and falls back to
-    labels_dir (generator output).
+    Build a tabular view of prescription fields: spaCy+rules on OCR when configured,
+    else JSON labels.
     """
+    mode = os.environ.get("DOCINT_FIELD_SOURCE", "auto").strip().lower()
+
+    if mode in ("auto", "ocr"):
+        from use_cases.document_intelligence.spacy_ner_pipeline import (
+            extract_fields_from_ocr,
+        )
+
+        spacy_df = extract_fields_from_ocr(config)
+        if not spacy_df.empty:
+            logger.info(
+                "Field extraction via spaCy/rules on OCR ({} rows); DOCINT_FIELD_SOURCE={}",
+                len(spacy_df),
+                mode,
+            )
+            from use_cases.document_intelligence.predictions_io import write_field_output
+
+            write_field_output(config, spacy_df.drop(columns=["extraction_method"], errors="ignore"))
+            return spacy_df.drop(columns=["extraction_method"], errors="ignore")
+        if mode == "ocr":
+            logger.warning(
+                "DOCINT_FIELD_SOURCE=ocr but spaCy extraction produced no rows "
+                "(install spaCy + en_core_web_sm, run OCR job first)."
+            )
+            return pd.DataFrame()
+
     labels_dir: Path = config["labels_dir"]
     annotated_dir: Path = config["annotated_dir"] / "labels"
 
@@ -82,7 +107,10 @@ def run_field_extraction(config: dict) -> pd.DataFrame:
     if source_dir == annotated_dir:
         logger.info("Using annotated labels from {}", annotated_dir)
     else:
-        logger.info("Using generator labels from {}", labels_dir)
+        logger.info(
+            "Using generator labels from {} (OCR/spaCy unavailable or empty; auto fallback)",
+            labels_dir,
+        )
 
     raw_rows = _load_labels_dir(source_dir)
     flat_rows = [_flatten_label(r["doc_id"], r["raw"]) for r in raw_rows]

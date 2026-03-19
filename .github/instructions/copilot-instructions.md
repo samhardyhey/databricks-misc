@@ -19,7 +19,7 @@ applyTo: '**'
 - Development Model: Local development with Databricks Connect for remote execution
   - use the `databricks-misc` conda env for any local run/dev
 - Data Governance: Unity Catalog with three-level namespace (catalog.schema.table)
-  - currently using the `workspace.default` catalog/schema
+  - Unity Catalog demo catalog `ebos_uc_demo` (schemas per env/use-case); models often registered under `ebos_uc_demo.default`
 
 ### Code/Infrastructure Guidelines
 - File Organization: Use flat structures where possible for Databricks compatibility

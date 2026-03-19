@@ -4,7 +4,7 @@ Document intelligence smoke test (local).
 Runs the full local pipeline:
 1) generate prescription PDFs + JSON labels
 2) OCR extraction
-3) field extraction (OCR + proxy NER)
+3) field extraction (OCR + spaCy/rules when OCR exists, else label fallback)
 4) optionally start the Streamlit annotator app (interactive)
 
 This is a lightweight orchestration wrapper intended for quick verification after changes.

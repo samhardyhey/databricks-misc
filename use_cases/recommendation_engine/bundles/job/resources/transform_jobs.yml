@@ -6,6 +6,13 @@ resources:
     recommendation_engine_build_training_base:
       name: recommendation_engine_build_training_base
       description: "Build gold_reco_training_base from medallion silver (use-case transform; run before retrain)"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 50 5 * * ?"  # 5:50am; retrain at 6am

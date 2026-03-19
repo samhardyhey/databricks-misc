@@ -7,8 +7,10 @@ include:
 
 variables:
   catalog_name:
-    description: Unity Catalog name used across the repo
-    default: workspace
+    description: >
+      Shared Unity Catalog for EBOS DS/ML demonstration use-cases (multi-use-case repo).
+      Distinct from per-project production catalogs; see docs/DATA_AND_PLATFORM.md.
+    default: ebos_uc_demo
 
   healthcare_raw_schema_name:
     description: Unity Catalog schema for raw generator outputs

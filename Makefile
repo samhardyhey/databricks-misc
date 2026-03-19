@@ -32,12 +32,13 @@ DOC_INTEL_PDF_OUTPUT := data/local/prescription_pdfs
 MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
 MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
+.PHONY: help test test-use-cases test-reco test-inventory test-doc-intel test-ai-insights
 .PHONY: help cleanup clean-local-data format uc-foundation-deploy
 .PHONY: dab-list dab-workspace-print dab-validate dab-deploy dab-run
 .PHONY: foundation-dab-validate-uc foundation-dab-deploy-uc
 .PHONY: data-dab-validate-generator data-dab-deploy-generator data-dab-run-generator
 .PHONY: data-dab-validate-medallion data-dab-deploy-medallion data-dab-run-medallion
-.PHONY: data-local-clean data-local-e2e
+.PHONY: data-local-clean data-local-e2e use-cases-local-e2e
 .PHONY: doc-intel-local-install doc-intel-local-generate-data doc-intel-local-ocr doc-intel-local-field-extraction doc-intel-local-app-run doc-intel-local-smoke doc-intel-local-generate-pdfs
 .PHONY: doc-intel-dab-validate doc-intel-dab-deploy doc-intel-dab-run-generate doc-intel-dab-run-pipeline
 .PHONY: reco-local-install reco-local-data reco-local-run reco-local-e2e reco-local-item-sim-train reco-local-item-sim-apply reco-local-als-train reco-local-als-apply reco-local-lightfm-train reco-local-lightfm-apply reco-local-ranker-train reco-local-ranker-apply reco-local-app-run
@@ -55,14 +56,21 @@ MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 .PHONY: mlflow-ui mlflow-wipe
 .PHONY: marvelous-mlops-venv marvelous-mlops-fetch-medium marvelous-mlops-fetch-substack marvelous-mlops-fetch-youtube
 .PHONY: uv-venv uv-sync install uv-dev uv-activate
+.PHONY: bootstrap-system-tools bootstrap-system-tools-uv bootstrap-system-tools-databricks
 
 help:
 	@echo "Targets:"
 	@echo "  ## Local env/util"
 	@echo "  make uv-venv              - Create .venv (uses uv if available, else python3 -m venv)"
 	@echo "  make uv-sync / install     - Install deps; use install then uv-dev for dev tools"
-	@echo "  make uv-dev               - Install dev deps (autoflake, isort, black)"
+	@echo "  make uv-dev               - Install dev deps (autoflake, isort, black, pytest)"
+	@echo "  make test / test-use-cases - pytest nominal tests for all use cases (requires uv-dev)"
+	@echo "  make test-reco             - pytest recommendation_engine/tests only"
+	@echo "  make test-inventory       - pytest inventory_optimization/tests only"
+	@echo "  make test-doc-intel       - pytest document_intelligence/tests only"
+	@echo "  make test-ai-insights     - pytest ai_powered_insights/tests only"
 	@echo "  make uv-activate          - Print activate command for .venv"
+	@echo "  make bootstrap-system-tools - Chicken/egg: uv + Databricks CLI into \$$HOME/.local/bin (curl/unzip; override DATABRICKS_CLI_VERSION=)"
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
 	@echo "  make format [FMT_ARGS=.]  - Run autoflake, isort, black"
 	@echo "  make mlflow-ui            - Start MLflow UI (utils.mlflow, local only); http://localhost:5001"
@@ -86,6 +94,7 @@ help:
 	@echo "  make data-local-dbt-run         - Load data/local into DuckDB then run medallion dbt"
 	@echo "  make data-local-dbt-test        - Build medallion (dbt run) then run dbt tests (referential integrity, etc.)"
 	@echo "  make data-local-e2e             - End-to-end local: clean -> generate -> duckdb-load -> dbt-run -> dbt-test"
+	@echo "  make use-cases-local-e2e        - data-local-e2e then reco, inventory, doc-intel local e2e (sequential)"
 	@echo ""
 	@echo "  make data-dab-validate-generator - Validate healthcare data generator bundle"
 	@echo "  make data-dab-deploy-generator   - Deploy healthcare data generator bundle"
@@ -164,7 +173,7 @@ uv-venv:
 uv-sync:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
 	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync || .venv/bin/pip install -e .)
-	@echo "Deps installed. For dev tools (autoflake, isort, black): make uv-dev"
+	@echo "Deps installed. For dev tools (format + pytest): make uv-dev"
 
 install: uv-sync
 
@@ -175,6 +184,88 @@ uv-dev:
 
 uv-activate:
 	@echo "Run: source $(REPO_ROOT)/.venv/bin/activate"
+
+# --- Use-case nominal tests (pytest; install dev extra first: make uv-dev) ---
+test: test-use-cases
+
+test-use-cases:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make uv-dev first" && exit 1)
+	$(PY) -m pytest \
+		$(REPO_ROOT)/use_cases/recommendation_engine/tests \
+		$(REPO_ROOT)/use_cases/inventory_optimization/tests \
+		$(REPO_ROOT)/use_cases/document_intelligence/tests \
+		$(REPO_ROOT)/use_cases/ai_powered_insights/tests \
+		-q
+
+test-reco:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make uv-dev first" && exit 1)
+	$(PY) -m pytest $(REPO_ROOT)/use_cases/recommendation_engine/tests -q
+
+test-inventory:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make uv-dev first" && exit 1)
+	$(PY) -m pytest $(REPO_ROOT)/use_cases/inventory_optimization/tests -q
+
+test-doc-intel:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make uv-dev first" && exit 1)
+	$(PY) -m pytest $(REPO_ROOT)/use_cases/document_intelligence/tests -q
+
+test-ai-insights:
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make uv-dev first" && exit 1)
+	$(PY) -m pytest $(REPO_ROOT)/use_cases/ai_powered_insights/tests -q
+
+# --- Bootstrap OS-level tools (before uv-venv / databricks bundle) ---
+# Default CLI version: bump when you want DAB/CLI parity; override: make bootstrap-system-tools DATABRICKS_CLI_VERSION=0.296.0
+# Install location: ensure $$HOME/.local/bin is on PATH ahead of any legacy /usr/local/bin databricks.
+DATABRICKS_CLI_VERSION ?= 0.295.0
+INSTALL_BIN_DIR ?= $(HOME)/.local/bin
+
+bootstrap-system-tools: bootstrap-system-tools-uv bootstrap-system-tools-databricks
+	@echo ""
+	@echo "bootstrap-system-tools: done."
+	@echo "Add to PATH if needed: export PATH=\"$(INSTALL_BIN_DIR):\$$PATH\""
+	@echo "Then: cd $(REPO_ROOT) && make uv-venv && make install"
+
+bootstrap-system-tools-uv:
+	@echo "[bootstrap] uv (astral install.sh; or self-update if already on PATH)..."
+	@command -v curl >/dev/null 2>&1 || (echo "curl is required" && exit 1)
+	@if command -v uv >/dev/null 2>&1; then \
+		echo "uv already: $$(command -v uv) ($$(uv --version))"; \
+		uv self update || true; \
+	else \
+		curl -LsSf https://astral.sh/uv/install.sh | sh; \
+	fi
+
+bootstrap-system-tools-databricks:
+	@echo "[bootstrap] Databricks CLI v$(DATABRICKS_CLI_VERSION) -> $(INSTALL_BIN_DIR)"
+	@command -v curl >/dev/null 2>&1 || (echo "curl is required" && exit 1)
+	@command -v unzip >/dev/null 2>&1 || (echo "unzip is required" && exit 1)
+	@set -e; \
+	VERSION="$(DATABRICKS_CLI_VERSION)"; \
+	BIN="$(INSTALL_BIN_DIR)"; \
+	OS=$$(uname -s | cut -d- -f1); \
+	ARCH=$$(uname -m); \
+	case "$$OS" in \
+		Darwin) O=darwin ;; \
+		Linux) O=linux ;; \
+		*) echo "Unsupported OS: $$OS (see https://docs.databricks.com/aws/en/dev-tools/cli/install)"; exit 1 ;; \
+	esac; \
+	case "$$ARCH" in \
+		x86_64) A=amd64 ;; \
+		amd64) A=amd64 ;; \
+		arm64|aarch64) A=arm64 ;; \
+		*) echo "Unsupported CPU arch: $$ARCH"; exit 1 ;; \
+	esac; \
+	FILE="databricks_cli_$${VERSION}_$${O}_$${A}"; \
+	mkdir -p "$$BIN"; \
+	TMP=$$(mktemp -d); \
+	trap 'rm -rf "$$TMP"' EXIT; \
+	cd "$$TMP"; \
+	curl -fsSL -o databricks_cli.zip "https://github.com/databricks/cli/releases/download/v$${VERSION}/$${FILE}.zip"; \
+	unzip -q -o databricks_cli.zip; \
+	chmod +x databricks; \
+	cp -f databricks "$$BIN/databricks"; \
+	"$$BIN/databricks" version; \
+	echo "Installed $$BIN/databricks"
 
 # --- MLflow UI (utils.mlflow; local env only) ---
 mlflow-ui:
@@ -240,6 +331,11 @@ data-local-generate-quick:
 data-local-e2e: data-local-clean data-local-generate data-local-duckdb-load data-local-dbt-run data-local-dbt-test
 	@echo "data-local-e2e done."
 
+# Full local verification: shared medallion (exclusive DuckDB) then each use-case smoke/e2e target.
+# Do not run in parallel with other jobs using data/local/medallion.duckdb.
+use-cases-local-e2e: data-local-e2e reco-local-install reco-local-e2e inventory-local-e2e doc-intel-local-install doc-intel-local-e2e
+	@echo "use-cases-local-e2e: all steps done."
+
 data-local-generate-pdfs:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
 	cd $(REPO_ROOT) && $(PY) data/prescription_pdf_generator/generate_prescription_pdfs_local.py
@@ -268,7 +364,7 @@ data-local-dbt-test: data-local-dbt-run
 document-intelligence-install:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv first" && exit 1)
 	cd $(REPO_ROOT) && (command -v uv >/dev/null 2>&1 && uv sync --extra document_intelligence || .venv/bin/pip install -e ".[document_intelligence]")
-	@echo "Document intelligence deps (pdfplumber, loguru, faker, reportlab) installed."
+	@echo "Document intelligence deps installed (includes en_core_web_sm via uv optional extra)."
 
 # Job 1: generate prescription PDFs + labels (same entrypoint as DAB document_intelligence_generate_job)
 document-intelligence-generate-data:

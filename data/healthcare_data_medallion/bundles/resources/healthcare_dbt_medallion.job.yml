@@ -4,6 +4,13 @@ resources:
     healthcare_data_medallion_job:
       name: healthcare_data_medallion_job
       description: "Healthcare Data Medallion - Complete Pipeline (Bronze → Silver → Gold)"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: healthcare_data_medallion
+        deployment_environment: ${var.tag_environment}
 
       trigger:
         periodic:

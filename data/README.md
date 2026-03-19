@@ -45,7 +45,7 @@ On Databricks, the job runs: bronze (run + test) → silver (run + test) → gol
 
 ### 3. Production path (Databricks)
 
-1. **Generate**: Job runs `generate_catalog_data_static.py` → Spark writes to Unity Catalog, e.g. `workspace.healthcare_dev_raw.healthcare_*`.
+1. **Generate**: Job runs `generate_catalog_data_static.py` → Spark writes to Unity Catalog, e.g. `ebos_uc_demo.healthcare_dev_raw.healthcare_*`.
 2. **Medallion**: dbt profile `databricks` → `type: databricks`, same catalog, schema e.g. `healthcare_medallion_dev`. Sources point at `healthcare_dev_raw`; dbt writes bronze/silver/gold into `healthcare_medallion_*` (or equivalent).
 3. **Use cases**: Read from gold (and silver) tables in Unity Catalog for training, dashboards, serving.
 

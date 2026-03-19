@@ -76,7 +76,7 @@ def get_input_silver_schema() -> str:
     return require_env_non_empty(
         "INVENTORY_INPUT_SILVER_SCHEMA",
         detail="when INVENTORY_DATA_SOURCE=catalog "
-        "(e.g. workspace.healthcare_medallion_dev_silver).",
+        "(e.g. ebos_uc_demo.healthcare_medallion_dev_silver).",
     )
 
 
@@ -88,7 +88,7 @@ def get_input_bronze_schema() -> str:
     return require_env_non_empty(
         "INVENTORY_INPUT_BRONZE_SCHEMA",
         detail="when INVENTORY_DATA_SOURCE=catalog "
-        "(e.g. workspace.healthcare_medallion_dev_bronze).",
+        "(e.g. ebos_uc_demo.healthcare_medallion_dev_bronze).",
     )
 
 
@@ -100,7 +100,7 @@ def get_input_gold_schema() -> str:
     return require_env_non_empty(
         "INVENTORY_INPUT_GOLD_SCHEMA",
         detail="when INVENTORY_DATA_SOURCE=catalog "
-        "(e.g. workspace.healthcare_medallion_dev_gold).",
+        "(e.g. ebos_uc_demo.healthcare_medallion_dev_gold).",
     )
 
 
@@ -112,7 +112,7 @@ def get_output_schema() -> str:
     return require_env_non_empty(
         "INVENTORY_OUTPUT_SCHEMA",
         detail="when INVENTORY_DATA_SOURCE=catalog "
-        "(e.g. workspace.inventory_optimization_dev).",
+        "(e.g. ebos_uc_demo.inventory_optimization_dev).",
     )
 
 

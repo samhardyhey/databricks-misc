@@ -4,6 +4,13 @@ resources:
     inventory_demand_forecasting_retrain:
       name: inventory_demand_forecasting_retrain
       description: "Retrain demand forecasting models for inventory optimisation and log to MLflow"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: inventory_optimization
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 0 5 * * ?"  # daily 5am
@@ -42,6 +49,13 @@ resources:
     inventory_writeoff_risk_retrain:
       name: inventory_writeoff_risk_retrain
       description: "Retrain write-off risk classifier for inventory and log to MLflow"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: inventory_optimization
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 10 5 * * ?"  # daily 5:10am
@@ -79,6 +93,13 @@ resources:
     inventory_replenishment_retrain:
       name: inventory_replenishment_retrain
       description: "Recompute replenishment policy (safety stock / ROP) based on latest demand models"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: inventory_optimization
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 20 5 * * ?"  # daily 5:20am

@@ -2,6 +2,13 @@ resources:
   model_serving_endpoints:
     recommendation_engine_item_similarity:
       name: recommendation-engine-item-similarity
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine_serving
+        deployment_environment: ${var.tag_environment}
       config:
         served_models:
           - name: item_similarity
@@ -13,6 +20,13 @@ resources:
 
     recommendation_engine_als:
       name: recommendation-engine-als
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine_serving
+        deployment_environment: ${var.tag_environment}
       config:
         served_models:
           - name: als_recommender
@@ -24,6 +38,13 @@ resources:
 
     recommendation_engine_lightfm:
       name: recommendation-engine-lightfm
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine_serving
+        deployment_environment: ${var.tag_environment}
       config:
         served_models:
           - name: lightfm_recommender
@@ -35,6 +56,13 @@ resources:
 
     recommendation_engine_ranker:
       name: recommendation-engine-ranker
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine_serving
+        deployment_environment: ${var.tag_environment}
       config:
         served_models:
           - name: ranker

@@ -30,7 +30,7 @@ This bundle generates realistic healthcare datasets for ML experimentation:
 ## Features
 
 - **Realistic Data**: Australian context with PBS codes, ATC codes, and proper business logic
-- **Unity Catalog Integration**: Saves data directly to `workspace.default.healthcare_*` tables
+- **Unity Catalog Integration**: Saves data directly to `ebos_uc_demo.<raw_schema>.healthcare_*` tables (see bundle `source_schema`, e.g. `healthcare_dev_raw`)
 - **ML-Ready**: Supports all ML use cases from demand forecasting to fraud detection
 - **Reproducible**: Seed-based generation for consistent results
 - **Scalable**: Configurable dataset sizes for different environments
@@ -92,13 +92,13 @@ You can modify these in `src/generate_catalog_data_static.py`.
 
 ### Generated Tables
 
-Data is saved to Unity Catalog as:
-- `workspace.default.healthcare_pharmacies`
-- `workspace.default.healthcare_hospitals`
-- `workspace.default.healthcare_products`
-- `workspace.default.healthcare_orders`
-- `workspace.default.healthcare_inventory`
-- `workspace.default.healthcare_supply_chain_events`
+Data is saved to Unity Catalog as (with default demo catalog `ebos_uc_demo` and dev raw schema `healthcare_dev_raw`):
+- `ebos_uc_demo.healthcare_dev_raw.healthcare_pharmacies`
+- `ebos_uc_demo.healthcare_dev_raw.healthcare_hospitals`
+- `ebos_uc_demo.healthcare_dev_raw.healthcare_products`
+- `ebos_uc_demo.healthcare_dev_raw.healthcare_orders`
+- `ebos_uc_demo.healthcare_dev_raw.healthcare_inventory`
+- `ebos_uc_demo.healthcare_dev_raw.healthcare_supply_chain_events`
 
 Each table includes metadata columns (`_ingestion_timestamp`, `_source`) for data lineage tracking.
 

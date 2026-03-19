@@ -10,11 +10,14 @@ sync:
 
 variables:
   catalog:
-    description: Unity Catalog catalog for reco models
-    default: workspace
+    description: Unity Catalog catalog for reco models (demonstration shared catalog)
+    default: ebos_uc_demo
+  tag_environment:
+    description: Deployment tier for resource tags (dev / test / prod)
+    default: dev
   model_schema:
-    description: Schema for registered recommendation models (e.g. workspace.default)
-    default: workspace.default
+    description: Schema for registered recommendation models (e.g. ebos_uc_demo.default)
+    default: ebos_uc_demo.default
   service_principal_name:
     description: Service principal name for this environment (matches example endpoints bundle pattern)
     default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
@@ -27,8 +30,9 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
-      model_schema: workspace.default
+      catalog: ebos_uc_demo
+      tag_environment: dev
+      model_schema: ebos_uc_demo.default
       service_principal_name: <TBD-RECO-SERVING-DEV-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
@@ -44,8 +48,9 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
-      model_schema: workspace.default
+      catalog: ebos_uc_demo
+      tag_environment: test
+      model_schema: ebos_uc_demo.default
       service_principal_name: <TBD-RECO-SERVING-TEST-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
@@ -61,8 +66,9 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
-      model_schema: workspace.default
+      catalog: ebos_uc_demo
+      tag_environment: prod
+      model_schema: ebos_uc_demo.default
       service_principal_name: <TBD-RECO-SERVING-PROD-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}

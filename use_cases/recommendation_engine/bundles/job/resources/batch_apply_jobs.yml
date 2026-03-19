@@ -5,6 +5,13 @@ resources:
     recommendation_engine_item_similarity_apply:
       name: recommendation_engine_item_similarity_apply
       description: "Batch application of item similarity (registry Champion by default)"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 32 6 * * ?"  # daily 6:32am
@@ -39,6 +46,13 @@ resources:
     recommendation_engine_als_apply:
       name: recommendation_engine_als_apply
       description: "Batch application of ALS recommender"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 35 6 * * ?"  # daily 6:35am
@@ -73,6 +87,13 @@ resources:
     recommendation_engine_lightfm_apply:
       name: recommendation_engine_lightfm_apply
       description: "Batch application of LightFM recommender to generate recommendations"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 40 6 * * ?"  # daily 6:40am
@@ -107,6 +128,13 @@ resources:
     recommendation_engine_ranker_apply:
       name: recommendation_engine_ranker_apply
       description: "Batch application of ranker (RECO_RANKER_MODEL_URI defaults to registry Champion; override per target if needed)"
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 50 6 * * ?"  # daily 6:50am
@@ -141,6 +169,13 @@ resources:
     recommendation_engine_apply:
       name: recommendation_engine_apply
       description: "Integration / smoke: run_reco_smoke apply path. Prefer per-model apply jobs for production."
+      tags:
+        business_unit: ebos
+        workload: ds-ml-demo
+        uc_catalog: ebos_uc_demo
+        repository: databricks-misc
+        bundle: recommendation_engine
+        deployment_environment: ${var.tag_environment}
 
       schedule:
         quartz_cron_expression: "0 55 6 * * ?"  # after per-model apply jobs

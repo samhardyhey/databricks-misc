@@ -13,7 +13,7 @@ sync:
 variables:
   catalog:
     description: Unity Catalog containing medallion outputs used by dashboards/Genie
-    default: workspace
+    default: ebos_uc_demo
   medallion_bronze_schema:
     description: Medallion bronze schema (dbt/UC schema), e.g. healthcare_medallion_dev_bronze
     default: healthcare_medallion_dev_bronze
@@ -38,7 +38,7 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
+      catalog: ebos_uc_demo
       medallion_bronze_schema: healthcare_medallion_dev_bronze
       medallion_silver_schema: healthcare_medallion_dev_silver
       medallion_gold_schema: healthcare_medallion_dev_gold
@@ -58,7 +58,7 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
+      catalog: ebos_uc_demo
       medallion_bronze_schema: healthcare_medallion_test_bronze
       medallion_silver_schema: healthcare_medallion_test_silver
       medallion_gold_schema: healthcare_medallion_test_gold
@@ -78,7 +78,7 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
+      catalog: ebos_uc_demo
       medallion_bronze_schema: healthcare_medallion_prod_bronze
       medallion_silver_schema: healthcare_medallion_prod_silver
       medallion_gold_schema: healthcare_medallion_prod_gold

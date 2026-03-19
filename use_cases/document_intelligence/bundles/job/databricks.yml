@@ -13,11 +13,14 @@ sync:
 
 variables:
   catalog:
-    description: Unity Catalog for document medallion (future extension)
-    default: workspace
+    description: Unity Catalog for document intelligence (demonstration shared catalog)
+    default: ebos_uc_demo
+  tag_environment:
+    description: Deployment tier for job tags (dev / test / prod)
+    default: dev
   medallion_schema:
-    description: Catalog.schema for document intelligence tables (e.g. workspace.document_intelligence_dev)
-    default: workspace.document_intelligence_dev
+    description: Catalog.schema for document intelligence tables (e.g. ebos_uc_demo.document_intelligence_dev)
+    default: ebos_uc_demo.document_intelligence_dev
   workspace_root:
     description: Workspace path where bundle is deployed (for PYTHONPATH)
     default: ""
@@ -32,10 +35,10 @@ variables:
     default: catalog
   docint_catalog_schema:
     description: Unity Catalog schema for doc intelligence tables (e.g. silver_doc_pages, silver_doc_fields_extracted)
-    default: workspace.document_intelligence_dev
+    default: ebos_uc_demo.document_intelligence_dev
   docint_documents_volume:
-    description: UC managed volume path for prescription PDFs (e.g. /Volumes/workspace/document_intelligence_dev/prescription_documents)
-    default: /Volumes/workspace/document_intelligence_dev/prescription_documents
+    description: UC managed volume path for prescription PDFs (e.g. /Volumes/ebos_uc_demo/document_intelligence_dev/prescription_documents)
+    default: /Volumes/ebos_uc_demo/document_intelligence_dev/prescription_documents
   service_principal_name:
     description: Service principal for job run_as and bundle resource permissions
     default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
@@ -48,14 +51,15 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
-      medallion_schema: workspace.document_intelligence_dev
+      catalog: ebos_uc_demo
+      tag_environment: dev
+      medallion_schema: ebos_uc_demo.document_intelligence_dev
       workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
       docint_base_dir: /Workspace/Users/sam.hardy@ebosgroup.com/data/local/prescription_pdfs
       docint_num_pdfs: "10"
       docint_data_source: catalog
-      docint_catalog_schema: workspace.document_intelligence_dev
-      docint_documents_volume: /Volumes/workspace/document_intelligence_dev/prescription_documents
+      docint_catalog_schema: ebos_uc_demo.document_intelligence_dev
+      docint_documents_volume: /Volumes/ebos_uc_demo/document_intelligence_dev/prescription_documents
       service_principal_name: <TBD-DOCINT-JOB-DEV-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
@@ -71,14 +75,15 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
-      medallion_schema: workspace.document_intelligence_test
+      catalog: ebos_uc_demo
+      tag_environment: test
+      medallion_schema: ebos_uc_demo.document_intelligence_test
       workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
       docint_base_dir: /Workspace/Users/sam.hardy@ebosgroup.com/data/local/prescription_pdfs
       docint_num_pdfs: "10"
       docint_data_source: catalog
-      docint_catalog_schema: workspace.document_intelligence_test
-      docint_documents_volume: /Volumes/workspace/document_intelligence_test/prescription_documents
+      docint_catalog_schema: ebos_uc_demo.document_intelligence_test
+      docint_documents_volume: /Volumes/ebos_uc_demo/document_intelligence_test/prescription_documents
       service_principal_name: <TBD-DOCINT-JOB-TEST-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}
@@ -94,14 +99,15 @@ targets:
       host: https://dbc-f501771e-54b7.cloud.databricks.com
       root_path: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
     variables:
-      catalog: workspace
-      medallion_schema: workspace.document_intelligence_prod
+      catalog: ebos_uc_demo
+      tag_environment: prod
+      medallion_schema: ebos_uc_demo.document_intelligence_prod
       workspace_root: /Workspace/Users/sam.hardy@ebosgroup.com/.bundle/${bundle.name}/${bundle.target}
       docint_base_dir: /Workspace/Users/sam.hardy@ebosgroup.com/data/local/prescription_pdfs
       docint_num_pdfs: "10"
       docint_data_source: catalog
-      docint_catalog_schema: workspace.document_intelligence_prod
-      docint_documents_volume: /Volumes/workspace/document_intelligence_prod/prescription_documents
+      docint_catalog_schema: ebos_uc_demo.document_intelligence_prod
+      docint_documents_volume: /Volumes/ebos_uc_demo/document_intelligence_prod/prescription_documents
       service_principal_name: <TBD-DOCINT-JOB-PROD-SP>
     run_as:
       service_principal_name: ${var.service_principal_name}

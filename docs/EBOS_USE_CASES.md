@@ -10,6 +10,16 @@
 - Recommendation engine: item_similarity, ALS, LightFM, ranker under `use_cases/recommendation_engine/models/`
 - Prescription PDF generator and annotation app for document intelligence
 
+### Current scope: demo vs production
+
+Most implementations here are **intentionally lightweight** for demos, portfolios, and Databricks bundle smoke tests—not production-ready ML without further validation, data contracts, and monitoring. In particular:
+
+- **Recommendation engine** — Comparable offline metrics and `@Champion` registry aliases are in place; ranking models are still simplified (e.g. negatives, catalogue scale) relative to a full production recommender.
+- **Inventory optimisation** — Demand is largely a **placeholder baseline**; write-off is a **snapshot classifier** with non-leaky features relative to the label (see inventory section); **replenishment is rule-based only** (no learned policy).
+- **Document intelligence** — OCR + **applied** spaCy (`en_core_web_sm`) and regex helpers; **no NER training or benchmarked evaluation** in-repo.
+
+Treat gaps as **future improvements** unless a component is explicitly hardened for a pilot.
+
 ---
 
 ## 1️⃣ Recommendation Engine for Ordering
@@ -158,20 +168,15 @@ use_cases/recommendation_engine/
 - Train at product × warehouse granularity
 - Generate probabilistic forecasts (P50, P75, P90) for safety stock calculations
 
-**Component 2: Write-off Risk Classification** (NEW - 2 weeks)
-- `sklearn.ensemble.RandomForestClassifier` or `lightgbm.LGBMClassifier`
-- Target: binary "will expire in next 30 days" or multi-class "risk level"
-- Features: days until expiry, current inventory level, forecast demand next 30d, historical turnover rate, product category, seasonality indicators
-- Use case: prioritize products for promotions or markdown
+**Component 2: Write-off Risk Classification** ✅ **EXISTS (demo)**
+- `lightgbm.LGBMClassifier` or `sklearn.ensemble.RandomForestClassifier` via `models/writeoff_risk/`.
+- Target: binary `will_expire_30d` derived from `days_until_expiry` in the training job — **`days_until_expiry` is not used as a model feature** (avoids trivial leakage); signal comes from stock, demand proxy, turnover, calendar month, and optional product category. **Production** should move to event-based labels and an explicit as-of date.
+- Training/retrain **job 2** delegates to `models/writeoff_risk/train.py` (MLflow + registry + **`@Champion`**). Batch apply defaults to `models:/inventory_optimization-writeoff_risk@Champion` (`WRITEOFF_RISK_MODEL_URI`).
+- Metrics logged include **PR-AUC** (`pr_auc`) where `predict_proba` exists.
 
-**Component 3: Replenishment Optimization** (NEW - 3-4 weeks)
-- Option A: Safety stock heuristics (simpler, faster)
-  - Calculate reorder points based on lead time, demand forecast variance, target service level
-  - Formula: ROP = (avg_demand × lead_time) + (z_score × demand_std × sqrt(lead_time))
-- Option B: Constrained optimization (more sophisticated)
-  - Use `scipy.optimize.linprog` or `pulp` for linear programming
-  - Objective: minimize total cost (holding + ordering + stockout + expiry)
-  - Constraints: MOQ, warehouse capacity, budget, supplier lead times, expiry windows
+**Component 3: Replenishment** ✅ **Rule-based only (demo)**
+- **No ML model**: ROP-style heuristics from inventory + orders (`models/replenishment/`). Suitable for demos and planner-style outputs; **not** a learned optimiser.
+- Future: constrained optimisation (e.g. `scipy`, `pulp`) or RL would sit behind the same job taxonomy but are out of scope for the current code path.
 
 **Evaluation**: Forecast MAE/RMSE/MAPE, reduction in write-offs (%), service level achievement, inventory turnover ratio
 
@@ -188,7 +193,7 @@ The three inventory components are **structurally different**: demand is **forec
 **Train/test separation (current intent)**
 
 - **Demand (`compare_forecasting_models`):** **Temporal split** on order rows by `order_date`: mean fitted on the early **80%**, MAE/RMSE/MAPE on the **held-out 20%** (see `models/demand_forecasting/core.py`). Full Prophet/XGBoost work should keep the same contract.
-- **Write-off:** **Stratified train/test** inside the classifier (`models/writeoff_risk/core.py`).
+- **Write-off:** **Stratified train/test** inside the classifier (`models/writeoff_risk/core.py`); **`days_until_expiry` is excluded from features** when training `will_expire_30d`. Logged metrics include **PR-AUC** (`pr_auc`) on the holdout split.
 - **Replenishment:** Uses **current** inventory + orders to compute a policy; there is no classic ML test set unless you simulate forward periods separately.
 
 This keeps MLflow useful for **within-component** comparisons (e.g. two demand models, two write-off checkpoints) while making cross-component comparison **qualitative** (KPIs and business outcomes) rather than a single shared accuracy score.
@@ -359,7 +364,7 @@ databricks-misc/
 
 **Business Value**: Manual labour reduction | High ROI for prescription processing and order validation
 **Use Case**: Reduce manual processing of prescription PDFs using AI to interpret, validate, and integrate into downstream ordering systems
-**Current Status**: ✅ **Partial** - Prescription PDF generator and annotation app exist; pipeline (generate → predict → save → review) in progress
+**Current Status**: ✅ **Partial** — PDF generator, OCR, spaCy/rule field extraction (optional), label fallback, annotator; **no trained NER benchmark** in-repo
 **Local dev**: Same patterns as recommendation_engine and inventory_optimization — config-driven local vs remote (DOCINT_BASE_DIR / DOCINT_DATA_SOURCE), modular jobs, single entrypoint; PDF generation, OCR, and annotator run locally with open-source libs (no Spark).
 
 ### Pipeline flow (generate → predict → save → review)
@@ -393,13 +398,17 @@ Ground-truth labels (`labels/`) are used for **evaluation and optional NER train
 ### Modelling / extraction approach
 
 **Pipeline (generate predictions, not “training” in the same sense as reco/inventory)**:
-1. **OCR** — Open-source OCR (e.g. `pdfplumber`, Tesseract) for PDF → text/layout. Write results to predictions store (per-doc or table).
-2. **Field extraction (NER)** — Extract prescription fields from OCR text (or from structured generator labels as a proxy until NER model is in place). Output: one record per document with patient, prescriber, medication, etc. Write to predictions store.
-3. **Validation / confidence** (optional) — Apply rules, match to master data; flag low-confidence or safety-critical items for review. Exceptions can be written to the same store with a status (e.g. `review` vs `approved`).
+1. **OCR** — `pdfplumber` for PDF → text per page. Write results to predictions store (local JSON under `predictions/ocr/` or UC `silver_doc_pages`).
+2. **Field extraction** — **Applied** NLP on OCR text:
+   - **spaCy** + **`en_core_web_sm`** — both are declared under the **`document_intelligence`** optional extra in `pyproject.toml` (model installed as a pinned wheel via `uv sync --extra document_intelligence`; DAB pipeline env lists the same wheel URL).
+   - **Regex / rules** in `spacy_ner_pipeline.py` for AU-oriented patterns (Medicare-style numbers, ABN, phone, Rx/script hints, AHPRA-style text).
+   - **No model training or held-out evaluation** in this path — only inference. Env: `DOCINT_FIELD_SOURCE` = `auto` (try OCR+spaCy first) | `ocr` | `labels`.
+   - If spaCy/OCR is missing or empty, **`auto` falls back to generator JSON labels** (demo parity with the annotator).
+3. **Validation / confidence** (optional) — Rules and master-data checks remain future work.
 
-**Libraries**: OCR (`pdfplumber`, `pytesseract`), NLP (`transformers`, `spacy` or similar for NER when added)
+**Libraries**: OCR (`pdfplumber`); NLP (`spacy` optional extra). Heavier `transformers`-based NER is a possible future swap behind the same `run_field_extraction` interface.
 
-**Evaluation**: When ground-truth `labels/` exist, compute field-level F1, document accuracy, exception rate. Evaluation is separate from the “save predictions” path; it reads predictions + labels and reports metrics.
+**Evaluation**: Not run automatically for the spaCy path. When ground-truth `labels/` exist, ad-hoc field-level metrics can be computed offline; that is separate from the “save predictions” job.
 
 ### Databricks Architecture
 
@@ -408,13 +417,16 @@ Ground-truth labels (`labels/`) are used for **evaluation and optional NER train
 - **Local**: DOCINT_BASE_DIR (default e.g. `data/local/prescription_pdfs/`) holds `documents/`, `predictions/` (and optional `labels/`, `annotated/`). All I/O is file-based.
 - **Remote (Databricks)**: When DOCINT_DATA_SOURCE=catalog (or auto on Databricks), read document listing from catalog/volume and write predictions to Unity Catalog tables or configured volume path. Same Python code paths; config switches behaviour.
 
+**Remote / cluster:** Include `spacy` and the **`en_core_web_sm`** wheel in the cluster environment (see `document_intelligence_job.yml` `pipeline_env` dependencies); locally they come from `uv sync --extra document_intelligence`. If the model package is missing, the code falls back to `blank:en` (regex-only entities, no PERSON/ORG from spaCy).
+
 **Batch jobs** (bundle under use-case; each job runnable locally or as DAB task):
 ```
 use_cases/document_intelligence/
 ├── config.py                     # get_config(), DOCINT_BASE_DIR, DOCINT_DATA_SOURCE, predictions_dir
 ├── data_loading.py               # load_document_data(); discover PDFs and prediction paths from config
 ├── ocr_pipeline.py               # run_ocr(); read PDFs, write OCR text to predictions store
-├── ner_field_extraction.py       # run_field_extraction(); read OCR/labels, write fields to predictions store
+├── ner_field_extraction.py       # run_field_extraction(); OCR+spaCy or labels → fields
+├── spacy_ner_pipeline.py         # Pretrained spaCy + regex; apply-only (no training loop)
 ├── predictions_io.py             # Save/load predictions (OCR and fields) to predictions_dir
 ├── jobs/
 │   ├── 1_generate_data.py        # Generate prescription PDFs + labels (documents/, labels/)
@@ -439,7 +451,8 @@ use_cases/document_intelligence/
 ├── config.py                     # get_config(); base_dir, predictions_dir, data_source, on_databricks
 ├── data_loading.py               # load_document_data(); discover PDFs and prediction paths
 ├── ocr_pipeline.py               # run_ocr(); read PDFs, write OCR text to predictions
-├── ner_field_extraction.py       # run_field_extraction(); read OCR/labels, write fields to predictions
+├── ner_field_extraction.py       # run_field_extraction(); OCR+spaCy or labels → fields
+├── spacy_ner_pipeline.py         # spaCy + regex; apply-only
 ├── predictions_io.py             # Save/load predictions (OCR, fields) to predictions_dir
 ├── jobs/
 │   ├── 1_generate_data.py        # Job: generate prescription PDFs + labels

@@ -58,12 +58,12 @@ snapshots:
 # Variables for configuration
 vars:
   # Source catalog and schema (references the healthcare_data_generator bundle output)
-  source_catalog: "workspace"
+  source_catalog: "ebos_uc_demo"
   source_schema: "healthcare_dev_raw" # Will be overridden by bundle environment
   source_table_prefix: "healthcare_"
 
   # Target catalog and schema
-  target_catalog: "workspace"
+  target_catalog: "ebos_uc_demo"
   target_schema_prefix: "healthcare_medallion"
 
   # Data quality thresholds

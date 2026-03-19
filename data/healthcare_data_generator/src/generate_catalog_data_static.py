@@ -21,7 +21,7 @@ from pyspark.sql.functions import current_timestamp, lit
 
 TABLE_PREFIX = "healthcare_"
 BUNDLE_TARGET = os.getenv("BUNDLE_TARGET", "dev")
-CATALOG_NAME = os.getenv("CATALOG_NAME", "workspace")
+CATALOG_NAME = os.getenv("CATALOG_NAME", "ebos_uc_demo")
 SCHEMA_NAME = os.getenv("SCHEMA_NAME") or f"healthcare_{BUNDLE_TARGET}_raw"
 
 # Large-scale data generation for ML experimentation

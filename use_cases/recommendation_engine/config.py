@@ -66,7 +66,7 @@ def get_local_data_source() -> Literal["duckdb", "csv"]:
 
 
 def get_catalog_schema() -> str:
-    """Unity Catalog schema for reco tables (e.g. workspace.healthcare_medallion). Override with RECO_CATALOG_SCHEMA."""
+    """Unity Catalog schema for reco tables (e.g. ebos_uc_demo.healthcare_medallion). Override with RECO_CATALOG_SCHEMA."""
     return _get_catalog_schema(env_var_name="RECO_CATALOG_SCHEMA")
 
 
@@ -78,7 +78,7 @@ def get_input_silver_schema() -> str:
     return require_env_non_empty(
         "RECO_INPUT_SILVER_SCHEMA",
         detail="when RECO_DATA_SOURCE=catalog "
-        "(e.g. workspace.healthcare_medallion_dev_silver).",
+        "(e.g. ebos_uc_demo.healthcare_medallion_dev_silver).",
     )
 
 
@@ -90,7 +90,7 @@ def get_output_schema() -> str:
     return require_env_non_empty(
         "RECO_OUTPUT_SCHEMA",
         detail="when RECO_DATA_SOURCE=catalog "
-        "(e.g. workspace.recommendation_engine_dev).",
+        "(e.g. ebos_uc_demo.recommendation_engine_dev).",
     )
 
 
