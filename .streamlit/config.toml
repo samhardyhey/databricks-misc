@@ -1,0 +1,12 @@
+# Local development when the process cwd is the repo root (e.g. `make reco-app-run`).
+# Databricks Apps sync only `source_code_path` subdirs, so this file is not part of deployed apps.
+#
+# Imported modules: the watcher covers the cwd tree; run Streamlit from repo root (Makefile targets)
+# so edits under `use_cases/` and `data/` still trigger reloads.
+
+[server]
+runOnSave = true
+fileWatcherType = "auto"
+
+[browser]
+gatherUsageStats = false
