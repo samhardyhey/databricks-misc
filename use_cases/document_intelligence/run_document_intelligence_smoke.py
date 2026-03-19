@@ -45,6 +45,8 @@ def _run_streamlit(env: dict[str, str], app_path: Path) -> None:
         "streamlit",
         "run",
         str(app_path),
+        "--server.runOnSave=true",
+        "--server.fileWatcherType=auto",
         "--server.headless=true",
         "--server.address=127.0.0.1",
         "--server.port=8502",

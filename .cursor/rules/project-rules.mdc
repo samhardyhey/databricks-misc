@@ -54,7 +54,8 @@ alwaysApply: true
   - `source_code_path: use_cases/<name>/app`
   - `environment.spec.dependencies` should normally reference the requirements file (e.g. `- -r use_cases/<name>/app/requirements.txt`) rather than duplicating libraries inline.
 - Local dev pattern for any app:
-  - `cd use_cases/<name>/app && uv pip install -r requirements.txt && streamlit run app.py` (or equivalent `pip`).
+  - **Preferred:** `make <use-case>-app-run` from **repo root** — uses `.streamlit/config.toml` + `STREAMLIT_LOCAL_OPTS` (`runOnSave`, file watcher) so saves rerun without a prompt and imports under `use_cases/` are watched.
+  - **From app dir:** `cd use_cases/<name>/app && uv pip install -r requirements.txt && streamlit run app.py --server.runOnSave true` (watcher only covers that subtree; use root-based runs to pick up shared modules).
 
 ### Job taxonomy (retrain vs apply)
 - For ML-heavy use-cases (e.g. recommendation, inventory optimisation), split jobs into **types** and then fan out by **model**:

@@ -59,3 +59,4 @@ dbt_modules/
 prescription_pdfs/
 .pytest_cache/
 *.db
+.streamlit/

@@ -28,26 +28,29 @@ WORKSPACE_BUNDLE_PREFIX := /Workspace/Users/$(WORKSPACE_USER_EMAIL)/.bundle
 # Document intelligence (prescription PDFs): local base dir
 DOC_INTEL_PDF_OUTPUT := data/local/prescription_pdfs
 
+# Local Streamlit: rerun on save + file watcher (override e.g. STREAMLIT_LOCAL_OPTS=--server.fileWatcherType poll for Docker)
+STREAMLIT_LOCAL_OPTS ?= --server.runOnSave true --server.fileWatcherType auto
+
 # Marvelous MLOps: separate requirements, use sub-venv (make marvelous-mlops-venv first)
 MARVELOUS_MLOPS_DIR := $(REPO_ROOT)/marvelous_mlops
 MARVELOUS_PY := $(MARVELOUS_MLOPS_DIR)/.venv/bin/python
 
 .PHONY: help test test-use-cases test-reco test-inventory test-doc-intel test-ai-insights
 .PHONY: help cleanup clean-local-data format uc-foundation-deploy
-.PHONY: dab-list dab-workspace-print dab-validate dab-deploy dab-run
-.PHONY: foundation-dab-validate-uc foundation-dab-deploy-uc
-.PHONY: data-dab-validate-generator data-dab-deploy-generator data-dab-run-generator
-.PHONY: data-dab-validate-medallion data-dab-deploy-medallion data-dab-run-medallion
+.PHONY: dab-list dab-workspace-print dab-validate dab-deploy dab-destroy dab-run
+.PHONY: foundation-dab-validate-uc foundation-dab-deploy-uc foundation-dab-destroy-uc
+.PHONY: data-dab-validate-generator data-dab-deploy-generator data-dab-destroy-generator data-dab-run-generator
+.PHONY: data-dab-validate-medallion data-dab-deploy-medallion data-dab-destroy-medallion data-dab-run-medallion
 .PHONY: data-local-clean data-local-e2e use-cases-local-e2e
 .PHONY: doc-intel-local-install doc-intel-local-ensure-spacy-model doc-intel-local-generate-data doc-intel-local-ocr doc-intel-local-field-extraction doc-intel-local-app-run doc-intel-local-smoke doc-intel-local-generate-pdfs
-.PHONY: doc-intel-dab-validate doc-intel-dab-deploy doc-intel-dab-run-generate doc-intel-dab-run-pipeline
+.PHONY: doc-intel-dab-validate doc-intel-dab-deploy doc-intel-dab-destroy doc-intel-dab-run-generate doc-intel-dab-run-pipeline
 .PHONY: reco-local-install reco-local-data reco-local-run reco-local-e2e reco-local-item-sim-train reco-local-item-sim-apply reco-local-als-train reco-local-als-apply reco-local-lightfm-train reco-local-lightfm-apply reco-local-ranker-train reco-local-ranker-apply reco-local-app-run
 .PHONY: reco-local-smoke reco-build-training-base
-.PHONY: reco-dab-validate reco-dab-deploy reco-dab-run-build-training-base reco-dab-run-retrain reco-dab-run-apply reco-dab-run-lightfm-retrain reco-dab-run-lightfm-apply reco-dab-run-ranker-retrain reco-dab-run-ranker-apply
+.PHONY: reco-dab-validate reco-dab-deploy reco-dab-destroy dab-destroy-reco reco-dab-run-build-training-base reco-dab-run-retrain reco-dab-run-apply reco-dab-run-lightfm-retrain reco-dab-run-lightfm-apply reco-dab-run-ranker-retrain reco-dab-run-ranker-apply
 .PHONY: inventory-local-install inventory-local-data inventory-local-run inventory-local-e2e inventory-local-writeoff-train inventory-local-writeoff-apply inventory-local-demand-train inventory-local-demand-apply inventory-local-replenishment-train inventory-local-replenishment-apply
 .PHONY: inventory-local-smoke
-.PHONY: inventory-dab-validate inventory-dab-deploy inventory-dab-run-demand-retrain inventory-dab-run-writeoff-retrain inventory-dab-run-replenishment-retrain inventory-dab-run-demand-apply inventory-dab-run-writeoff-apply inventory-dab-run-replenishment-apply
-.PHONY: ai-insights-local-app-run ai-insights-dab-validate ai-insights-dab-deploy
+.PHONY: inventory-dab-validate inventory-dab-deploy inventory-dab-destroy inventory-dab-run-demand-retrain inventory-dab-run-writeoff-retrain inventory-dab-run-replenishment-retrain inventory-dab-run-demand-apply inventory-dab-run-writeoff-apply inventory-dab-run-replenishment-apply
+.PHONY: ai-insights-local-app-run ai-insights-dab-validate ai-insights-dab-deploy ai-insights-dab-destroy
 .PHONY: data-local-generate data-local-generate-quick data-local-generate-pdfs data-local-duckdb-load data-local-dbt-run data-local-dbt-test
 .PHONY: reco-data reco-run reco-install reco-item-sim-train reco-item-sim-apply reco-als-train reco-als-apply reco-lightfm-train reco-lightfm-apply reco-ranker-train reco-ranker-apply reco-app-run
 .PHONY: ai-insights-app-run
@@ -70,6 +73,7 @@ help:
 	@echo "  make test-doc-intel       - pytest document_intelligence/tests only"
 	@echo "  make test-ai-insights     - pytest ai_powered_insights/tests only"
 	@echo "  make uv-activate          - Print activate command for .venv"
+	@echo "  STREAMLIT_LOCAL_OPTS       - Make variable: default '--server.runOnSave true ...' for *-app-run; see .streamlit/config.toml"
 	@echo "  make bootstrap-system-tools - Chicken/egg: uv + Databricks CLI into \$$HOME/.local/bin (curl/unzip; override DATABRICKS_CLI_VERSION=)"
 	@echo "  make cleanup              - Remove __pycache__, .pyc, .pytest_cache, .coverage, etc."
 	@echo "  make format [FMT_ARGS=.]  - Run autoflake, isort, black"
@@ -82,10 +86,15 @@ help:
 	@echo "  make marvelous-mlops-fetch-substack       - Fetch Substack posts"
 	@echo "  make marvelous-mlops-fetch-youtube        - Fetch YouTube transcripts"
 	@echo ""
+	@echo "  ## Databricks Asset Bundles (low-level):"
+	@echo "  make dab-list                    - List BUNDLE= names for dab-validate / dab-deploy / dab-destroy / dab-run"
+	@echo "  make dab-destroy BUNDLE=...      - databricks bundle destroy (optional DAB_DESTROY_AUTO_APPROVE=1)"
+	@echo ""
 	@echo "  ## UC foundation (Unity Catalog schemas/volumes):"
 	@echo "  make uc-foundation-deploy        - Deploy bundles/uc_foundation to $(UC_FOUNDATION_TARGET) (compat)"
 	@echo "  make foundation-dab-validate-uc  - Validate UC foundation bundle (DAB)"
 	@echo "  make foundation-dab-deploy-uc    - Deploy UC foundation bundle (DAB)"
+	@echo "  make foundation-dab-destroy-uc     - Destroy UC foundation bundle resources (DAB destroy)"
 	@echo ""
 	@echo "  ## Data foundation"
 	@echo "  make data-local-clean           - Remove data/local/, test_output/, doc-intel PDFs, medallion target/logs (start again)"
@@ -98,15 +107,18 @@ help:
 	@echo ""
 	@echo "  make data-dab-validate-generator - Validate healthcare data generator bundle"
 	@echo "  make data-dab-deploy-generator   - Deploy healthcare data generator bundle"
+	@echo "  make data-dab-destroy-generator  - Destroy healthcare data generator bundle (DAB destroy)"
 	@echo "  make data-dab-run-generator      - Run healthcare data generator job bundle"
 	@echo "  make data-dab-validate-medallion - Validate healthcare medallion (dbt) bundle"
 	@echo "  make data-dab-deploy-medallion   - Deploy healthcare medallion (dbt) bundle"
+	@echo "  make data-dab-destroy-medallion  - Destroy healthcare medallion bundle (DAB destroy)"
 	@echo "  make data-dab-run-medallion      - Run healthcare medallion (dbt) job bundle"
 	@echo ""
 	@echo "  ## AI Powered Insights (ai-insights):"
 	@echo "  make ai-insights-local-app-run      - Run Streamlit router app locally"
 	@echo "  make ai-insights-dab-validate       - Validate AI Insights bundles (app + dashboards + genie spaces)"
 	@echo "  make ai-insights-dab-deploy         - Deploy AI Insights bundles (app + dashboards + genie spaces)"
+	@echo "  make ai-insights-dab-destroy        - Destroy AI Insights bundles (reverse deploy order)"
 	@echo ""
 	@echo "  ## Document intelligence (doc-intel):"
 	@echo "  make doc-intel-local-install        - Install doc-intel deps"
@@ -116,8 +128,10 @@ help:
 	@echo "  make doc-intel-local-field-extraction - Local Job 3: field extraction"
 	@echo "  make doc-intel-local-app-run        - Local Streamlit annotator"
 	@echo "  make doc-intel-local-e2e            - Local end-to-end test"
+	@echo ""
 	@echo "  make doc-intel-dab-validate         - Validate doc-intel bundles (jobs + annotator app)"
 	@echo "  make doc-intel-dab-deploy           - Deploy doc-intel bundles (jobs + annotator app)"
+	@echo "  make doc-intel-dab-destroy          - Destroy doc-intel bundles (annotator app, then jobs)"
 	@echo "  make doc-intel-dab-run-generate     - Run remote Job 1 (document_intelligence_generate_job)"
 	@echo "  make doc-intel-dab-run-pipeline     - Run remote pipeline job (document_intelligence_pipeline_job)"
 	@echo ""
@@ -134,6 +148,7 @@ help:
 	@echo ""
 	@echo "  make inventory-dab-validate         - Validate inventory job bundle"
 	@echo "  make inventory-dab-deploy           - Deploy inventory job bundle"
+	@echo "  make inventory-dab-destroy          - Destroy inventory job bundle (DAB destroy)"
 	@echo "  make inventory-dab-run-demand-retrain       - Run demand forecasting retrain job"
 	@echo "  make inventory-dab-run-writeoff-retrain     - Run writeoff risk retrain job"
 	@echo "  make inventory-dab-run-replenishment-retrain - Run replenishment retrain job"
@@ -158,6 +173,7 @@ help:
 	@echo ""
 	@echo "  make reco-dab-validate         - Validate reco bundles (jobs + serving + app)"
 	@echo "  make reco-dab-deploy           - Deploy reco bundles (jobs + serving + app)"
+	@echo "  make reco-dab-destroy / dab-destroy-reco - Destroy reco bundles (app + serving + jobs)"
 	@echo "  make reco-dab-run-build-training-base - Run reco build_training_base job"
 	@echo "  make reco-dab-run-retrain      - Run reco retrain job (recommendation_engine_retrain)"
 	@echo "  make reco-dab-run-apply        - Run reco apply job (recommendation_engine_apply)"
@@ -404,7 +420,7 @@ document-intelligence-run:
 document-intelligence-app-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make document-intelligence-install" && exit 1)
 	@test -d $(REPO_ROOT)/$(DOC_INTEL_PDF_OUTPUT)/predictions/fields || (echo "Run: make document-intelligence-run (or generate-data + ocr + field-extraction) first so predictions/fields/ exists" && exit 1)
-	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/document_intelligence/annotator/app.py
+	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/document_intelligence/annotator/app.py $(STREAMLIT_LOCAL_OPTS)
 	@echo "document-intelligence annotator app (Streamlit)"
 
 document-intelligence-smoke:
@@ -438,6 +454,9 @@ doc-intel-dab-validate:
 doc-intel-dab-deploy:
 	@$(MAKE) dab-deploy BUNDLE=document_intelligence DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 	@$(MAKE) dab-deploy BUNDLE=document_intelligence_annotator_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+doc-intel-dab-destroy:
+	@$(MAKE) dab-destroy-document_intelligence DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
 
 doc-intel-dab-run-generate:
 	@$(MAKE) dab-run BUNDLE=document_intelligence RUN_JOB=document_intelligence_generate_job DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
@@ -502,14 +521,14 @@ reco-ranker-apply:
 # Streamlit app for recommendation engine
 reco-app-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make reco-install" && exit 1)
-	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/recommendation_engine/app/app.py
+	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/recommendation_engine/app/app.py $(STREAMLIT_LOCAL_OPTS)
 	@echo "reco app running (Streamlit)"
 
 # Streamlit app for AI Powered Insights (Genie + domain router)
 ai-insights-app-run:
 	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install" && exit 1)
 	@$(PY) -m pip install -r use_cases/ai_powered_insights/app/requirements.txt >/dev/null 2>&1 || true
-	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/ai_powered_insights/app/app.py
+	cd $(REPO_ROOT) && $(PY) -m streamlit run use_cases/ai_powered_insights/app/app.py $(STREAMLIT_LOCAL_OPTS)
 	@echo "ai-powered-insights app running (Streamlit)"
 
 # --- Inventory optimisation (single entrypoint; INVENTORY_DATA_SOURCE=local|catalog|auto) ---
@@ -596,6 +615,9 @@ reco-dab-deploy:
 	@$(MAKE) dab-deploy BUNDLE=recommendation_engine_serving DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 	@$(MAKE) dab-deploy BUNDLE=recommendation_engine_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
+reco-dab-destroy:
+	@$(MAKE) dab-destroy-recommendation_engine DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+
 reco-dab-run-build-training-base:
 	@$(MAKE) dab-run BUNDLE=recommendation_engine RUN_JOB=recommendation_engine_build_training_base DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
@@ -645,6 +667,9 @@ inventory-dab-validate:
 inventory-dab-deploy:
 	@$(MAKE) dab-deploy BUNDLE=inventory_optimization DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
+inventory-dab-destroy:
+	@$(MAKE) dab-destroy-inventory_optimization DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+
 inventory-dab-run-demand-retrain:
 	@$(MAKE) dab-run BUNDLE=inventory_optimization RUN_JOB=inventory_demand_forecasting_retrain DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
@@ -674,6 +699,9 @@ ai-insights-dab-deploy:
 	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_dashboards DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_genie_spaces DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
+ai-insights-dab-destroy:
+	@$(MAKE) dab-destroy-ai_powered_insights DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+
 # --- foundation/data (DAB) ---
 foundation-dab-validate-uc:
 	@$(MAKE) dab-validate BUNDLE=uc_foundation DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
@@ -681,11 +709,17 @@ foundation-dab-validate-uc:
 foundation-dab-deploy-uc:
 	@$(MAKE) dab-deploy BUNDLE=uc_foundation DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
+foundation-dab-destroy-uc:
+	@$(MAKE) dab-destroy-uc_foundation DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+
 data-dab-validate-generator:
 	@$(MAKE) dab-validate BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
 data-dab-deploy-generator:
 	@$(MAKE) dab-deploy BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+data-dab-destroy-generator:
+	@$(MAKE) dab-destroy-healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
 
 data-dab-run-generator:
 	@$(MAKE) dab-run BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
@@ -695,6 +729,9 @@ data-dab-validate-medallion:
 
 data-dab-deploy-medallion:
 	@$(MAKE) dab-deploy BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+data-dab-destroy-medallion:
+	@$(MAKE) dab-destroy-healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
 
 data-dab-run-medallion:
 	@$(MAKE) dab-run BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
@@ -720,20 +757,25 @@ marvelous-mlops-fetch-youtube:
 	@echo "YouTube fetch done."
 
 # --- Databricks Asset Bundles (DAB) ---
-# Bundle-centric commands so CI/local dev can validate/deploy/run consistently.
+# Bundle-centric commands so CI/local dev can validate/deploy/run/destroy consistently.
 #
 # Usage:
 #   make dab-validate BUNDLE=recommendation_engine DAB_TARGET=dev-sp
 #   make dab-deploy   BUNDLE=inventory_optimization DAB_TARGET=test-sp
+#   make dab-destroy  BUNDLE=document_intelligence DAB_TARGET=dev-sp
 #   make dab-run      BUNDLE=document_intelligence RUN_JOB=document_intelligence_pipeline_job DAB_TARGET=prod-sp
+#
+# dab-destroy runs `databricks bundle destroy` (removes deployed jobs, pipelines, apps, etc. for that bundle
+# + target). Default: interactive confirm. For CI/non-interactive: DAB_DESTROY_AUTO_APPROVE=1
 
 DAB_TARGET ?= dev-sp
 DAB_PROFILE ?= $(DAB_TARGET)
 BUNDLE ?=
 RUN_JOB ?=
+DAB_DESTROY_AUTO_APPROVE ?=
 
 define dab_bundle_dir
-# Deprecated: BUNDLE_DIR mapping is handled directly in dab-validate/dab-deploy/dab-run.
+# Deprecated: BUNDLE_DIR mapping is handled directly in dab-validate/dab-deploy/dab-destroy/dab-run.
 endef
 
 # Bundle "kind": job_multi | job_single | deploy_only
@@ -832,6 +874,35 @@ dab-deploy:
 	  cd "$$BUNDLE_DIR" && databricks bundle deploy --target $(DAB_TARGET) --profile $(DAB_PROFILE); \
 	fi
 
+dab-destroy:
+	@test -n "$(strip $(BUNDLE))" || (echo "Usage: make dab-destroy BUNDLE=<bundle-name> [DAB_TARGET=...] [DAB_DESTROY_AUTO_APPROVE=1]" && exit 1)
+	@BUNDLE_DIR=""; \
+	if [ "$(BUNDLE)" = "uc_foundation" ]; then BUNDLE_DIR="$(REPO_ROOT)/bundles/uc_foundation"; \
+	elif [ "$(BUNDLE)" = "healthcare_data_generator" ]; then BUNDLE_DIR="$(REPO_ROOT)/data/healthcare_data_generator/bundles"; \
+	elif [ "$(BUNDLE)" = "healthcare_data_medallion" ]; then BUNDLE_DIR="$(REPO_ROOT)/data/healthcare_data_medallion/bundles"; \
+	elif [ "$(BUNDLE)" = "recommendation_engine" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/recommendation_engine/bundles/job"; \
+	elif [ "$(BUNDLE)" = "recommendation_engine_serving" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/recommendation_engine/bundles/serving"; \
+	elif [ "$(BUNDLE)" = "recommendation_engine_app" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/recommendation_engine/bundles/app"; \
+	elif [ "$(BUNDLE)" = "inventory_optimization" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/inventory_optimization/bundles/job"; \
+	elif [ "$(BUNDLE)" = "document_intelligence" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/document_intelligence/bundles/job"; \
+	elif [ "$(BUNDLE)" = "document_intelligence_annotator_app" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/document_intelligence/bundles/app"; \
+	elif [ "$(BUNDLE)" = "ai_powered_insights_app" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/ai_powered_insights/bundles/app"; \
+	elif [ "$(BUNDLE)" = "ai_powered_insights_dashboards" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/ai_powered_insights/bundles/dashboards"; \
+	elif [ "$(BUNDLE)" = "ai_powered_insights_genie_spaces" ]; then BUNDLE_DIR="$(REPO_ROOT)/use_cases/ai_powered_insights/bundles/genie_spaces"; \
+	else BUNDLE_DIR=""; \
+	fi; \
+	if [ -z "$$BUNDLE_DIR" ] || [ ! -f "$$BUNDLE_DIR/databricks.yml" ]; then \
+	  echo "Unknown/invalid bundle '$(BUNDLE)'. Try: make dab-list"; exit 1; \
+	fi; \
+	APPROVE=""; \
+	if [ "$(DAB_DESTROY_AUTO_APPROVE)" = "1" ]; then APPROVE="--auto-approve"; fi; \
+	echo "[dab-destroy] bundle=$(BUNDLE) dir=$$BUNDLE_DIR target=$(DAB_TARGET) profile=$(DAB_PROFILE)"; \
+	if [ "$(call dab_requires_direct_engine,$(BUNDLE))" = "1" ]; then \
+	  cd "$$BUNDLE_DIR" && DATABRICKS_BUNDLE_ENGINE=direct databricks bundle destroy $$APPROVE --target $(DAB_TARGET) --profile $(DAB_PROFILE); \
+	else \
+	  cd "$$BUNDLE_DIR" && databricks bundle destroy $$APPROVE --target $(DAB_TARGET) --profile $(DAB_PROFILE); \
+	fi
+
 dab-run:
 	@test -n "$(strip $(BUNDLE))" || (echo "Usage: make dab-run BUNDLE=<bundle-name> RUN_JOB=<job-name> [DAB_TARGET=...]" && exit 1)
 	@BUNDLE_KIND="$(call dab_bundle_kind,$(BUNDLE))"; \
@@ -888,6 +959,11 @@ dab-deploy-recommendation_engine:
 	@$(MAKE) dab-deploy BUNDLE=recommendation_engine_serving DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 	@$(MAKE) dab-deploy BUNDLE=recommendation_engine_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
+dab-destroy-recommendation_engine:
+	@$(MAKE) dab-destroy BUNDLE=recommendation_engine_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+	@$(MAKE) dab-destroy BUNDLE=recommendation_engine_serving DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+	@$(MAKE) dab-destroy BUNDLE=recommendation_engine DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+
 dab-run-recommendation_engine:
 	@test -n "$(strip $(RUN_JOB))" || (echo "Usage: make dab-run-recommendation_engine RUN_JOB=<job-name> [DAB_TARGET=...]" && exit 1)
 	@$(MAKE) dab-run BUNDLE=recommendation_engine RUN_JOB=$(RUN_JOB) DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
@@ -897,6 +973,9 @@ dab-validate-inventory_optimization:
 
 dab-deploy-inventory_optimization:
 	@$(MAKE) dab-deploy BUNDLE=inventory_optimization DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-destroy-inventory_optimization:
+	@$(MAKE) dab-destroy BUNDLE=inventory_optimization DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
 
 dab-run-inventory_optimization:
 	@test -n "$(strip $(RUN_JOB))" || (echo "Usage: make dab-run-inventory_optimization RUN_JOB=<job-name> [DAB_TARGET=...]" && exit 1)
@@ -909,6 +988,10 @@ dab-validate-document_intelligence:
 dab-deploy-document_intelligence:
 	@$(MAKE) dab-deploy BUNDLE=document_intelligence DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 	@$(MAKE) dab-deploy BUNDLE=document_intelligence_annotator_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-destroy-document_intelligence:
+	@$(MAKE) dab-destroy BUNDLE=document_intelligence_annotator_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+	@$(MAKE) dab-destroy BUNDLE=document_intelligence DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
 
 dab-run-document_intelligence:
 	@test -n "$(strip $(RUN_JOB))" || (echo "Usage: make dab-run-document_intelligence RUN_JOB=<job-name> [DAB_TARGET=...]" && exit 1)
@@ -924,6 +1007,11 @@ dab-deploy-ai_powered_insights:
 	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_dashboards DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 	@$(MAKE) dab-deploy BUNDLE=ai_powered_insights_genie_spaces DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
+dab-destroy-ai_powered_insights:
+	@$(MAKE) dab-destroy BUNDLE=ai_powered_insights_genie_spaces DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+	@$(MAKE) dab-destroy BUNDLE=ai_powered_insights_dashboards DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+	@$(MAKE) dab-destroy BUNDLE=ai_powered_insights_app DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+
 # --- Foundation/data DAB wrappers (shared) ---
 
 dab-validate-uc_foundation:
@@ -932,11 +1020,17 @@ dab-validate-uc_foundation:
 dab-deploy-uc_foundation:
 	@$(MAKE) dab-deploy BUNDLE=uc_foundation DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
+dab-destroy-uc_foundation:
+	@$(MAKE) dab-destroy BUNDLE=uc_foundation DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+
 dab-validate-healthcare_data_generator:
 	@$(MAKE) dab-validate BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
 dab-deploy-healthcare_data_generator:
 	@$(MAKE) dab-deploy BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
+
+dab-destroy-healthcare_data_generator:
+	@$(MAKE) dab-destroy BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
 
 dab-run-healthcare_data_generator:
 	@$(MAKE) dab-run BUNDLE=healthcare_data_generator DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
@@ -947,6 +1041,9 @@ dab-validate-healthcare_data_medallion:
 dab-deploy-healthcare_data_medallion:
 	@$(MAKE) dab-deploy BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
+dab-destroy-healthcare_data_medallion:
+	@$(MAKE) dab-destroy BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE) DAB_DESTROY_AUTO_APPROVE=$(DAB_DESTROY_AUTO_APPROVE)
+
 dab-run-healthcare_data_medallion:
 	@$(MAKE) dab-run BUNDLE=healthcare_data_medallion DAB_TARGET=$(DAB_TARGET) DAB_PROFILE=$(DAB_PROFILE)
 
@@ -955,6 +1052,8 @@ dab-run-healthcare_data_medallion:
 dab-validate-reco: dab-validate-recommendation_engine
 
 dab-deploy-reco: dab-deploy-recommendation_engine
+
+dab-destroy-reco: dab-destroy-recommendation_engine
 
 dab-run-reco:
 	@test -n "$(strip $(RUN_JOB))" || (echo "Usage: make dab-run-reco RUN_JOB=<job-name> [DAB_TARGET=...]" && exit 1)
