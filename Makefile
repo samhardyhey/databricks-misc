@@ -427,7 +427,6 @@ ai-insights-local-app-run: ai-insights-app-run
 # --- reco (local) ---
 reco-local-install: reco-install
 reco-local-data: reco-data
-reco-local-run: reco-run
 reco-local-smoke: reco-local-run
 reco-local-e2e: reco-local-run
 reco-local-item-sim-train: reco-item-sim-train
@@ -437,6 +436,15 @@ reco-local-als-apply: reco-als-apply
 reco-local-lightfm-train: reco-lightfm-train
 reco-local-lightfm-apply: reco-lightfm-apply
 reco-local-app-run: reco-app-run
+
+# Local reco run should always use the local DuckDB medallion (avoid RECO_* catalog schema envs).
+RECO_LOCAL_DUCKDB_PATH ?= $(REPO_ROOT)/data/local/medallion.duckdb
+reco-local-run: reco-local-data reco-local-install
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make reco-local-install" && exit 1)
+	@test -f $(RECO_LOCAL_DUCKDB_PATH) || (echo "Missing DuckDB medallion at $(RECO_LOCAL_DUCKDB_PATH). Run: make data-local-e2e (or data-local-dbt-run)" && exit 1)
+	@echo "[reco-local] training+logging to MLflow, then loading via MLflow pyfunc (DuckDB medallion)..."
+	cd $(REPO_ROOT) && RECO_DATA_SOURCE=local DBT_DUCKDB_PATH=$(RECO_LOCAL_DUCKDB_PATH) $(PY) use_cases/recommendation_engine/models/run_reco_smoke.py
+	@echo "reco-local run done."
 
 # --- reco (DAB) ---
 reco-dab-validate:
@@ -464,7 +472,6 @@ reco-dab-run-lightfm-apply:
 # --- inventory (local) ---
 inventory-local-install: inventory-install
 inventory-local-data: inventory-data
-inventory-local-run: inventory-run
 inventory-local-smoke: inventory-local-run
 inventory-local-e2e: inventory-local-run
 inventory-local-writeoff-train: inventory-writeoff-train
@@ -473,6 +480,15 @@ inventory-local-demand-train: inventory-demand-train
 inventory-local-demand-apply: inventory-demand-apply
 inventory-local-replenishment-train: inventory-replenishment-train
 inventory-local-replenishment-apply: inventory-replenishment-apply
+
+# Local inventory run should always use the local DuckDB medallion (avoid INVENTORY_* catalog schema envs).
+INVENTORY_LOCAL_DUCKDB_PATH ?= $(REPO_ROOT)/data/local/medallion.duckdb
+inventory-local-run: inventory-local-data inventory-local-install
+	@test -x $(VENV_PY) || (echo "Run: make uv-venv && make install && make inventory-local-install" && exit 1)
+	@test -f $(INVENTORY_LOCAL_DUCKDB_PATH) || (echo "Missing DuckDB medallion at $(INVENTORY_LOCAL_DUCKDB_PATH). Run: make data-local-e2e (or data-local-dbt-run)" && exit 1)
+	@echo "[inventory-local] running inventory smoke (DuckDB medallion)..."
+	cd $(REPO_ROOT) && INVENTORY_DATA_SOURCE=local DBT_DUCKDB_PATH=$(INVENTORY_LOCAL_DUCKDB_PATH) $(PY) use_cases/inventory_optimization/run_inventory_smoke.py
+	@echo "inventory-local run done."
 
 # --- inventory (DAB) ---
 inventory-dab-validate:

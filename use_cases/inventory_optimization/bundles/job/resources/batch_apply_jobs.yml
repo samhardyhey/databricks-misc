@@ -54,7 +54,10 @@ resources:
             client: "2"
             env_vars:
               INVENTORY_DATA_SOURCE: auto
-              INVENTORY_CATALOG_SCHEMA: ${var.medallion_schema}
+              INVENTORY_INPUT_BRONZE_SCHEMA: ${var.medallion_bronze_schema}
+              INVENTORY_INPUT_SILVER_SCHEMA: ${var.medallion_silver_schema}
+              INVENTORY_INPUT_GOLD_SCHEMA: ${var.medallion_gold_schema}
+              INVENTORY_OUTPUT_SCHEMA: ${var.output_schema}
               PYTHONPATH: ${var.workspace_root}
             dependencies:
               - pandas>=2.0

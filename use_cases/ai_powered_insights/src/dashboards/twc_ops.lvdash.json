@@ -3,12 +3,12 @@
     {
       "displayName": "promotions rows",
       "name": "d_promotions_rows",
-      "query": "SELECT promo_id FROM `${var.catalog}`.`${var.medallion_schema}`.`bronze_promotions`"
+      "query": "SELECT promo_id FROM `${var.catalog}`.`${var.medallion_bronze_schema}`.`bronze_promotions`"
     },
     {
       "displayName": "revenue by week",
       "name": "d_twc_revenue_week",
-      "query": "SELECT DATE_TRUNC(\\\"WEEK\\\", s.date) as week_start, SUM(s.revenue) as revenue FROM `${var.catalog}`.`${var.medallion_schema}`.`bronze_store_sales` s JOIN `${var.catalog}`.`${var.medallion_schema}`.`bronze_store_attributes` a ON s.store_id = a.store_id GROUP BY 1 ORDER BY 1"
+      "query": "SELECT DATE_TRUNC(\\\"WEEK\\\", s.date) as week_start, SUM(s.revenue) as revenue FROM `${var.catalog}`.`${var.medallion_bronze_schema}`.`bronze_store_sales` s JOIN `${var.catalog}`.`${var.medallion_bronze_schema}`.`bronze_store_attributes` a ON s.store_id = a.store_id GROUP BY 1 ORDER BY 1"
     }
   ],
   "pages": [

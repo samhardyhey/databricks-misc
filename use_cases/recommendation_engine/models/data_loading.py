@@ -60,22 +60,24 @@ def _load_from_duckdb(
     return out
 
 
-def _load_from_catalog(spark, catalog_schema: str) -> dict[str, pd.DataFrame | None]:
-    """Load interactions, products, orders, training_base from Unity Catalog."""
+def _load_from_catalog(
+    spark, *, input_silver_schema: str, input_gold_schema: str
+) -> dict[str, pd.DataFrame | None]:
+    """Load interactions, products, orders, training_base from Unity Catalog shared medallion."""
     out = {}
     # Interactions (silver)
-    table = f"{catalog_schema}.silver_reco_interactions"
+    table = f"{input_silver_schema}.silver_reco_interactions"
     logger.info("Loading interactions from {}", table)
     df = spark.table(table).toPandas()
     if "interaction_timestamp" in df.columns:
         df["interaction_timestamp"] = pd.to_datetime(df["interaction_timestamp"])
     out["interactions"] = df
     # Products
-    table = f"{catalog_schema}.silver_products"
+    table = f"{input_silver_schema}.silver_products"
     logger.info("Loading products from {}", table)
     out["products"] = spark.table(table).toPandas()
     # Orders (optional)
-    table = f"{catalog_schema}.silver_orders"
+    table = f"{input_silver_schema}.silver_orders"
     try:
         df = spark.table(table).toPandas()
         if "order_date" in df.columns:
@@ -84,7 +86,7 @@ def _load_from_catalog(spark, catalog_schema: str) -> dict[str, pd.DataFrame | N
     except Exception:
         out["orders"] = None
     # Training base (gold)
-    table = f"{catalog_schema}.gold_reco_training_base"
+    table = f"{input_gold_schema}.gold_reco_training_base"
     logger.info("Loading training base from {}", table)
     out["training_base"] = spark.table(table).toPandas()
     return out
@@ -134,7 +136,7 @@ def load_reco_data(
 ) -> dict[str, pd.DataFrame | None]:
     """
     Load all reco data (interactions, products, orders, training_base).
-    - catalog: Unity Catalog via spark and config["catalog_schema"].
+    - catalog: Unity Catalog via spark and config["input_silver_schema"] / config["input_gold_schema"].
     - local: prefer DuckDB medallion (config["duckdb_path"], config["duckdb_medallion_schema"])
       when config["local_data_source"] == "duckdb"; fall back to CSV from config["local_data_dir"].
     """
@@ -144,7 +146,11 @@ def load_reco_data(
             raise RuntimeError(
                 "data_source is 'catalog' but spark is None; create SparkSession on Databricks."
             )
-        return _load_from_catalog(spark, cfg["catalog_schema"])
+        return _load_from_catalog(
+            spark,
+            input_silver_schema=cfg["input_silver_schema"],
+            input_gold_schema=cfg["input_gold_schema"],
+        )
     # Local: try DuckDB medallion first when configured
     if cfg.get("local_data_source") == "duckdb" and cfg.get("duckdb_path"):
         try:

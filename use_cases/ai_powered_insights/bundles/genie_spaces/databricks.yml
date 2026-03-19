@@ -13,9 +13,15 @@ variables:
   catalog:
     description: Unity Catalog containing medallion outputs used by dashboards/Genie
     default: workspace
-  medallion_schema:
-    description: Medallion schema containing silver/gold outputs (dbt/UC schema)
-    default: healthcare_medallion_dev
+  medallion_bronze_schema:
+    description: Medallion bronze schema (dbt/UC schema), e.g. healthcare_medallion_dev_bronze
+    default: healthcare_medallion_dev_bronze
+  medallion_silver_schema:
+    description: Medallion silver schema (dbt/UC schema), e.g. healthcare_medallion_dev_silver
+    default: healthcare_medallion_dev_silver
+  medallion_gold_schema:
+    description: Medallion gold schema (dbt/UC schema), e.g. healthcare_medallion_dev_gold
+    default: healthcare_medallion_dev_gold
   service_principal_name:
     description: Service principal used for run_as
     default: c8c4498a-fd58-45b7-a8c7-39f91f385dbf
@@ -32,7 +38,9 @@ targets:
       root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
-      medallion_schema: healthcare_medallion_dev
+      medallion_bronze_schema: healthcare_medallion_dev_bronze
+      medallion_silver_schema: healthcare_medallion_dev_silver
+      medallion_gold_schema: healthcare_medallion_dev_gold
       service_principal_name: <TBD-AI-INSIGHTS-DEV-SP>
       sql_warehouse_id: ""
     run_as:
@@ -45,7 +53,9 @@ targets:
       root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
-      medallion_schema: healthcare_medallion_test
+      medallion_bronze_schema: healthcare_medallion_test_bronze
+      medallion_silver_schema: healthcare_medallion_test_silver
+      medallion_gold_schema: healthcare_medallion_test_gold
       service_principal_name: <TBD-AI-INSIGHTS-TEST-SP>
       sql_warehouse_id: ""
     run_as:
@@ -58,7 +68,9 @@ targets:
       root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
-      medallion_schema: healthcare_medallion_prod
+      medallion_bronze_schema: healthcare_medallion_prod_bronze
+      medallion_silver_schema: healthcare_medallion_prod_silver
+      medallion_gold_schema: healthcare_medallion_prod_gold
       service_principal_name: <TBD-AI-INSIGHTS-PROD-SP>
       sql_warehouse_id: ""
     run_as:

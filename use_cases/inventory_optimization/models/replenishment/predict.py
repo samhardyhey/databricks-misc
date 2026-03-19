@@ -72,7 +72,7 @@ def main():
         if spark is not None:
             from pyspark.sql import functions as F
 
-            schema = cfg["catalog_schema"]
+            schema = cfg["output_schema"]
             table = os.environ.get(
                 "REPLENISHMENT_TABLE",
                 f"{schema}.gold_replenishment_recommendations",

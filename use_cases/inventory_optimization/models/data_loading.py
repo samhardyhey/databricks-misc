@@ -76,11 +76,13 @@ def _load_from_duckdb(
     return out
 
 
-def _load_from_catalog(spark, catalog_schema: str) -> dict[str, pd.DataFrame | None]:
-    """Load inventory, expiry_batches, writeoff_events, orders, products from Unity Catalog."""
+def _load_from_catalog(
+    spark, *, input_silver_schema: str, input_bronze_schema: str
+) -> dict[str, pd.DataFrame | None]:
+    """Load inventory inputs from Unity Catalog shared medallion."""
     out = {}
     # Inventory (silver)
-    table = f"{catalog_schema}.silver_inventory"
+    table = f"{input_silver_schema}.silver_inventory"
     logger.info("Loading inventory from {}", table)
     df = spark.table(table).toPandas()
     for col in (
@@ -93,37 +95,43 @@ def _load_from_catalog(spark, catalog_schema: str) -> dict[str, pd.DataFrame | N
             df[col] = pd.to_datetime(df[col], errors="coerce")
     out["inventory"] = df
     # Orders
-    table = f"{catalog_schema}.silver_orders"
+    table = f"{input_silver_schema}.silver_orders"
     logger.info("Loading orders from {}", table)
     df = spark.table(table).toPandas()
     if "order_date" in df.columns:
         df["order_date"] = pd.to_datetime(df["order_date"], errors="coerce")
     out["orders"] = df
     # Products
-    table = f"{catalog_schema}.silver_products"
+    table = f"{input_silver_schema}.silver_products"
     logger.info("Loading products from {}", table)
     out["products"] = spark.table(table).toPandas()
     # Expiry batches (bronze/silver if present)
-    for name in ("silver_expiry_batches", "bronze_expiry_batches"):
+    for candidate in (
+        f"{input_silver_schema}.silver_expiry_batches",
+        f"{input_bronze_schema}.bronze_expiry_batches",
+    ):
         try:
-            df = spark.table(f"{catalog_schema}.{name}").toPandas()
+            df = spark.table(candidate).toPandas()
             if "expiry_date" in df.columns:
                 df["expiry_date"] = pd.to_datetime(df["expiry_date"], errors="coerce")
             out["expiry_batches"] = df
-            logger.info("Loading expiry_batches from {}", f"{catalog_schema}.{name}")
+            logger.info("Loading expiry_batches from {}", candidate)
             break
         except Exception:
             continue
     else:
         out["expiry_batches"] = None
     # Writeoff events (bronze/silver if present)
-    for name in ("silver_writeoff_events", "bronze_writeoff_events"):
+    for candidate in (
+        f"{input_silver_schema}.silver_writeoff_events",
+        f"{input_bronze_schema}.bronze_writeoff_events",
+    ):
         try:
-            df = spark.table(f"{catalog_schema}.{name}").toPandas()
+            df = spark.table(candidate).toPandas()
             if "timestamp" in df.columns:
                 df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
             out["writeoff_events"] = df
-            logger.info("Loading writeoff_events from {}", f"{catalog_schema}.{name}")
+            logger.info("Loading writeoff_events from {}", candidate)
             break
         except Exception:
             continue
@@ -177,7 +185,7 @@ def load_inventory_data(
 ) -> dict[str, pd.DataFrame | None]:
     """
     Load all inventory data (inventory, orders, products, expiry_batches, writeoff_events).
-    - catalog: Unity Catalog via spark and config["catalog_schema"].
+    - catalog: Unity Catalog via spark and config["input_silver_schema"] / config["input_bronze_schema"].
     - local: prefer DuckDB medallion (config["duckdb_path"], config["duckdb_medallion_schema"])
       when config["local_data_source"] == "duckdb"; fall back to CSV from config["local_data_dir"].
     """
@@ -187,7 +195,11 @@ def load_inventory_data(
             raise RuntimeError(
                 "data_source is 'catalog' but spark is None; create SparkSession on Databricks."
             )
-        return _load_from_catalog(spark, cfg["catalog_schema"])
+        return _load_from_catalog(
+            spark,
+            input_silver_schema=cfg["input_silver_schema"],
+            input_bronze_schema=cfg["input_bronze_schema"],
+        )
     # Local: try DuckDB medallion first when configured
     if cfg.get("local_data_source") == "duckdb" and cfg.get("duckdb_path"):
         try:

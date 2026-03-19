@@ -40,9 +40,9 @@ def main():
     if cfg["on_databricks"] and spark is not None:
         try:
             spark_df = spark.createDataFrame(recommendations)
-            catalog = "workspace.healthcare_medallion"
+            output_schema = cfg["output_schema"]
             spark_df.write.saveAsTable(
-                f"{catalog}.gold_replenishment_recommendations", mode="overwrite"
+                f"{output_schema}.gold_replenishment_recommendations", mode="overwrite"
             )
             logger.info("Wrote gold_replenishment_recommendations")
         except Exception as e:

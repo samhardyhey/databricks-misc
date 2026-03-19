@@ -3,12 +3,12 @@
     {
       "displayName": "orders",
       "name": "d_orders",
-      "query": "SELECT order_id FROM `${var.catalog}`.`${var.medallion_schema}`.`silver_orders`"
+      "query": "SELECT order_id FROM `${var.catalog}`.`${var.medallion_silver_schema}`.`silver_orders`"
     },
     {
       "displayName": "orders by week",
       "name": "d_orders_week",
-      "query": "SELECT DATE_TRUNC(\\\"WEEK\\\", order_date) as week_start, SUM(total_amount) as revenue FROM `${var.catalog}`.`${var.medallion_schema}`.`silver_orders` GROUP BY 1 ORDER BY 1"
+      "query": "SELECT DATE_TRUNC(\\\"WEEK\\\", order_date) as week_start, SUM(total_amount) as revenue FROM `${var.catalog}`.`${var.medallion_silver_schema}`.`silver_orders` GROUP BY 1 ORDER BY 1"
     }
   ],
   "pages": [

@@ -73,6 +73,69 @@ def get_catalog_schema() -> str:
     return _get_catalog_schema(env_var_name="INVENTORY_CATALOG_SCHEMA")
 
 
+def get_input_silver_schema() -> str:
+    """
+    Unity Catalog *input* schema for silver tables (shared medallion).
+    Override with INVENTORY_INPUT_SILVER_SCHEMA.
+    """
+    import os
+
+    raw = os.environ.get("INVENTORY_INPUT_SILVER_SCHEMA", "").strip()
+    if not raw:
+        raise RuntimeError(
+            "INVENTORY_INPUT_SILVER_SCHEMA is required when INVENTORY_DATA_SOURCE=catalog "
+            "(e.g. workspace.healthcare_medallion_dev_silver)."
+        )
+    return raw
+
+
+def get_input_bronze_schema() -> str:
+    """
+    Unity Catalog *input* schema for bronze tables (shared medallion).
+    Override with INVENTORY_INPUT_BRONZE_SCHEMA.
+    """
+    import os
+
+    raw = os.environ.get("INVENTORY_INPUT_BRONZE_SCHEMA", "").strip()
+    if not raw:
+        raise RuntimeError(
+            "INVENTORY_INPUT_BRONZE_SCHEMA is required when INVENTORY_DATA_SOURCE=catalog "
+            "(e.g. workspace.healthcare_medallion_dev_bronze)."
+        )
+    return raw
+
+
+def get_input_gold_schema() -> str:
+    """
+    Unity Catalog *input* schema for gold tables (shared medallion) when needed.
+    Override with INVENTORY_INPUT_GOLD_SCHEMA.
+    """
+    import os
+
+    raw = os.environ.get("INVENTORY_INPUT_GOLD_SCHEMA", "").strip()
+    if not raw:
+        raise RuntimeError(
+            "INVENTORY_INPUT_GOLD_SCHEMA is required when INVENTORY_DATA_SOURCE=catalog "
+            "(e.g. workspace.healthcare_medallion_dev_gold)."
+        )
+    return raw
+
+
+def get_output_schema() -> str:
+    """
+    Unity Catalog *output* schema for inventory_optimization owned tables.
+    Override with INVENTORY_OUTPUT_SCHEMA.
+    """
+    import os
+
+    raw = os.environ.get("INVENTORY_OUTPUT_SCHEMA", "").strip()
+    if not raw:
+        raise RuntimeError(
+            "INVENTORY_OUTPUT_SCHEMA is required when INVENTORY_DATA_SOURCE=catalog "
+            "(e.g. workspace.inventory_optimization_dev)."
+        )
+    return raw
+
 # MLflow tracking/artifact/experiment: delegated to utils.mlflow.config (local vs Databricks)
 # get_mlflow_tracking_uri, get_mlflow_artifact_root, ensure_experiment_artifact_root imported above
 
@@ -85,18 +148,35 @@ def get_config() -> dict:
     - local_data_source: 'duckdb' | 'csv' (when data_source == 'local': prefer DuckDB medallion)
     - duckdb_path: Path | None (when local and DuckDB file exists)
     - duckdb_medallion_schema: str (base schema for DuckDB)
-    - catalog_schema: str (used when data_source == 'catalog')
+    - input_silver_schema: str (UC schema for shared medallion silver inputs)
+    - input_bronze_schema: str (UC schema for shared medallion bronze inputs)
+    - input_gold_schema: str (UC schema for shared medallion gold inputs when needed)
+    - output_schema: str (UC schema for inventory-owned outputs)
     - on_databricks: bool (is_running_on_databricks())
     """
     data_source = get_data_source()
     duckdb_path = get_duckdb_path()
+
+    input_silver_schema: str | None = None
+    input_bronze_schema: str | None = None
+    input_gold_schema: str | None = None
+    output_schema: str | None = None
+    if data_source == "catalog":
+        input_silver_schema = get_input_silver_schema()
+        input_bronze_schema = get_input_bronze_schema()
+        input_gold_schema = get_input_gold_schema()
+        output_schema = get_output_schema()
+
     return {
         "data_source": data_source,
         "local_data_dir": get_local_data_dir(),
         "local_data_source": get_local_data_source(),
         "duckdb_path": duckdb_path,
         "duckdb_medallion_schema": get_duckdb_medallion_schema(),
-        "catalog_schema": get_catalog_schema(),
+        "input_silver_schema": input_silver_schema,
+        "input_bronze_schema": input_bronze_schema,
+        "input_gold_schema": input_gold_schema,
+        "output_schema": output_schema,
         "on_databricks": is_running_on_databricks(),
         "mlflow_tracking_uri": get_mlflow_tracking_uri(),
         "mlflow_registry_uri": get_mlflow_registry_uri(),

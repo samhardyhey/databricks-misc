@@ -167,15 +167,24 @@ def get_config() -> dict:
     """
     data_source = get_data_source()
     duckdb_path = get_duckdb_path()
+
+    input_silver_schema: str | None = None
+    input_gold_schema: str | None = None
+    output_schema: str | None = None
+    if data_source == "catalog":
+        input_silver_schema = get_input_silver_schema()
+        input_gold_schema = get_input_gold_schema()
+        output_schema = get_output_schema()
+
     return {
         "data_source": data_source,
         "local_data_dir": get_local_data_dir(),
         "local_data_source": get_local_data_source(),
         "duckdb_path": duckdb_path,
         "duckdb_medallion_schema": get_duckdb_medallion_schema(),
-        "input_silver_schema": get_input_silver_schema(),
-        "input_gold_schema": get_input_gold_schema(),
-        "output_schema": get_output_schema(),
+        "input_silver_schema": input_silver_schema,
+        "input_gold_schema": input_gold_schema,
+        "output_schema": output_schema,
         "on_databricks": is_running_on_databricks(),
         "mlflow_tracking_uri": get_mlflow_tracking_uri(),
         "mlflow_registry_uri": get_mlflow_registry_uri(),

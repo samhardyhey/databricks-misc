@@ -15,9 +15,15 @@ variables:
   catalog:
     description: Unity Catalog for medallion (reco reads from medallion schema)
     default: workspace
-  medallion_schema:
-    description: Catalog.schema for reco tables (e.g. workspace.healthcare_medallion_dev)
-    default: workspace.healthcare_medallion_dev
+  medallion_silver_schema:
+    description: Shared medallion silver schema (inputs), e.g. workspace.healthcare_medallion_dev_silver
+    default: workspace.healthcare_medallion_dev_silver
+  medallion_gold_schema:
+    description: Shared medallion gold schema (inputs), e.g. workspace.healthcare_medallion_dev_gold
+    default: workspace.healthcare_medallion_dev_gold
+  output_schema:
+    description: Reco-owned output schema, e.g. workspace.recommendation_engine_dev
+    default: workspace.recommendation_engine_dev
   workspace_root:
     description: Workspace path where bundle is deployed (for PYTHONPATH)
     default: ""
@@ -34,7 +40,9 @@ targets:
       root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
-      medallion_schema: workspace.healthcare_medallion_dev
+      medallion_silver_schema: workspace.healthcare_medallion_dev_silver
+      medallion_gold_schema: workspace.healthcare_medallion_dev_gold
+      output_schema: workspace.recommendation_engine_dev
       workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-RECO-DEV-SP>
     run_as:
@@ -47,7 +55,9 @@ targets:
       root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
-      medallion_schema: workspace.healthcare_medallion_test
+      medallion_silver_schema: workspace.healthcare_medallion_test_silver
+      medallion_gold_schema: workspace.healthcare_medallion_test_gold
+      output_schema: workspace.recommendation_engine_test
       workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-RECO-TEST-SP>
     run_as:
@@ -60,7 +70,9 @@ targets:
       root_path: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: workspace
-      medallion_schema: workspace.healthcare_medallion_prod
+      medallion_silver_schema: workspace.healthcare_medallion_prod_silver
+      medallion_gold_schema: workspace.healthcare_medallion_prod_gold
+      output_schema: workspace.recommendation_engine_prod
       workspace_root: /Workspace/Users/samhardyhey@gmail.com/.bundle/${bundle.name}/${bundle.target}
       service_principal_name: <TBD-RECO-PROD-SP>
     run_as:

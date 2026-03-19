@@ -110,7 +110,7 @@ def main(model_uri: Optional[str] = None) -> pd.DataFrame:
     if spark is not None:
         from pyspark.sql import functions as F
 
-        schema = cfg["catalog_schema"]
+        schema = cfg["output_schema"]
         table = os.environ.get(
             "WRITEOFF_RISK_SCORES_TABLE",
             f"{schema}.gold_writeoff_risk_scores",

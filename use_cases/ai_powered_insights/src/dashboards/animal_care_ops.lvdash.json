@@ -3,12 +3,12 @@
     {
       "displayName": "competitor_price_history rows",
       "name": "d_competitor_price_rows",
-      "query": "SELECT competitor_id FROM `${var.catalog}`.`${var.medallion_schema}`.`bronze_competitor_price_history`"
+      "query": "SELECT competitor_id FROM `${var.catalog}`.`${var.medallion_bronze_schema}`.`bronze_competitor_price_history`"
     },
     {
       "displayName": "avg competitor price by week",
       "name": "d_competitor_price_week",
-      "query": "SELECT DATE_TRUNC(\\\"WEEK\\\", date) as week_start, AVG(price) as avg_price FROM `${var.catalog}`.`${var.medallion_schema}`.`bronze_competitor_price_history` GROUP BY 1 ORDER BY 1"
+      "query": "SELECT DATE_TRUNC(\\\"WEEK\\\", date) as week_start, AVG(price) as avg_price FROM `${var.catalog}`.`${var.medallion_bronze_schema}`.`bronze_competitor_price_history` GROUP BY 1 ORDER BY 1"
     }
   ],
   "pages": [

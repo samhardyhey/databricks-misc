@@ -87,7 +87,7 @@ def main(model_uri: Optional[str] = None, k: int = 10) -> pd.DataFrame:
     if spark is not None and len(out):
         from pyspark.sql import functions as F
 
-        schema = cfg["catalog_schema"]
+        schema = cfg["output_schema"]
         table = os.environ.get(
             "ITEM_SIMILARITY_TABLE",
             f"{schema}.gold_item_similarity_candidates",
